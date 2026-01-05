@@ -1,9 +1,12 @@
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { Provider } from 'react-redux'
+import { PersistGate } from 'redux-persist/integration/react'
 import { BrowserRouter } from 'react-router-dom'
-import { store } from '@/store/store'
+import { Toaster } from '@/components/ui/sonner'
+import { ThemeProvider } from '@/context/theme-provider'
 import { AppRoutes } from './app-routes'
+import { persistor, store } from '@/store/store'
 // Styles
 import './styles/index.css'
 
@@ -14,9 +17,14 @@ if (!rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <Provider store={store}>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <PersistGate loading={null} persistor={persistor}>
+          <ThemeProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+            <Toaster position='top-center' />
+          </ThemeProvider>
+        </PersistGate>
       </Provider>
     </StrictMode>
   )

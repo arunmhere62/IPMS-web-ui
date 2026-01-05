@@ -4,7 +4,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -17,6 +16,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { useLogoutMutation } from '@/services/authApi'
+import { useAppDispatch } from '@/store/hooks'
+import { logout } from '@/store/slices/authSlice'
+import { baseApi } from '@/services/baseApi'
 
 type NavUserProps = {
   user: {
@@ -26,14 +29,39 @@ type NavUserProps = {
   }
 }
 
+const getInitials = (name: string) => {
+  const parts = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  const first = parts[0]?.[0] ?? 'U'
+  const second = parts.length > 1 ? parts[1]?.[0] : parts[0]?.[1]
+  return `${first}${second ?? ''}`.toUpperCase()
+}
+
 export function NavUser({ user }: NavUserProps) {
   const { isMobile } = useSidebar()
   const navigate = useNavigate()
+  const dispatch = useAppDispatch()
+  const [apiLogout] = useLogoutMutation()
+
+  const initials = getInitials(user.name)
 
   const handleLogout = () => {
-    removeCookie('access_token')
-    removeCookie('x_user_id')
-    navigate('/login', { replace: true })
+    ;(async () => {
+      try {
+        await apiLogout().unwrap()
+      } catch {
+        // best-effort
+      } finally {
+        dispatch(logout())
+        dispatch(baseApi.util.resetApiState())
+        removeCookie('access_token')
+        removeCookie('refresh_token')
+        removeCookie('x_user_id')
+        navigate('/login', { replace: true })
+      }
+    })()
   }
 
   return (
@@ -47,7 +75,7 @@ export function NavUser({ user }: NavUserProps) {
             >
               <Avatar className='h-8 w-8 rounded-lg'>
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className='rounded-lg'>SN</AvatarFallback>
+                <AvatarFallback className='rounded-lg'>{initials}</AvatarFallback>
               </Avatar>
               <div className='grid flex-1 text-start text-sm leading-tight'>
                 <span className='truncate font-semibold'>{user.name}</span>
@@ -66,7 +94,7 @@ export function NavUser({ user }: NavUserProps) {
               <div className='flex items-center gap-2 px-1 py-1.5 text-start text-sm'>
                 <Avatar className='h-8 w-8 rounded-lg'>
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className='rounded-lg'>SN</AvatarFallback>
+                  <AvatarFallback className='rounded-lg'>{initials}</AvatarFallback>
                 </Avatar>
                 <div className='grid flex-1 text-start text-sm leading-tight'>
                   <span className='truncate font-semibold'>{user.name}</span>
@@ -74,10 +102,6 @@ export function NavUser({ user }: NavUserProps) {
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem disabled>Profile</DropdownMenuItem>
-            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
           </DropdownMenuContent>

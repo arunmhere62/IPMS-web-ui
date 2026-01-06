@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { FieldPath, FieldValues } from 'react-hook-form'
 
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { PasswordInput } from '@/components/password-input'
+import { PasswordInput } from '@/components/form/password-input'
 import { cn } from '@/lib/utils'
 
 type BaseFieldProps<TFieldValues extends FieldValues, TName extends FieldPath<TFieldValues>> = {

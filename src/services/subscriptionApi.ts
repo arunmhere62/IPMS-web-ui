@@ -9,12 +9,28 @@ export interface SubscriptionPlan {
   currency: string
   features: string[] | null
   is_active: boolean
+  is_trial?: boolean
+  is_free?: boolean
+  limits?: {
+    max_pg_locations?: number | null
+    max_tenants?: number | null
+    max_rooms?: number | null
+    max_beds?: number | null
+    max_employees?: number | null
+    max_users?: number | null
+    max_invoices_per_month?: number | null
+    max_sms_per_month?: number | null
+    max_whatsapp_per_month?: number | null
+  } | null
   max_pg_locations?: number | null
   max_tenants?: number | null
   max_beds?: number | null
   max_employees?: number | null
   max_rooms?: number | null
   max_users?: number | null
+  max_invoices_per_month?: number | null
+  max_sms_per_month?: number | null
+  max_whatsapp_per_month?: number | null
 }
 
 export interface UserSubscription {
@@ -42,22 +58,23 @@ export interface SubscriptionStatus {
   is_trial?: boolean
 }
 
-type ApiEnvelope<T> = {
-  data?: T
-}
+type RecordValue = Record<string, unknown>
 
-const unwrapCentralData = <T>(response: any): T => {
-  if (response && typeof response === 'object' && 'success' in response && 'statusCode' in response) {
-    return (response as any).data as T
+const isRecord = (value: unknown): value is RecordValue =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+const unwrapCentralData = <T>(response: unknown): T => {
+  if (isRecord(response) && 'success' in response && 'statusCode' in response) {
+    return (response as RecordValue).data as T
   }
   return response as T
 }
 
-const unwrapNestedData = (value: any) => {
-  let current = value
+const unwrapNestedData = (value: unknown): unknown => {
+  let current: unknown = value
   for (let i = 0; i < 5; i += 1) {
-    if (current && typeof current === 'object' && 'data' in current) {
-      current = (current as any).data
+    if (isRecord(current) && 'data' in current) {
+      current = (current as RecordValue).data
       continue
     }
     break
@@ -65,31 +82,33 @@ const unwrapNestedData = (value: any) => {
   return current
 }
 
-const normalizeListResponse = <T>(response: any): { success: boolean; data: T; message?: string } => {
-  const unwrapped = unwrapCentralData<any>(response)
+const normalizeListResponse = <T>(response: unknown): { success: boolean; data: T; message?: string } => {
+  const unwrapped = unwrapCentralData<unknown>(response)
 
-  if (unwrapped && typeof unwrapped === 'object' && 'success' in unwrapped && 'data' in unwrapped) {
-    return unwrapped as any
+  if (isRecord(unwrapped) && 'success' in unwrapped && 'data' in unwrapped) {
+    return unwrapped as unknown as { success: boolean; data: T; message?: string }
   }
 
+  const responseRecord = isRecord(response) ? response : undefined
+
   return {
-    success: (response as any)?.success ?? true,
+    success: (responseRecord?.success as boolean | undefined) ?? true,
     data: unwrapped as T,
-    message: (response as any)?.message,
+    message: responseRecord?.message as string | undefined,
   }
 }
 
-const normalizeSubscriptionStatus = (response: any): SubscriptionStatus => {
-  const unwrapped = unwrapCentralData<any>(response)
+const normalizeSubscriptionStatus = (response: unknown): SubscriptionStatus => {
+  const unwrapped = unwrapCentralData<unknown>(response)
 
-  if (unwrapped && typeof unwrapped === 'object' && 'has_active_subscription' in unwrapped) {
-    return unwrapped as SubscriptionStatus
+  if (isRecord(unwrapped) && 'has_active_subscription' in unwrapped) {
+    return unwrapped as unknown as SubscriptionStatus
   }
 
-  if (unwrapped && typeof unwrapped === 'object' && 'data' in unwrapped) {
-    const maybeInner = (unwrapped as any).data
-    if (maybeInner && typeof maybeInner === 'object' && 'has_active_subscription' in maybeInner) {
-      return maybeInner as SubscriptionStatus
+  if (isRecord(unwrapped) && 'data' in unwrapped) {
+    const maybeInner = (unwrapped as RecordValue).data
+    if (isRecord(maybeInner) && 'has_active_subscription' in maybeInner) {
+      return maybeInner as unknown as SubscriptionStatus
     }
   }
 
@@ -123,26 +142,22 @@ export const subscriptionApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     getPlans: build.query<GetPlansResponse, void>({
       query: () => ({ url: '/subscription/plans', method: 'GET' }),
-      transformResponse: (response: ApiEnvelope<GetPlansResponse> | any) =>
-        normalizeListResponse<SubscriptionPlan[]>(response),
+      transformResponse: (response: unknown) => normalizeListResponse<SubscriptionPlan[]>(response),
     }),
 
     getCurrentSubscription: build.query<GetCurrentSubscriptionResponse, void>({
       query: () => ({ url: '/subscription/current', method: 'GET' }),
-      transformResponse: (response: ApiEnvelope<GetCurrentSubscriptionResponse> | any) =>
-        normalizeListResponse<UserSubscription | null>(response),
+      transformResponse: (response: unknown) => normalizeListResponse<UserSubscription | null>(response),
     }),
 
     getSubscriptionStatus: build.query<SubscriptionStatus, void>({
       query: () => ({ url: '/subscription/status', method: 'GET' }),
-      transformResponse: (response: ApiEnvelope<SubscriptionStatus> | any) =>
-        normalizeSubscriptionStatus(response),
+      transformResponse: (response: unknown) => normalizeSubscriptionStatus(response),
     }),
 
     getSubscriptionHistory: build.query<GetSubscriptionHistoryResponse, void>({
       query: () => ({ url: '/subscription/history', method: 'GET' }),
-      transformResponse: (response: ApiEnvelope<GetSubscriptionHistoryResponse> | any) =>
-        normalizeListResponse<UserSubscription[]>(response),
+      transformResponse: (response: unknown) => normalizeListResponse<UserSubscription[]>(response),
     }),
 
     subscribeToPlan: build.mutation<SubscribeToPlanResponse, { planId: number }>({
@@ -151,10 +166,10 @@ export const subscriptionApi = baseApi.injectEndpoints({
         method: 'POST',
         body: { plan_id: planId },
       }),
-      transformResponse: (response: ApiEnvelope<SubscribeToPlanResponse> | any) => {
-        const unwrapped = unwrapCentralData<any>(response)
+      transformResponse: (response: unknown) => {
+        const unwrapped = unwrapCentralData<unknown>(response)
         const nested = unwrapNestedData(unwrapped)
-        return nested as any
+        return nested as SubscribeToPlanResponse
       },
     }),
 
@@ -163,9 +178,12 @@ export const subscriptionApi = baseApi.injectEndpoints({
         url: `/subscription/${subscriptionId}/cancel`,
         method: 'POST',
       }),
-      transformResponse: (response: ApiEnvelope<CancelSubscriptionResponse> | any) => {
-        const unwrapped = unwrapCentralData<any>(response)
-        return (unwrapped as any)?.data ?? unwrapped
+      transformResponse: (response: unknown) => {
+        const unwrapped = unwrapCentralData<unknown>(response)
+        if (isRecord(unwrapped) && 'data' in unwrapped) {
+          return (unwrapped as RecordValue).data as CancelSubscriptionResponse
+        }
+        return unwrapped as CancelSubscriptionResponse
       },
     }),
 
@@ -174,9 +192,12 @@ export const subscriptionApi = baseApi.injectEndpoints({
         url: `/subscription/${subscriptionId}/renew`,
         method: 'POST',
       }),
-      transformResponse: (response: ApiEnvelope<RenewSubscriptionResponse> | any) => {
-        const unwrapped = unwrapCentralData<any>(response)
-        return (unwrapped as any)?.data ?? unwrapped
+      transformResponse: (response: unknown) => {
+        const unwrapped = unwrapCentralData<unknown>(response)
+        if (isRecord(unwrapped) && 'data' in unwrapped) {
+          return (unwrapped as RecordValue).data as RenewSubscriptionResponse
+        }
+        return unwrapped as RenewSubscriptionResponse
       },
     }),
   }),

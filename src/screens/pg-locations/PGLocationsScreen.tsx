@@ -16,8 +16,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { ActionButtons } from '@/components/action-buttons'
-import { PageHeader } from '@/components/page-header'
+import { ActionButtons } from '@/components/form/action-buttons'
+import { PageHeader } from '@/components/form/page-header'
 import { PGLocationFormDialog } from '@/screens/pg-locations/PGLocationFormDialog'
 import {
   useDeletePGLocationMutation,

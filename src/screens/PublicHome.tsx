@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Bell,
@@ -21,7 +21,6 @@ import {
   Wallet,
   XCircle,
 } from 'lucide-react'
-import useEmblaCarousel from 'embla-carousel-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -30,6 +29,117 @@ import bannerMultiplePgSelection from '@/assets/banner-add-images/mutiple-pg-sel
 import bannerRentFollowUps from '@/assets/banner-add-images/rent-follow-ups.png'
 import bannerRoomBedAllocation from '@/assets/banner-add-images/room-bed-allocation.png'
 import bannerTenantRent from '@/assets/banner-add-images/tenant-rent-banner.png'
+
+type Banner = {
+  title: string
+  subtitle: string
+  src: string
+  imgPosition: string
+}
+
+const AppPreviewRow = memo(function AppPreviewRow({ banners }: { banners: Banner[] }) {
+  const scrollerRef = useState(() => ({ current: null as HTMLDivElement | null }))[0]
+  const [canPrev, setCanPrev] = useState(false)
+  const [canNext, setCanNext] = useState(false)
+
+  const updateButtons = () => {
+    const el = scrollerRef.current
+    if (!el) return
+    const max = el.scrollWidth - el.clientWidth
+    setCanPrev(el.scrollLeft > 0)
+    setCanNext(el.scrollLeft < max - 1)
+  }
+
+  const scrollByCard = (dir: -1 | 1) => {
+    const el = scrollerRef.current
+    if (!el) return
+    const amount = Math.max(260, Math.round(el.clientWidth * 0.85))
+    el.scrollBy({ left: dir * amount, behavior: 'smooth' })
+  }
+
+  return (
+    <div className='relative mt-10 overflow-hidden rounded-3xl border border-primary/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.70),rgba(255,255,255,0.40))] p-6 shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur sm:p-10'>
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
+        <div>
+          <div className='text-2xl font-semibold tracking-tight sm:text-3xl'>App preview</div>
+          <div className='mt-2 max-w-2xl text-sm text-muted-foreground'>
+            Explore key screens from the IPMS mobile app.
+          </div>
+        </div>
+
+        <div className='flex items-center gap-2'>
+          <Button
+            type='button'
+            variant='outline'
+            size='icon'
+            className='h-9 w-9'
+            onClick={() => scrollByCard(-1)}
+            disabled={!canPrev}
+          >
+            <ChevronLeft className='size-4' />
+          </Button>
+          <Button
+            type='button'
+            variant='outline'
+            size='icon'
+            className='h-9 w-9'
+            onClick={() => scrollByCard(1)}
+            disabled={!canNext}
+          >
+            <ChevronRight className='size-4' />
+          </Button>
+        </div>
+      </div>
+
+      <div className='mt-8'>
+        <div
+          ref={(el) => {
+            scrollerRef.current = el
+            if (el) {
+              queueMicrotask(updateButtons)
+            }
+          }}
+          onScroll={updateButtons}
+          className='-mx-2 overflow-x-auto px-2 pb-2'
+        >
+          <div className='flex w-max gap-4'>
+            {banners.map((b, idx) => (
+              <div key={b.title} className='w-[86vw] max-w-[420px] shrink-0 sm:w-[360px]'>
+                <div className='rounded-3xl border bg-white/70 p-4 shadow-sm backdrop-blur'>
+                  <div className='grid gap-3'>
+                    <div className='relative mx-auto w-full max-w-[340px]'>
+                      <div className='rounded-[2.5rem] bg-[linear-gradient(180deg,rgba(37,99,235,0.28),rgba(0,0,0,0.92))] p-2 shadow-2xl'>
+                        <div className='relative overflow-hidden rounded-[2.0rem] bg-black'>
+                          <img
+                            src={b.src}
+                            alt={b.title}
+                            className='h-[460px] w-full object-contain sm:h-[520px]'
+                            style={{ objectPosition: b.imgPosition }}
+                            width={340}
+                            height={520}
+                            sizes='(min-width: 640px) 360px, 86vw'
+                            loading={idx === 0 ? 'eager' : 'lazy'}
+                            fetchPriority={idx === 0 ? 'high' : 'auto'}
+                            decoding='async'
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className='px-1'>
+                      <div className='text-sm font-semibold'>{b.title}</div>
+                      <div className='mt-1 text-xs text-muted-foreground'>{b.subtitle}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+})
 
 export function PublicHome() {
   const banners = useMemo(
@@ -61,78 +171,6 @@ export function PublicHome() {
     ],
     []
   )
-
-  const showcaseRef = useRef<HTMLDivElement | null>(null)
-  const [activeBanner, setActiveBanner] = useState(0)
-  const [showcasePaused, setShowcasePaused] = useState(false)
-  const [showcaseInView, setShowcaseInView] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return !('IntersectionObserver' in window)
-  })
-
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'start' })
-
-  const goToBanner = (index: number) => {
-    if (!emblaApi) return
-    emblaApi.scrollTo(index)
-  }
-
-  const scrollPrev = () => {
-    emblaApi?.scrollPrev()
-  }
-
-  const scrollNext = () => {
-    emblaApi?.scrollNext()
-  }
-
-  useEffect(() => {
-    if (!emblaApi) return
-
-    const onSelect = () => {
-      setActiveBanner(emblaApi.selectedScrollSnap())
-    }
-
-    onSelect()
-    emblaApi.on('select', onSelect)
-    emblaApi.on('reInit', onSelect)
-    return () => {
-      emblaApi.off('select', onSelect)
-      emblaApi.off('reInit', onSelect)
-    }
-  }, [emblaApi])
-
-  useEffect(() => {
-    const host = showcaseRef.current
-    if (!host) return
-    if (!('IntersectionObserver' in window)) return
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0]
-        setShowcaseInView(Boolean(entry?.isIntersecting))
-      },
-      { threshold: 0.25 }
-    )
-
-    io.observe(host)
-    return () => io.disconnect()
-  }, [])
-
-  useEffect(() => {
-    if (showcasePaused) return
-    if (!showcaseInView) return
-    if (banners.length <= 1) return
-    if (!emblaApi) return
-
-    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
-    if (prefersReducedMotion) return
-
-    const id = window.setInterval(() => {
-      emblaApi.scrollNext()
-    }, 4500)
-
-    return () => window.clearInterval(id)
-  }, [banners.length, emblaApi, showcasePaused, showcaseInView])
 
   const problems = useMemo(
     () => [
@@ -197,8 +235,8 @@ export function PublicHome() {
           <div className='pointer-events-none absolute -left-20 -top-28 h-[320px] w-[320px] rounded-full bg-primary/15 blur-3xl' />
           <div className='pointer-events-none absolute -right-24 top-20 h-[360px] w-[360px] rounded-full bg-emerald-500/10 blur-3xl' />
 
-          <div className='relative grid gap-10 lg:grid-cols-2 lg:items-center'>
-            <div className='min-w-0'>
+          <div className='relative grid gap-10'>
+            <div className='min-w-0 max-w-3xl'>
               <Badge variant='secondary' className='mb-4'>
                 IPMS - Indian PG Management System
               </Badge>
@@ -219,23 +257,6 @@ export function PublicHome() {
                 </Button>
               </div>
 
-              <div className='mt-5 flex flex-wrap items-center gap-1.5'>
-                {banners.map((b, idx) => (
-                  <button
-                    key={b.title}
-                    type='button'
-                    aria-label={`Go to ${b.title}`}
-                    onClick={() => goToBanner(idx)}
-                    className={
-                      'h-2 w-2 rounded-full transition ' +
-                      (idx === activeBanner
-                        ? 'bg-primary'
-                        : 'bg-muted-foreground/30 hover:bg-muted-foreground/50')
-                    }
-                  />
-                ))}
-              </div>
-
               <div className='mt-7 grid grid-cols-1 gap-3 sm:grid-cols-3'>
                 <div className='rounded-2xl border bg-white/70 p-4 shadow-sm backdrop-blur'>
                   <div className='text-sm font-semibold'>Never miss rent</div>
@@ -251,86 +272,10 @@ export function PublicHome() {
                 </div>
               </div>
             </div>
-
-            <div
-              ref={showcaseRef}
-              className='min-w-0'
-              onMouseEnter={() => setShowcasePaused(true)}
-              onMouseLeave={() => setShowcasePaused(false)}
-              onFocusCapture={() => setShowcasePaused(true)}
-              onBlurCapture={() => setShowcasePaused(false)}
-            >
-              <div className='mx-auto w-full max-w-[420px] rounded-3xl border border-primary/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.70),rgba(255,255,255,0.40))] p-4 backdrop-blur-sm shadow-[0_16px_50px_rgba(15,23,42,0.16)] sm:p-6'>
-                <div className='flex flex-wrap items-center justify-between gap-3'>
-                  <div className='text-sm font-semibold'>App preview</div>
-                  <div className='flex items-center gap-2'>
-                    <Button type='button' variant='outline' size='icon' className='h-9 w-9' onClick={scrollPrev}>
-                      <ChevronLeft className='size-4' />
-                    </Button>
-                    <Button type='button' variant='outline' size='icon' className='h-9 w-9' onClick={scrollNext}>
-                      <ChevronRight className='size-4' />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className='mt-5'>
-                  <div ref={emblaRef} className='overflow-hidden'>
-                    <div className='flex -ml-4'>
-                      {banners.map((b, idx) => (
-                        <div
-                          key={b.title}
-                          className='min-w-0 flex-[0_0_100%] pl-4 sm:flex-[0_0_360px]'
-                        >
-                          <div className='grid gap-3'>
-                            <div className='relative mx-auto w-full max-w-[360px]'>
-                              <div className='rounded-[2.75rem] bg-[linear-gradient(180deg,rgba(37,99,235,0.35),rgba(0,0,0,0.9))] p-2 shadow-2xl'>
-                                <div className='relative overflow-hidden rounded-[2.25rem] bg-black'>
-                                  <img
-                                    src={b.src}
-                                    alt={b.title}
-                                    className='h-[min(52vh,360px)] w-full object-contain sm:h-[520px] lg:h-[560px]'
-                                    style={{ objectPosition: b.imgPosition }}
-                                    loading={idx === 0 ? 'eager' : 'lazy'}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <div className='px-1'>
-                              <div className='text-sm font-semibold'>{b.title}</div>
-                              <div className='mt-1 text-xs text-muted-foreground'>{b.subtitle}</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className='mt-3 flex items-center justify-between gap-3'>
-                    <div className='flex flex-wrap items-center gap-1.5'>
-                      {banners.map((b, idx) => (
-                        <button
-                          key={b.title}
-                          type='button'
-                          aria-label={`Go to ${b.title}`}
-                          onClick={() => goToBanner(idx)}
-                          className={
-                            'h-2 w-2 rounded-full transition ' +
-                            (idx === activeBanner
-                              ? 'bg-primary'
-                              : 'bg-muted-foreground/30 hover:bg-muted-foreground/50')
-                          }
-                        />
-                      ))}
-                    </div>
-                    <div className='text-xs text-muted-foreground'>
-                      {activeBanner + 1} / {banners.length}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
+
+        <AppPreviewRow banners={banners} />
 
         <div className='mt-20 grid gap-3'>
           <div className='flex items-center gap-3'>

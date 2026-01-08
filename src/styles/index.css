@@ -38,6 +38,16 @@
   }
 }
 
+.legal-page .backdrop-blur,
+.legal-page .backdrop-blur-sm,
+.legal-page .backdrop-blur-md,
+.legal-page .backdrop-blur-lg,
+.legal-page .backdrop-blur-xl,
+.legal-page .backdrop-blur-2xl,
+.legal-page .backdrop-blur-3xl {
+  backdrop-filter: none !important;
+}
+
 @utility container {
   margin-inline: auto;
   padding-inline: 2rem;

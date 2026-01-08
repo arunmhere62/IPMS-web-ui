@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/assets/logo'
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -23,10 +24,13 @@ export function AppTitle() {
             <Link
               to='/'
               onClick={() => setOpenMobile(false)}
-              className='grid flex-1 text-start text-sm leading-tight'
+              className='flex flex-1 items-center gap-2 text-start text-sm leading-tight'
             >
-              <span className='truncate font-bold'>IPMS</span>
-              <span className='truncate text-xs'>PG MANAGEMENT</span>
+              <Logo className='size-8' alt='IPMS' />
+              <span className='grid'>
+                <span className='truncate font-bold'>IPMS</span>
+                <span className='truncate text-xs'>Indian PG Management System</span>
+              </span>
             </Link>
             <ToggleSidebar />
           </div>

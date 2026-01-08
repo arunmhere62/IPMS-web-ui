@@ -2,16 +2,23 @@ import { PageHeader } from '@/components/form/page-header'
 
 export function PrivacyScreen() {
   return (
-    <div className='container mx-auto max-w-3xl py-10'>
-      <PageHeader
-        title='Privacy Policy'
-        subtitle='This policy describes how we collect, use, and protect your information.'
-      />
+    <div className='legal-page relative overflow-hidden'>
+      <div className='pointer-events-none absolute -top-24 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl' />
+      <div className='pointer-events-none absolute -right-24 top-40 h-[420px] w-[420px] rounded-full bg-emerald-500/10 blur-3xl' />
+      <div className='pointer-events-none absolute -left-24 bottom-0 h-[420px] w-[420px] rounded-full bg-sky-500/10 blur-3xl' />
 
-      <div className='mt-8 space-y-6'>
-        <div className='text-sm text-muted-foreground'>Last Updated: [DD/MM/YYYY]</div>
+      <div className='container mx-auto max-w-6xl px-4 py-10 sm:py-12'>
+        <div className='mx-auto max-w-3xl'>
+          <div className='relative overflow-hidden rounded-3xl border border-slate-900/10 bg-[radial-gradient(900px_circle_at_0%_0%,rgba(15,23,42,0.06),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.50))] p-6 shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur sm:p-10'>
+          <PageHeader
+            title='Privacy Policy'
+            subtitle='This policy describes how we collect, use, and protect your information.'
+          />
 
-        <section className='rounded-xl border bg-card p-6'>
+          <div className='mt-8 space-y-6'>
+            <div className='text-sm text-muted-foreground'>Last Updated: [DD/MM/YYYY]</div>
+
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <p className='text-sm text-muted-foreground'>
             This Privacy Policy explains how Indian PG Management System (“App”, “Platform”, “we”,
             “us”, “our”) collects, uses, shares, and protects information when you use our
@@ -23,7 +30,7 @@ export function PrivacyScreen() {
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>1. Scope & Roles</h2>
           <div className='mt-3 space-y-3 text-sm text-muted-foreground'>
             <p>
@@ -37,7 +44,7 @@ export function PrivacyScreen() {
           </div>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>2. Information We Collect</h2>
           <div className='mt-3 space-y-4 text-sm text-muted-foreground'>
             <div>
@@ -87,7 +94,7 @@ export function PrivacyScreen() {
           </div>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>3. How We Use Information</h2>
           <ul className='mt-3 list-disc space-y-2 ps-5 text-sm text-muted-foreground'>
             <li>Provide core functionality (PG setup, room/bed management, tenant management)</li>
@@ -99,7 +106,7 @@ export function PrivacyScreen() {
           </ul>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>4. Communications (SMS/WhatsApp/Email)</h2>
           <div className='mt-3 space-y-3 text-sm text-muted-foreground'>
             <p>
@@ -113,7 +120,7 @@ export function PrivacyScreen() {
           </div>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>5. Sharing of Information</h2>
           <div className='mt-3 space-y-3 text-sm text-muted-foreground'>
             <p className='font-semibold text-foreground'>We do not sell your personal information.</p>
@@ -135,7 +142,7 @@ export function PrivacyScreen() {
           </ul>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>6. Data Security</h2>
           <div className='mt-3 space-y-3 text-sm text-muted-foreground'>
             <p>
@@ -149,7 +156,7 @@ export function PrivacyScreen() {
           </div>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>7. Data Retention & Deletion</h2>
           <div className='mt-3 space-y-3 text-sm text-muted-foreground'>
             <p>
@@ -163,7 +170,7 @@ export function PrivacyScreen() {
           </div>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>8. Your Responsibilities (PG Owners & Staff)</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>As a PG Owner/User, you are responsible for:</p>
@@ -175,7 +182,7 @@ export function PrivacyScreen() {
           </ul>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>9. Children’s Privacy</h2>
           <p className='mt-2 text-sm text-muted-foreground'>
             The Platform is intended for business use by adults. It is not designed for use by
@@ -183,7 +190,7 @@ export function PrivacyScreen() {
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>10. Changes to This Policy</h2>
           <p className='mt-2 text-sm text-muted-foreground'>
             We may update this Privacy Policy from time to time. Continued use of the Platform after
@@ -191,13 +198,16 @@ export function PrivacyScreen() {
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>11. Contact</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>📧 Email: support@indianpgmanagementsystem.com</p>
             <p>🏢 Product: Indian PG Management System</p>
           </div>
         </section>
+          </div>
+        </div>
+        </div>
       </div>
     </div>
   )

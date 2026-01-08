@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -20,6 +20,7 @@ import {
 
 import {
   type RequiredLegalDocument,
+  type RequiredLegalDocumentsStatusResponse,
   useAcceptLegalDocumentMutation,
   useLazyGetRequiredLegalDocumentsStatusQuery,
 } from '@/services/legalDocumentsApi'
@@ -65,31 +66,33 @@ export function SignupScreen() {
     },
   })
 
-  const loadLegalDocs = async () => {
+  const loadLegalDocs = useCallback(async () => {
     try {
-      const status = await getRequiredLegalStatus({ context: 'SIGNUP' }).unwrap()
-      const pending = ((status as any)?.pending ?? []) as RequiredLegalDocument[]
+      const status =
+        (await getRequiredLegalStatus({ context: 'SIGNUP' }).unwrap()) as RequiredLegalDocumentsStatusResponse
+
+      const pending = status?.pending ?? []
       setRequiredLegalDocs(Array.isArray(pending) ? pending : [])
     } catch {
       setRequiredLegalDocs([])
     }
-  }
+  }, [getRequiredLegalStatus])
 
   useEffect(() => {
     void loadLegalDocs()
-  }, [])
+  }, [loadLegalDocs])
 
   const findLegalDocUrl = (types: string | string[]) => {
     const candidates = (Array.isArray(types) ? types : [types])
       .map((t) => String(t || '').toUpperCase())
       .filter(Boolean)
 
-    const doc = (requiredLegalDocs || []).find((d: any) => {
-      const dt = String(d?.type || '').toUpperCase()
+    const doc = (requiredLegalDocs || []).find((d) => {
+      const dt = String((d as RequiredLegalDocument & { type?: string })?.type || '').toUpperCase()
       return candidates.includes(dt)
     })
 
-    return (doc as any)?.url || (doc as any)?.content_url
+    return doc?.url || doc?.content_url
   }
 
   const onSendOtp = async (values: FormValues) => {
@@ -101,7 +104,7 @@ export function SignupScreen() {
       setFullPhone(normalized)
       setOtpSent(true)
       showSuccessToast('OTP sent')
-    } catch (e: any) {
+    } catch (e: unknown) {
       showErrorToast(e, 'Failed to send OTP')
     }
   }
@@ -123,7 +126,7 @@ export function SignupScreen() {
       setOtp('')
       setOtpSent(false)
       showSuccessToast('Phone number verified')
-    } catch (e: any) {
+    } catch (e: unknown) {
       showErrorToast(e, 'Failed to verify OTP')
     }
   }
@@ -142,7 +145,7 @@ export function SignupScreen() {
     }
 
     try {
-      const signupData: any = {
+      const signupData = {
         organizationName: values.organizationName.trim(),
         name: values.name.trim(),
         pgName: values.pgName.trim(),
@@ -152,11 +155,13 @@ export function SignupScreen() {
         rentCycleEnd: values.rentCycleEnd,
       }
 
-      const status = await getRequiredLegalStatus({ context: 'SIGNUP' }).unwrap()
-      const docsToAccept = ((status as any)?.required ?? (status as any)?.pending ?? []) as RequiredLegalDocument[]
+      const status =
+        (await getRequiredLegalStatus({ context: 'SIGNUP' }).unwrap()) as RequiredLegalDocumentsStatusResponse
+      const docsToAccept = (status?.required ?? status?.pending ?? []) as RequiredLegalDocument[]
 
-      const signupResult: any = await signup(signupData).unwrap()
-      const rawUserId = signupResult?.userId ?? signupResult?.user_id ?? signupResult?.s_no
+      const signupResult = (await signup(signupData).unwrap()) as unknown
+      const signupObj = (signupResult && typeof signupResult === 'object') ? (signupResult as Record<string, unknown>) : {}
+      const rawUserId = signupObj.userId ?? signupObj.user_id ?? signupObj.s_no
       const userId = Number(rawUserId)
 
       if (docsToAccept?.length) {
@@ -164,30 +169,32 @@ export function SignupScreen() {
           throw new Error('Signup succeeded but user id was not returned')
         }
         for (const doc of docsToAccept) {
-          const s_no = Number((doc as any).s_no)
+          const s_no = Number(doc.s_no)
           if (!Number.isFinite(s_no) || s_no <= 0) continue
           await acceptLegalDocument({ s_no, acceptance_context: 'SIGNUP', user_id: userId }).unwrap()
         }
       }
 
-      showSuccessToast(signupResult?.message || 'Account created successfully! Please wait for admin approval.')
+      const maybeMessage = typeof signupObj.message === 'string' ? signupObj.message : undefined
+      showSuccessToast(maybeMessage || 'Account created successfully! Please wait for admin approval.')
       navigate('/login', { replace: true })
-    } catch (e: any) {
+    } catch (e: unknown) {
       showErrorToast(e, 'Signup failed')
     }
   }
 
   return (
-    <div className='mx-auto flex min-h-[calc(100vh-64px)] max-w-xl items-center px-4 py-10'>
-      <Card className='w-full'>
-        <CardHeader>
-          <CardTitle>Create account</CardTitle>
-          <CardDescription>Signup with phone OTP</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form className='grid gap-4'>
-              <div className='grid gap-4 lg:grid-cols-2'>
+    <div className='container mx-auto flex min-h-[calc(100vh-64px)] max-w-6xl items-center px-4 py-10 sm:py-12'>
+      <div className='mx-auto w-full max-w-xl'>
+        <Card className='w-full'>
+          <CardHeader>
+            <CardTitle>Create account</CardTitle>
+            <CardDescription>Signup with phone OTP</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form className='grid gap-4'>
+                <div className='grid gap-4 lg:grid-cols-2'>
                 <FormField
                   control={form.control}
                   name='organizationName'
@@ -271,8 +278,8 @@ export function SignupScreen() {
                           value={field.value == null ? '' : String(field.value)}
                           onChange={(e) => {
                             const v = e.target.value
-                            const n = v ? Number(v) : null
-                            field.onChange(Number.isFinite(n as any) ? n : null)
+                            const n = v ? Number(v) : NaN
+                            field.onChange(Number.isFinite(n) ? n : null)
                           }}
                         />
                       </FormControl>
@@ -353,7 +360,7 @@ export function SignupScreen() {
                     </FormItem>
                   )}
                 />
-              </div>
+                </div>
 
               <div className='grid gap-2'>
                 <div className='flex items-start gap-2'>
@@ -402,10 +409,11 @@ export function SignupScreen() {
               <Button type='button' variant='link' onClick={() => navigate('/login')}>
                 Already have an account? Login
               </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

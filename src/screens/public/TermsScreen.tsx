@@ -2,16 +2,23 @@ import { PageHeader } from '@/components/form/page-header'
 
 export function TermsScreen() {
   return (
-    <div className='container mx-auto max-w-3xl py-10'>
-      <PageHeader
-        title='Terms & Conditions'
-        subtitle='Please read these terms carefully before using the service.'
-      />
+    <div className='legal-page relative overflow-hidden'>
+      <div className='pointer-events-none absolute -top-24 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl' />
+      <div className='pointer-events-none absolute -right-24 top-40 h-[420px] w-[420px] rounded-full bg-amber-500/10 blur-3xl' />
+      <div className='pointer-events-none absolute -left-24 bottom-0 h-[420px] w-[420px] rounded-full bg-violet-500/10 blur-3xl' />
 
-      <div className='mt-8 space-y-6'>
-        <div className='text-sm text-muted-foreground'>Last Updated: [DD/MM/YYYY]</div>
+      <div className='container mx-auto max-w-6xl px-4 py-10 sm:py-12'>
+        <div className='mx-auto max-w-3xl'>
+          <div className='relative overflow-hidden rounded-3xl border border-slate-900/10 bg-[radial-gradient(900px_circle_at_0%_0%,rgba(15,23,42,0.06),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.50))] p-6 shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur sm:p-10'>
+          <PageHeader
+            title='Terms & Conditions'
+            subtitle='Please read these terms carefully before using the service.'
+          />
 
-        <section className='rounded-xl border bg-card p-6'>
+          <div className='mt-8 space-y-6'>
+            <div className='text-sm text-muted-foreground'>Last Updated: [DD/MM/YYYY]</div>
+
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <p className='text-sm text-muted-foreground'>
             Welcome to Indian PG Management System (“App”, “Platform”, “Service”, “we”, “us”, “our”).
             This Platform is a subscription-based internal PG management system designed exclusively
@@ -23,7 +30,7 @@ export function TermsScreen() {
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>1. Definitions</h2>
           <div className='mt-3 space-y-3 text-sm text-muted-foreground'>
             <p>“PG Owner” means the individual or entity managing one or more PG properties.</p>
@@ -37,7 +44,7 @@ export function TermsScreen() {
           </div>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>2. Scope of Service</h2>
           <p className='mt-2 text-sm text-muted-foreground'>
             Indian PG Management System provides tools for:
@@ -54,7 +61,7 @@ export function TermsScreen() {
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>3. Intended Use (Internal Only)</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>The App is strictly for internal business management.</p>
@@ -70,7 +77,7 @@ export function TermsScreen() {
           </ul>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>4. User Authorization & Roles</h2>
           <p className='mt-2 text-sm text-muted-foreground'>PG owners control:</p>
           <ul className='mt-3 list-disc space-y-2 ps-5 text-sm text-muted-foreground'>
@@ -86,7 +93,7 @@ export function TermsScreen() {
           </ul>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>5. Account Creation & Security</h2>
           <ul className='mt-3 list-disc space-y-2 ps-5 text-sm text-muted-foreground'>
             <li>Users must provide accurate registration details.</li>
@@ -102,7 +109,7 @@ export function TermsScreen() {
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>6. Data Ownership & Responsibility</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>All data entered into the App belongs to the PG owner.</p>
@@ -117,7 +124,7 @@ export function TermsScreen() {
           </ul>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>7. Tenant & Personal Data Disclaimer</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>Tenant data is entered manually by users.</p>
@@ -134,7 +141,7 @@ export function TermsScreen() {
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>8. Financial Tracking Disclaimer</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>All rent, advance, refund, and expense entries are user-input data.</p>
@@ -151,7 +158,7 @@ export function TermsScreen() {
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>9. Invoices, Bills & Reports</h2>
           <p className='mt-2 text-sm text-muted-foreground'>The Platform may generate:</p>
           <ul className='mt-3 list-disc space-y-2 ps-5 text-sm text-muted-foreground'>
@@ -168,7 +175,7 @@ export function TermsScreen() {
           </ul>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>10. Subscription, Billing & Payments</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>Certain features require a paid subscription.</p>
@@ -187,7 +194,7 @@ export function TermsScreen() {
           </ul>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>11. Invoicing & GST Compliance (India)</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>A tax invoice will be generated for subscription payments.</p>
@@ -210,7 +217,7 @@ export function TermsScreen() {
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>12. Data Backup, Retention & Deletion</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>We take reasonable steps to protect stored data.</p>
@@ -227,7 +234,7 @@ export function TermsScreen() {
           </ul>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>13. Service Availability & Maintenance</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>Service uptime is provided on a best-effort basis.</p>
@@ -241,7 +248,7 @@ export function TermsScreen() {
           <p className='mt-4 text-sm text-muted-foreground'>No compensation is provided for downtime.</p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>14. Third-Party Services</h2>
           <p className='mt-2 text-sm text-muted-foreground'>The Platform may rely on third-party services such as:</p>
           <ul className='mt-3 list-disc space-y-2 ps-5 text-sm text-muted-foreground'>
@@ -254,7 +261,7 @@ export function TermsScreen() {
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>15. Export, Reports & Data Usage</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>Users may export data (PDF, Excel, etc.).</p>
@@ -263,7 +270,7 @@ export function TermsScreen() {
           </div>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>16. Prohibited Activities</h2>
           <p className='mt-2 text-sm text-muted-foreground'>Users must not:</p>
           <ul className='mt-3 list-disc space-y-2 ps-5 text-sm text-muted-foreground'>
@@ -276,7 +283,7 @@ export function TermsScreen() {
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>17. Limitation of Liability</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>To the maximum extent permitted by law:</p>
@@ -293,7 +300,7 @@ export function TermsScreen() {
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>18. Indemnification</h2>
           <p className='mt-2 text-sm text-muted-foreground'>
             You agree to indemnify and hold harmless the Platform owner from:
@@ -306,7 +313,7 @@ export function TermsScreen() {
           </ul>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>19. Suspension & Termination</h2>
           <p className='mt-2 text-sm text-muted-foreground'>We may suspend or terminate access:</p>
           <ul className='mt-3 list-disc space-y-2 ps-5 text-sm text-muted-foreground'>
@@ -317,14 +324,14 @@ export function TermsScreen() {
           <p className='mt-4 text-sm text-muted-foreground'>Termination does not entitle refunds.</p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>20. Changes to Terms</h2>
           <p className='mt-2 text-sm text-muted-foreground'>
             Terms may be updated periodically. Continued use constitutes acceptance.
           </p>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>21. Governing Law & Jurisdiction</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>Governed by the laws of India.</p>
@@ -332,13 +339,16 @@ export function TermsScreen() {
           </div>
         </section>
 
-        <section className='rounded-xl border bg-card p-6'>
+            <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
           <h2 className='text-lg font-semibold'>22. Contact Information</h2>
           <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
             <p>📧 Email: support@indianpgmanagementsystem.com</p>
             <p>🏢 Product: Indian PG Management System</p>
           </div>
         </section>
+          </div>
+        </div>
+        </div>
       </div>
     </div>
   )

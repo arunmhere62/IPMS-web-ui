@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2 } from 'lucide-react'
+import { LayoutDashboard, Building2, HelpCircle } from 'lucide-react'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
@@ -27,6 +27,11 @@ export const sidebarData: SidebarData = {
         {
           title: 'Subscriptions',
           url: '/subscriptions',
+        },
+        {
+          title: 'FAQ',
+          url: '/faq',
+          icon: HelpCircle,
         },
       ],
     },

@@ -29,6 +29,7 @@ export function AppRoutes() {
         <Route path='/' element={<HomePage />} />
         <Route path='/pg-locations' element={<PGLocationsScreen />} />
         <Route path='/pg-locations/:id' element={<PGDetailsScreen />} />
+        <Route path='/faq' element={<FaqScreen />} />
       </Route>
       <Route path='*' element={<Navigate to='/home' replace />} />
     </Routes>

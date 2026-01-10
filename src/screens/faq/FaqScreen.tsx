@@ -10,16 +10,6 @@ import createPgImg from '@/assets/faq-helper-images/create-pg.jpeg'
 import createRoomImg from '@/assets/faq-helper-images/create-room.jpeg'
 import subscribeImg from '@/assets/faq-helper-images/subscribe.jpeg'
 
-type FaqItem = {
-  question: string
-  answer: string
-}
-
-type FaqGroup = {
-  title: string
-  items: FaqItem[]
-}
-
 type HelperGuide = {
   title: string
   subtitle: string

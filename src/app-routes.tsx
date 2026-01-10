@@ -7,6 +7,7 @@ import { SignupScreen } from '@/screens/auth/SignupScreen'
 import { HomePage } from '@/screens/HomePage'
 import { PublicHome } from '@/screens/PublicHome'
 import { SubscriptionsScreen } from '@/screens/subscription/SubscriptionsScreen'
+import { FaqScreen } from '@/screens/faq/FaqScreen'
 import { TermsScreen } from '@/screens/public/TermsScreen'
 import { PrivacyScreen } from '@/screens/public/PrivacyScreen'
 import { PGLocationsScreen } from '@/screens/pg-locations/PGLocationsScreen'
@@ -20,6 +21,7 @@ export function AppRoutes() {
         <Route path='/login' element={<LoginScreen />} />
         <Route path='/signup' element={<SignupScreen />} />
         <Route path='/subscriptions' element={<SubscriptionsScreen />} />
+        <Route path='/faq' element={<FaqScreen />} />
         <Route path='/terms' element={<TermsScreen />} />
         <Route path='/privacy' element={<PrivacyScreen />} />
       </Route>

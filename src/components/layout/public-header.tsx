@@ -44,6 +44,7 @@ export function PublicHeader({ className }: PublicHeaderProps) {
     () => [
       { title: 'Home', href: '/home', isActive: location.pathname === '/home' },
       { title: 'Subscriptions', href: '/subscriptions', isActive: location.pathname === '/subscriptions' },
+      { title: 'FAQ', href: '/faq', isActive: location.pathname === '/faq' },
       { title: 'Terms', href: '/terms', isActive: location.pathname === '/terms' },
       { title: 'Privacy', href: '/privacy', isActive: location.pathname === '/privacy' },
     ],

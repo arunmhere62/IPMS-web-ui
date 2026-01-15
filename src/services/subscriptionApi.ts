@@ -31,6 +31,15 @@ export interface SubscriptionPlan {
   max_invoices_per_month?: number | null
   max_sms_per_month?: number | null
   max_whatsapp_per_month?: number | null
+  gst_breakdown?: {
+    cgst_rate: number
+    cgst_amount: number
+    sgst_rate: number
+    sgst_amount: number
+    igst_rate: number
+    igst_amount: number
+    total_price_including_gst: number
+  }
 }
 
 export interface UserSubscription {

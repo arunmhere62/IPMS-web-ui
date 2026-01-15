@@ -25,6 +25,7 @@ import {
 export function SubscriptionsScreen() {
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
   const [expandedPlans, setExpandedPlans] = useState<Record<number, boolean>>({})
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null)
 
   const {
     data: plansResponse,
@@ -91,6 +92,8 @@ export function SubscriptionsScreen() {
     return `₹${numPrice.toLocaleString('en-IN')}`
   }
 
+  const formatGstLabel = (value: number) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
   const formatDuration = (days: number) => {
     if (days === 30) return 'Monthly'
     if (days === 90) return 'Quarterly'
@@ -126,7 +129,10 @@ export function SubscriptionsScreen() {
     return included
   }
 
-  const handleSubscribe = () => {
+  
+
+  const handleSubscribe = (plan: SubscriptionPlan) => {
+    setSelectedPlan(plan)
     setDownloadDialogOpen(true)
   }
 
@@ -195,12 +201,12 @@ export function SubscriptionsScreen() {
           <div className='mt-4 flex flex-wrap items-end justify-between gap-4'>
             <div className='flex items-baseline gap-2'>
               {isFreePlan ? (
-                <>
+                <div>
                   <div className='text-sm font-semibold text-muted-foreground line-through'>
                     {formatPrice(plan.price, plan.currency)}
                   </div>
                   <div className='text-3xl font-semibold tracking-tight sm:text-4xl'>Free</div>
-                </>
+                </div>
               ) : (
                 <div className='text-3xl font-semibold tracking-tight sm:text-4xl'>
                   {formatPrice(plan.price, plan.currency)}
@@ -211,8 +217,28 @@ export function SubscriptionsScreen() {
               </div>
             </div>
           </div>
+          {!isFreePlan && plan.gst_breakdown ? (
+            <div className='mt-2 space-y-1 text-xs text-muted-foreground'>
+              <div className='flex items-center gap-1'>
+                <span className='font-semibold text-foreground'>GST breakdown:</span>
+                <span>{`Base ₹${Number(plan.price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</span>
+              </div>
+              <div className='flex flex-wrap gap-2'>
+                <div className='rounded-xl border border-slate-200 bg-white/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700'>
+                  {plan.gst_breakdown.igst_amount > 0
+                    ? `IGST @${plan.gst_breakdown.igst_rate}% ${formatGstLabel(plan.gst_breakdown.igst_amount)}`
+                    : `CGST @${plan.gst_breakdown.cgst_rate}% ${formatGstLabel(plan.gst_breakdown.cgst_amount)} · SGST @${plan.gst_breakdown.sgst_rate}% ${formatGstLabel(plan.gst_breakdown.sgst_amount)}`}
+                </div>
+                <div className='rounded-xl border border-slate-200 bg-white/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600'>
+                  {`Total ₹${plan.gst_breakdown.total_price_including_gst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </div>
+              </div>
+              <div className='text-[11px] text-muted-foreground'>
+                Invoice includes GSTIN 33BHHPC9099Q1ZQ · HSN/SAC 9983
+              </div>
+            </div>
+          ) : null}
         </div>
-
         <CardContent className='flex flex-1 flex-col pt-4'>
           <div className='flex items-center justify-between gap-3'>
             <div className='text-sm font-semibold'>Top features</div>
@@ -279,14 +305,14 @@ export function SubscriptionsScreen() {
             )}
           </div>
 
-          <div className='mt-auto pt-5'>
+          <div className='mt-6 flex flex-col gap-3'>
+            <span className='text-xs text-muted-foreground'>GST & totals will appear in the dialog before payment.</span>
             <Button
-              type='button'
               className='w-full'
-              onClick={handleSubscribe}
-              disabled={plansLoading || !isActivePlan}
+              onClick={() => handleSubscribe(plan)}
+              variant={isRecommended ? 'default' : 'outline'}
             >
-              Subscribe Now
+              {plan.is_active === false ? 'Reactivate plan' : 'Subscribe now'}
             </Button>
           </div>
         </CardContent>
@@ -294,11 +320,16 @@ export function SubscriptionsScreen() {
     )
   }
 
-  return (
-    <div className='relative overflow-hidden'>
-      <div className='pointer-events-none absolute -top-24 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl' />
+  const backgroundDecorators = (
+    <>
       <div className='pointer-events-none absolute -right-24 top-40 h-[420px] w-[420px] rounded-full bg-emerald-500/10 blur-3xl' />
       <div className='pointer-events-none absolute -left-24 bottom-0 h-[420px] w-[420px] rounded-full bg-violet-500/10 blur-3xl' />
+    </>
+  )
+
+  return (
+    <div className='relative'>
+      {backgroundDecorators}
 
       <div className='container mx-auto max-w-6xl px-4 py-10 sm:py-12'>
         <div className='relative overflow-hidden rounded-3xl border border-primary/10 bg-[radial-gradient(900px_circle_at_20%_0%,rgba(37,99,235,0.14),transparent_55%),radial-gradient(900px_circle_at_85%_70%,rgba(16,185,129,0.10),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.50))] p-6 shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur sm:p-10'>
@@ -331,6 +362,7 @@ export function SubscriptionsScreen() {
             </div>
           </div>
         </div>
+      </div>
 
       <div className='mt-6'>
         {fetchError ? (
@@ -376,16 +408,57 @@ export function SubscriptionsScreen() {
         )}
       </div>
 
-      <AlertDialog open={downloadDialogOpen} onOpenChange={setDownloadDialogOpen}>
+      <AlertDialog
+        open={Boolean(selectedPlan) && downloadDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPlan(null)
+          setDownloadDialogOpen(open)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Subscribe from Mobile App</AlertDialogTitle>
+            <AlertDialogTitle>Subscribe to {selectedPlan?.name}</AlertDialogTitle>
             <AlertDialogDescription>
-              To subscribe, please download our mobile app and complete the subscription from there.
+              Complete the checkout in the mobile app. Below is the applicable GST breakdown that will be reflected on the invoice.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {selectedPlan ? (
+            <div className='space-y-3 rounded-2xl border bg-white/60 p-4 shadow-sm'>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm font-semibold text-foreground'>Base Price</span>
+                <span className='text-sm'>{formatPrice(selectedPlan.price, selectedPlan.currency)}</span>
+              </div>
+              {selectedPlan.gst_breakdown ? (
+                <div className='space-y-2 text-sm text-muted-foreground'>
+                  <div className='flex items-center justify-between'>
+                    <span>Taxes</span>
+                    <span className='font-semibold text-foreground'>
+                      {selectedPlan.gst_breakdown.igst_amount > 0
+                        ? `IGST @${selectedPlan.gst_breakdown.igst_rate}% ${formatGstLabel(selectedPlan.gst_breakdown.igst_amount)}`
+                        : `CGST @${selectedPlan.gst_breakdown.cgst_rate}% ${formatGstLabel(selectedPlan.gst_breakdown.cgst_amount)} · SGST @${selectedPlan.gst_breakdown.sgst_rate}% ${formatGstLabel(selectedPlan.gst_breakdown.sgst_amount)}`}
+                    </span>
+                  </div>
+                  <div className='flex items-center justify-between text-xs text-muted-foreground'>
+                    <span>Total including GST</span>
+                    <span className='font-semibold text-foreground'>
+                      ₹{selectedPlan.gst_breakdown.total_price_including_gst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className='text-[11px]'>{'Invoice includes GSTIN 33BHHPC9099Q1ZQ · HSN/SAC 9983'}</div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <AlertDialogFooter>
-            <AlertDialogCancel>Close</AlertDialogCancel>
+            <AlertDialogCancel
+              onClick={() => {
+                setSelectedPlan(null)
+              }}
+            >
+              Close
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 window.open(playStoreUrl, '_blank', 'noreferrer')
@@ -396,7 +469,6 @@ export function SubscriptionsScreen() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      </div>
     </div>
   )
 }

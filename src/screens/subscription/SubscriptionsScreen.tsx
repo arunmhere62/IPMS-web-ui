@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { CheckCircle2, ChevronDown, CircleAlert, Sparkles, Tag } from 'lucide-react'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -41,7 +41,75 @@ const readPaymentUrl = (value: unknown): string | null => {
   return null
 }
 
+const readPlan = (value: unknown): SubscriptionPlan | null => {
+  if (!isRecord(value)) return null
+  const maybePlan = value.plan
+  if (isRecord(maybePlan)) return maybePlan as unknown as SubscriptionPlan
+  if (isRecord(value.data)) return readPlan(value.data)
+  return null
+}
+
+const readPricing = (
+  value: unknown
+):
+  | {
+      currency: string
+      base_price: number
+      cgst_amount: number
+      sgst_amount: number
+      total_price_including_gst: number
+    }
+  | null => {
+  if (!isRecord(value)) return null
+  const maybePricing = value.pricing
+  if (isRecord(maybePricing)) {
+    const currency = readStringField(maybePricing, 'currency')
+    const base_price = readNumberField(maybePricing, 'base_price')
+    const cgst_amount = readNumberField(maybePricing, 'cgst_amount')
+    const sgst_amount = readNumberField(maybePricing, 'sgst_amount')
+    const total_price_including_gst = readNumberField(maybePricing, 'total_price_including_gst')
+
+    if (
+      currency
+      && base_price !== null
+      && cgst_amount !== null
+      && sgst_amount !== null
+      && total_price_including_gst !== null
+    ) {
+      return {
+        currency,
+        base_price,
+        cgst_amount,
+        sgst_amount,
+        total_price_including_gst,
+      }
+    }
+  }
+  if (isRecord(value.data)) return readPricing(value.data)
+  return null
+}
+
+const readOrderId = (value: unknown): string | null => {
+  if (!isRecord(value)) return null
+  const direct = value.order_id
+  if (typeof direct === 'string' && direct.length > 0) return direct
+  if (isRecord(value.data)) return readOrderId(value.data)
+  return null
+}
+
+const readSubscriptionId = (value: unknown): number | null => {
+  if (!isRecord(value)) return null
+  const maybeSub = value.subscription
+  if (isRecord(maybeSub)) {
+    const direct = readNumberField(maybeSub, 's_no') ?? readNumberField(maybeSub, 'id')
+    if (direct !== null) return direct
+  }
+  if (isRecord(value.data)) return readSubscriptionId(value.data)
+  return null
+}
+
 export function SubscriptionsScreen() {
+  const navigate = useNavigate()
   const [expandedPlans, setExpandedPlans] = useState<Record<number, boolean>>({})
   const [actionPlanId, setActionPlanId] = useState<number | null>(null)
 
@@ -130,9 +198,22 @@ export function SubscriptionsScreen() {
       const result: unknown = await subscribeToPlan({ planId }).unwrap()
       const paymentUrl = readPaymentUrl(result)
 
+      const plan = readPlan(result) ?? plans.find((p) => p.s_no === planId) ?? undefined
+      const pricing = readPricing(result) ?? undefined
+      const orderId = readOrderId(result) ?? undefined
+      const subscriptionId = readSubscriptionId(result) ?? undefined
+
       if (paymentUrl) {
-        window.open(String(paymentUrl), '_blank', 'noreferrer')
-        showSuccessAlert('Continue payment in the opened page')
+        navigate('/subscriptions/confirm', {
+          state: {
+            title: hasActiveSubscription ? 'Confirm Upgrade' : 'Confirm Subscription',
+            paymentUrl,
+            orderId,
+            subscriptionId,
+            plan,
+            pricing,
+          },
+        })
       } else {
         showSuccessAlert('Subscription initiated successfully')
       }

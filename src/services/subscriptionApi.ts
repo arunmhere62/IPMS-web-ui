@@ -132,6 +132,14 @@ export type SubscribeToPlanResponse = {
   success: boolean
   data: {
     subscription: UserSubscription
+    plan?: SubscriptionPlan
+    pricing?: {
+      currency: string
+      base_price: number
+      cgst_amount: number
+      sgst_amount: number
+      total_price_including_gst: number
+    }
     payment_url: string
     order_id: string
   }

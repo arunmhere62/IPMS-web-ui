@@ -1,17 +1,8 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { CheckCircle2, ChevronDown, CircleAlert, Sparkles, Tag } from 'lucide-react'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -20,12 +11,39 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import {
   type SubscriptionPlan,
   useGetPlansQuery,
+  useGetSubscriptionStatusQuery,
+  useRenewSubscriptionMutation,
+  useSubscribeToPlanMutation,
 } from '@/services/subscriptionApi'
+import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+
+type RecordValue = Record<string, unknown>
+
+const isRecord = (value: unknown): value is RecordValue =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+const readNumberField = (obj: RecordValue, key: string): number | null => {
+  const raw = obj[key]
+  const n = typeof raw === 'number' ? raw : Number(raw)
+  return Number.isFinite(n) ? n : null
+}
+
+const readStringField = (obj: RecordValue, key: string): string | null => {
+  const raw = obj[key]
+  return typeof raw === 'string' && raw.length > 0 ? raw : null
+}
+
+const readPaymentUrl = (value: unknown): string | null => {
+  if (!isRecord(value)) return null
+  const direct = value.payment_url
+  if (typeof direct === 'string' && direct.length > 0) return direct
+  if (isRecord(value.data)) return readPaymentUrl(value.data)
+  return null
+}
 
 export function SubscriptionsScreen() {
-  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
   const [expandedPlans, setExpandedPlans] = useState<Record<number, boolean>>({})
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null)
+  const [actionPlanId, setActionPlanId] = useState<number | null>(null)
 
   const {
     data: plansResponse,
@@ -33,13 +51,15 @@ export function SubscriptionsScreen() {
     error: plansError,
   } = useGetPlansQuery()
 
-  const playStoreUrl = (() => {
-    const meta = import.meta as unknown as { env?: Record<string, unknown> }
-    const value = meta.env?.VITE_PLAY_STORE_URL
-    return typeof value === 'string' && value.length > 0
-      ? value
-      : 'https://play.google.com/store'
-  })()
+  const {
+    data: subscriptionStatus,
+    isLoading: statusLoading,
+    error: statusError,
+    refetch: refetchStatus,
+  } = useGetSubscriptionStatusQuery()
+
+  const [subscribeToPlan, { isLoading: subscribing }] = useSubscribeToPlanMutation()
+  const [renewSubscription, { isLoading: renewing }] = useRenewSubscriptionMutation()
 
   const plans = useMemo(() => plansResponse?.data || [], [plansResponse])
 
@@ -66,7 +86,7 @@ export function SubscriptionsScreen() {
   }, [plans])
 
   const apiErrorMessage = useMemo(() => {
-    const err = plansError
+    const err = plansError || statusError
     if (!err) return null
 
     const maybe = err as unknown as {
@@ -79,9 +99,70 @@ export function SubscriptionsScreen() {
       ?? (maybe.data as { message?: string; error?: string } | undefined)?.error
 
     return fromData || maybe.message || maybe.error || 'Unable to load subscription plans.'
-  }, [plansError])
+  }, [plansError, statusError])
 
   const fetchError = apiErrorMessage
+
+  const currentSubscription = isRecord(subscriptionStatus) ? subscriptionStatus.subscription : undefined
+
+  const currentPlanObj: RecordValue | null =
+    isRecord(currentSubscription) && isRecord(currentSubscription.plan)
+      ? (currentSubscription.plan as RecordValue)
+      : null
+
+  const currentPlanIdFromPlanObj = currentPlanObj ? readNumberField(currentPlanObj, 's_no') : null
+
+  const currentPlanId = Number(
+    isRecord(currentSubscription)
+      ? (currentSubscription.plan_id ?? currentPlanIdFromPlanObj ?? undefined)
+      : NaN
+  )
+  const hasActiveSubscription = Boolean(isRecord(subscriptionStatus) ? subscriptionStatus.has_active_subscription : false)
+  const currentSubscriptionId = Number(
+    isRecord(currentSubscription) ? (currentSubscription.s_no ?? currentSubscription.id ?? NaN) : NaN
+  )
+
+  const busy = plansLoading || statusLoading || subscribing || renewing
+
+  const handleSubscribeOrUpgrade = async (planId: number) => {
+    try {
+      setActionPlanId(planId)
+      const result: unknown = await subscribeToPlan({ planId }).unwrap()
+      const paymentUrl = readPaymentUrl(result)
+
+      if (paymentUrl) {
+        window.open(String(paymentUrl), '_blank', 'noreferrer')
+        showSuccessAlert('Continue payment in the opened page')
+      } else {
+        showSuccessAlert('Subscription initiated successfully')
+      }
+      void refetchStatus()
+    } catch (e: unknown) {
+      showErrorAlert(e, 'Subscription Error')
+    } finally {
+      setActionPlanId(null)
+    }
+  }
+
+  const handleRenew = async () => {
+    if (!Number.isFinite(currentSubscriptionId) || currentSubscriptionId <= 0) return
+    try {
+      setActionPlanId(currentPlanId)
+      const result: unknown = await renewSubscription({ subscriptionId: currentSubscriptionId }).unwrap()
+      const paymentUrl = readPaymentUrl(result)
+      if (paymentUrl) {
+        window.open(String(paymentUrl), '_blank', 'noreferrer')
+        showSuccessAlert('Continue payment in the opened page')
+      } else {
+        showSuccessAlert('Renewal initiated successfully')
+      }
+      void refetchStatus()
+    } catch (e: unknown) {
+      showErrorAlert(e, 'Renew Error')
+    } finally {
+      setActionPlanId(null)
+    }
+  }
 
   const formatPrice = (price: string | number, currency?: string) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price
@@ -91,9 +172,6 @@ export function SubscriptionsScreen() {
     }
     return `₹${numPrice.toLocaleString('en-IN')}`
   }
-
-  const formatGstLabel = (value: number) =>
-    `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   const formatDuration = (days: number) => {
     if (days === 30) return 'Monthly'
@@ -132,17 +210,14 @@ export function SubscriptionsScreen() {
 
   
 
-  const handleSubscribe = (plan: SubscriptionPlan) => {
-    setSelectedPlan(plan)
-    setDownloadDialogOpen(true)
-  }
-
   const renderPlanCard = (plan: SubscriptionPlan) => {
     const isPremium = plan.name.toLowerCase().includes('premium')
     const isFreePlan = Boolean(plan.is_free)
     const isTrialPlan = Boolean(plan.is_trial)
     const isActivePlan = plan.is_active !== false
     const isRecommended = plan.s_no === recommendedPlanSno
+    const isCurrentPlan = Number.isFinite(currentPlanId) && plan.s_no === currentPlanId
+    const actionLoading = Boolean(actionPlanId) && actionPlanId === plan.s_no && (subscribing || renewing)
 
     const included = getIncludedItems(plan)
     const defaultVisibleCount = 4
@@ -178,6 +253,12 @@ export function SubscriptionsScreen() {
                   <Badge className='gap-1'>
                     <Sparkles className='size-3' />
                     Recommended
+                  </Badge>
+                ) : null}
+                {isCurrentPlan && hasActiveSubscription ? (
+                  <Badge className='gap-1'>
+                    <CheckCircle2 className='size-3' />
+                    Active
                   </Badge>
                 ) : null}
                 {isTrialPlan ? (
@@ -286,13 +367,24 @@ export function SubscriptionsScreen() {
           </div>
 
           <div className='mt-6 flex flex-col gap-3'>
-            <Button
-              className='w-full'
-              onClick={() => handleSubscribe(plan)}
-              variant={isRecommended ? 'default' : 'outline'}
-            >
-              {plan.is_active === false ? 'Reactivate plan' : 'Subscribe now'}
-            </Button>
+            {isCurrentPlan && !hasActiveSubscription && Number.isFinite(currentSubscriptionId) && currentSubscriptionId > 0 ? (
+              <Button className='w-full' onClick={handleRenew} disabled={busy || actionLoading}>
+                {actionLoading ? 'Processing…' : 'Renew'}
+              </Button>
+            ) : isCurrentPlan && hasActiveSubscription ? (
+              <Button className='w-full' variant='secondary' disabled>
+                Current Plan
+              </Button>
+            ) : (
+              <Button
+                className='w-full'
+                onClick={() => handleSubscribeOrUpgrade(plan.s_no)}
+                variant={isRecommended ? 'default' : 'outline'}
+                disabled={busy || actionLoading}
+              >
+                {actionLoading ? 'Processing…' : hasActiveSubscription ? 'Upgrade' : 'Subscribe'}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -318,11 +410,28 @@ export function SubscriptionsScreen() {
               <div className='mt-2 max-w-2xl text-sm text-muted-foreground'>
                 Pick a plan that fits your needs. Subscription checkout is available in the mobile app.
               </div>
+              <div className='mt-3 flex flex-wrap items-center gap-2'>
+                <Badge variant={hasActiveSubscription ? 'default' : 'outline'}>
+                  {statusLoading ? 'Status…' : hasActiveSubscription ? 'Active' : 'No Active Subscription'}
+                </Badge>
+                {currentPlanObj && readStringField(currentPlanObj, 'name') ? (
+                  <Badge variant='secondary'>{String(readStringField(currentPlanObj, 'name'))}</Badge>
+                ) : null}
+                {isRecord(subscriptionStatus) && typeof subscriptionStatus.days_remaining === 'number' ? (
+                  <Badge variant='outline'>{Number(subscriptionStatus.days_remaining)} days remaining</Badge>
+                ) : null}
+              </div>
             </div>
 
             <div className='flex flex-wrap items-center gap-2'>
               <Badge variant='secondary'>{plans.length} Plans</Badge>
               <Badge variant='outline'>Monthly / Yearly supported</Badge>
+              <Button asChild variant='outline' size='sm'>
+                <Link to='/subscriptions/history'>History</Link>
+              </Button>
+              <Button variant='outline' size='sm' onClick={() => void refetchStatus()} disabled={statusLoading}>
+                Refresh
+              </Button>
             </div>
           </div>
 
@@ -387,67 +496,6 @@ export function SubscriptionsScreen() {
         </div>
       </div>
 
-      <AlertDialog
-        open={Boolean(selectedPlan) && downloadDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) setSelectedPlan(null)
-          setDownloadDialogOpen(open)
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Subscribe to {selectedPlan?.name}</AlertDialogTitle>
-            <AlertDialogDescription>
-              Complete the checkout in the mobile app. Below is the applicable GST breakdown that will be reflected on the invoice.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {selectedPlan ? (
-            <div className='space-y-3 rounded-2xl border bg-white/60 p-4 shadow-sm'>
-              <div className='flex items-center justify-between'>
-                <span className='text-sm font-semibold text-foreground'>Base Price</span>
-                <span className='text-sm'>{formatPrice(selectedPlan.price, selectedPlan.currency)}</span>
-              </div>
-              {selectedPlan.gst_breakdown ? (
-                <div className='space-y-2 text-sm text-muted-foreground'>
-                  <div className='flex items-center justify-between'>
-                    <span>Taxes</span>
-                    <span className='font-semibold text-foreground'>
-                      {selectedPlan.gst_breakdown.igst_amount > 0
-                        ? `IGST @${selectedPlan.gst_breakdown.igst_rate}% ${formatGstLabel(selectedPlan.gst_breakdown.igst_amount)}`
-                        : `CGST @${selectedPlan.gst_breakdown.cgst_rate}% ${formatGstLabel(selectedPlan.gst_breakdown.cgst_amount)} · SGST @${selectedPlan.gst_breakdown.sgst_rate}% ${formatGstLabel(selectedPlan.gst_breakdown.sgst_amount)}`}
-                    </span>
-                  </div>
-                  <div className='flex items-center justify-between text-xs text-muted-foreground'>
-                    <span>Total including GST</span>
-                    <span className='font-semibold text-foreground'>
-                      ₹{selectedPlan.gst_breakdown.total_price_including_gst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className='text-[11px]'>{'Invoice includes GSTIN 33BHHPC9099Q1ZQ · HSN/SAC 9983'}</div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setSelectedPlan(null)
-              }}
-            >
-              Close
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                window.open(playStoreUrl, '_blank', 'noreferrer')
-              }}
-            >
-              Open Play Store
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

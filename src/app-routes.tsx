@@ -7,6 +7,7 @@ import { SignupScreen } from '@/screens/auth/SignupScreen'
 import { HomePage } from '@/screens/HomePage'
 import { PublicHome } from '@/screens/PublicHome'
 import { SubscriptionsScreen } from '@/screens/subscription/SubscriptionsScreen'
+import { SubscriptionHistoryScreen } from '@/screens/subscription/SubscriptionHistoryScreen'
 import { FaqScreen } from '@/screens/faq/FaqScreen'
 import { TermsScreen } from '@/screens/public/TermsScreen'
 import { PrivacyScreen } from '@/screens/public/PrivacyScreen'
@@ -22,6 +23,9 @@ import { TenantFormScreen } from '@/screens/tenants/TenantFormScreen'
 import { VisitorsScreen } from '@/screens/visitors/VisitorsScreen'
 import { VisitorDetailsScreen } from '@/screens/visitors/VisitorDetailsScreen'
 import { VisitorFormScreen } from '@/screens/visitors/VisitorFormScreen'
+import { SettingsScreen } from '@/screens/settings/SettingsScreen'
+import { UserProfileScreen } from '@/screens/settings/UserProfileScreen'
+import { TicketsScreen } from '@/screens/tickets/TicketsScreen'
 
 export function AppRoutes() {
   return (
@@ -30,7 +34,6 @@ export function AppRoutes() {
         <Route path='/home' element={<PublicHome />} />
         <Route path='/login' element={<LoginScreen />} />
         <Route path='/signup' element={<SignupScreen />} />
-        <Route path='/subscriptions' element={<SubscriptionsScreen />} />
         <Route path='/faq' element={<FaqScreen />} />
         <Route path='/terms' element={<TermsScreen />} />
         <Route path='/privacy' element={<PrivacyScreen />} />
@@ -48,10 +51,15 @@ export function AppRoutes() {
         <Route path='/visitors/new' element={<VisitorFormScreen />} />
         <Route path='/visitors/:id' element={<VisitorDetailsScreen />} />
         <Route path='/visitors/:id/edit' element={<VisitorFormScreen />} />
+        <Route path='/settings' element={<SettingsScreen />} />
+        <Route path='/settings/profile' element={<UserProfileScreen />} />
+        <Route path='/tickets' element={<TicketsScreen />} />
         <Route path='/rooms' element={<RoomsScreen />} />
         <Route path='/rooms/:id' element={<RoomDetailsScreen />} />
         <Route path='/beds' element={<BedsScreen />} />
         <Route path='/faq' element={<FaqScreen />} />
+        <Route path='/subscriptions' element={<SubscriptionsScreen />} />
+        <Route path='/subscriptions/history' element={<SubscriptionHistoryScreen />} />
       </Route>
       <Route path='*' element={<Navigate to='/home' replace />} />
     </Routes>

@@ -26,6 +26,10 @@ import { VisitorFormScreen } from '@/screens/visitors/VisitorFormScreen'
 import { SettingsScreen } from '@/screens/settings/SettingsScreen'
 import { UserProfileScreen } from '@/screens/settings/UserProfileScreen'
 import { TicketsScreen } from '@/screens/tickets/TicketsScreen'
+import { PaymentsScreen } from '@/screens/payments/PaymentsScreen'
+import { RentPaymentsScreen } from '@/screens/payments/RentPaymentsScreen'
+import { AdvancePaymentsScreen } from '@/screens/payments/AdvancePaymentsScreen'
+import { RefundPaymentsScreen } from '@/screens/payments/RefundPaymentsScreen'
 
 export function AppRoutes() {
   return (
@@ -58,6 +62,10 @@ export function AppRoutes() {
         <Route path='/rooms/:id' element={<RoomDetailsScreen />} />
         <Route path='/beds' element={<BedsScreen />} />
         <Route path='/faq' element={<FaqScreen />} />
+        <Route path='/payments' element={<PaymentsScreen />} />
+        <Route path='/payments/rent' element={<RentPaymentsScreen />} />
+        <Route path='/payments/advance' element={<AdvancePaymentsScreen />} />
+        <Route path='/payments/refund' element={<RefundPaymentsScreen />} />
         <Route path='/subscriptions' element={<SubscriptionsScreen />} />
         <Route path='/subscriptions/history' element={<SubscriptionHistoryScreen />} />
       </Route>

@@ -1,6 +1,4 @@
 import { Link } from 'react-router-dom'
-import { Menu, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { Logo } from '@/assets/logo'
 import {
   SidebarMenu,
@@ -8,7 +6,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { Button } from '../ui/button'
 
 export function AppTitle() {
   const { setOpenMobile } = useSidebar()
@@ -32,37 +29,9 @@ export function AppTitle() {
                 <span className='truncate text-xs'>Indian PG Management System</span>
               </span>
             </Link>
-            <ToggleSidebar />
           </div>
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
-}
-
-function ToggleSidebar({
-  className,
-  onClick,
-  ...props
-}: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar } = useSidebar()
-
-  return (
-    <Button
-      data-sidebar='trigger'
-      data-slot='sidebar-trigger'
-      variant='ghost'
-      size='icon'
-      className={cn('aspect-square size-8 max-md:scale-125', className)}
-      onClick={(event) => {
-        onClick?.(event)
-        toggleSidebar()
-      }}
-      {...props}
-    >
-      <X className='md:hidden' />
-      <Menu className='max-md:hidden' />
-      <span className='sr-only'>Toggle Sidebar</span>
-    </Button>
   )
 }

@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { showErrorToast, showSuccessToast } from '@/utils/toast'
 
 import {
@@ -26,13 +25,13 @@ import {
 } from '@/services/legalDocumentsApi'
 
 const schema = z.object({
-  organizationName: z.string().min(1, 'Organization name is required'),
-  name: z.string().min(1, 'Name is required'),
+  organizationName: z.string().optional(),
+  name: z.string().optional(),
   phone: z.string().min(10, 'Phone number is required'),
-  pgName: z.string().min(1, 'PG name is required'),
-  rentCycleType: z.enum(['CALENDAR', 'MIDMONTH']),
-  rentCycleStart: z.number().nullable(),
-  rentCycleEnd: z.number().nullable(),
+  pgName: z.string().optional(),
+  rentCycleType: z.enum(['CALENDAR', 'MIDMONTH']).optional(),
+  rentCycleStart: z.number().nullable().optional(),
+  rentCycleEnd: z.number().nullable().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -95,9 +94,25 @@ export function SignupScreen() {
     return doc?.url || doc?.content_url
   }
 
-  const onSendOtp = async (values: FormValues) => {
-    const phone = values.phone.trim()
-    const normalized = phone.startsWith('+') ? phone : `+91${phone}`
+  const validatePhone = (phone: string) => {
+    const cleaned = phone.replace(/[^0-9]/g, '')
+    if (!cleaned) {
+      showErrorToast('Phone number is required')
+      return null
+    }
+    if (cleaned.length !== 10) {
+      showErrorToast('Please enter valid 10-digit phone number')
+      return null
+    }
+    return cleaned
+  }
+
+  const onSendOtp = async () => {
+    const rawPhone = String(form.getValues('phone') ?? '')
+    const cleaned = validatePhone(rawPhone)
+    if (!cleaned) return
+
+    const normalized = `+91${cleaned}`
 
     try {
       await sendSignupOtp({ phone: normalized }).unwrap()
@@ -139,6 +154,30 @@ export function SignupScreen() {
       return
     }
 
+    const pgName = String(values.pgName ?? '').trim()
+    const name = String(values.name ?? '').trim()
+    const rentCycleType = values.rentCycleType || 'CALENDAR'
+    const rentCycleStart = values.rentCycleStart ?? 1
+    const rentCycleEnd = values.rentCycleEnd ?? 30
+
+    if (!pgName) {
+      form.setError('pgName', { type: 'manual', message: 'PG name is required' })
+      showErrorToast('Please enter PG name')
+      return
+    }
+
+    if (!name) {
+      form.setError('name', { type: 'manual', message: 'Name is required' })
+      showErrorToast('Please enter your name')
+      return
+    }
+
+    if (rentCycleType === 'CALENDAR' && (!rentCycleEnd || !Number.isFinite(Number(rentCycleEnd)))) {
+      form.setError('rentCycleEnd', { type: 'manual', message: 'Rent cycle end day is required' })
+      showErrorToast('Please enter rent cycle end day')
+      return
+    }
+
     if (!hasAgreedToLegal) {
       showErrorToast('Please agree to the Terms & Conditions and Privacy Policy')
       return
@@ -146,13 +185,13 @@ export function SignupScreen() {
 
     try {
       const signupData = {
-        organizationName: values.organizationName.trim(),
-        name: values.name.trim(),
-        pgName: values.pgName.trim(),
+        organizationName: pgName,
+        name,
+        pgName,
         phone: fullPhone,
-        rentCycleType: values.rentCycleType,
-        rentCycleStart: values.rentCycleStart,
-        rentCycleEnd: values.rentCycleEnd,
+        rentCycleType,
+        rentCycleStart,
+        rentCycleEnd,
       }
 
       const status =
@@ -183,127 +222,42 @@ export function SignupScreen() {
     }
   }
 
+  const resetPhoneFlow = () => {
+    setPhoneVerified(false)
+    setOtpSent(false)
+    setOtp('')
+    setFullPhone('')
+  }
+
   return (
     <div className='container mx-auto flex min-h-[calc(100vh-64px)] max-w-6xl items-center px-4 py-10 sm:py-12'>
       <div className='mx-auto w-full max-w-xl'>
         <Card className='w-full'>
           <CardHeader>
-            <CardTitle>Create account</CardTitle>
-            <CardDescription>Signup with phone OTP</CardDescription>
+            <CardTitle>{phoneVerified ? 'Setup your PG' : 'Sign up easily'}</CardTitle>
+            <CardDescription>
+              {phoneVerified
+                ? 'Complete setup to continue using the app'
+                : 'Verify your phone number to get started'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form className='grid gap-4'>
-                <div className='grid gap-4 lg:grid-cols-2'>
-                <FormField
-                  control={form.control}
-                  name='organizationName'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Organization Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder='Organization' {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name='pgName'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>PG Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder='PG name' {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name='name'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Your Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder='Name' {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name='rentCycleType'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Rent Cycle Type</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={(v) => {
-                          field.onChange(v)
-                          form.setValue('rentCycleStart', 1)
-                          form.setValue('rentCycleEnd', 30)
-                        }}
-                      >
-                        <FormControl>
-                          <SelectTrigger className='w-full'>
-                            <SelectValue placeholder='Select cycle type' />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value='CALENDAR'>Calendar Month Cycle</SelectItem>
-                          <SelectItem value='MIDMONTH'>Mid-Month Cycle</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name='rentCycleEnd'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Rent Cycle End Day</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder='30'
-                          value={field.value == null ? '' : String(field.value)}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            const n = v ? Number(v) : NaN
-                            field.onChange(Number.isFinite(n) ? n : null)
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <FormField
                   control={form.control}
                   name='phone'
                   render={({ field }) => (
-                    <FormItem className='lg:col-span-2'>
+                    <FormItem>
                       <FormLabel>Phone</FormLabel>
                       <FormControl>
                         <Input
                           placeholder='10 digit number'
                           {...field}
+                          disabled={phoneVerified}
                           onChange={(e) => {
                             field.onChange(e.target.value)
-                            setPhoneVerified(false)
-                            setOtpSent(false)
-                            setOtp('')
-                            setFullPhone('')
+                            resetPhoneFlow()
                           }}
                         />
                       </FormControl>
@@ -313,11 +267,11 @@ export function SignupScreen() {
                         <div className='mt-2 grid gap-2'>
                           <Button
                             type='button'
-                            disabled={sending || !field.value?.trim()}
-                            onClick={() => void form.handleSubmit(onSendOtp)()}
+                            disabled={sending || !String(field.value || '').trim()}
+                            onClick={() => void onSendOtp()}
                             className='w-full sm:w-auto'
                           >
-                            {sending ? 'Sending...' : 'Verify Phone Number'}
+                            {sending ? 'Sending...' : 'Send OTP'}
                           </Button>
 
                           {otpSent ? (
@@ -350,65 +304,180 @@ export function SignupScreen() {
                                 </Button>
                               </div>
                             </div>
-                          ) : null}
+                          ) : (
+                            <div className='text-xs text-muted-foreground'>You will receive a 4-digit OTP on your phone number</div>
+                          )}
                         </div>
                       ) : (
-                        <div className='mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700'>
-                          Phone Verified
+                        <div className='mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700'>
+                          <div>Phone Verified</div>
+                          <Button type='button' variant='ghost' size='sm' className='h-7 px-2' onClick={resetPhoneFlow}>
+                            Change
+                          </Button>
                         </div>
                       )}
                     </FormItem>
                   )}
                 />
-                </div>
 
-              <div className='grid gap-2'>
-                <div className='flex items-start gap-2'>
-                  <Checkbox
-                    checked={hasAgreedToLegal}
-                    onCheckedChange={(v) => setHasAgreedToLegal(Boolean(v))}
-                    id='legal'
-                  />
-                  <label htmlFor='legal' className='text-sm text-muted-foreground'>
-                    I agree to{' '}
-                    {findLegalDocUrl(['TERMS', 'TERMS_AND_CONDITIONS', 'TNC', 'T_AND_C']) ? (
-                      <a
-                        className='text-primary underline'
-                        href={findLegalDocUrl(['TERMS', 'TERMS_AND_CONDITIONS', 'TNC', 'T_AND_C'])}
-                        target='_blank'
-                        rel='noreferrer'
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Terms & Conditions
-                      </a>
-                    ) : (
-                      <span>Terms & Conditions</span>
-                    )}{' '}
-                    and{' '}
-                    {findLegalDocUrl(['PRIVACY', 'PRIVACY_POLICY']) ? (
-                      <a
-                        className='text-primary underline'
-                        href={findLegalDocUrl(['PRIVACY', 'PRIVACY_POLICY'])}
-                        target='_blank'
-                        rel='noreferrer'
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Privacy Policy
-                      </a>
-                    ) : (
-                      <span>Privacy Policy</span>
-                    )}
-                  </label>
-                </div>
-              </div>
+                {phoneVerified ? (
+                  <>
+                    <div className='rounded-lg border bg-primary/5 px-3 py-3 text-sm'>
+                      <div className='font-semibold'>Quick setup</div>
+                      <div className='mt-0.5 text-xs text-muted-foreground'>Just a few details — you’re ready to start.</div>
+                    </div>
 
-              <Button type='button' onClick={onSignup} disabled={!phoneVerified || signingUp}>
-                {signingUp ? 'Creating...' : 'Create account'}
-              </Button>
+                    <div className='grid gap-4 lg:grid-cols-2'>
+                      <FormField
+                        control={form.control}
+                        name='pgName'
+                        render={({ field }) => (
+                          <FormItem className='lg:col-span-2'>
+                            <FormLabel>1. PG Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder='e.g., Green Valley PG' {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            <div className='text-xs text-muted-foreground'>This will also be used as your organization name for now.</div>
+                          </FormItem>
+                        )}
+                      />
 
-              <Button type='button' variant='link' onClick={() => navigate('/login')}>
-                Already have an account? Login
-              </Button>
+                      <FormField
+                        control={form.control}
+                        name='name'
+                        render={({ field }) => (
+                          <FormItem className='lg:col-span-2'>
+                            <FormLabel>2. Your Full Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder='e.g., John Doe' {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='rentCycleType'
+                        render={({ field }) => (
+                          <FormItem className='lg:col-span-2'>
+                            <FormLabel>3. Rent Cycle Type</FormLabel>
+                            <FormMessage />
+                            <div className='mt-2 grid gap-2 sm:grid-cols-2'>
+                              <button
+                                type='button'
+                                className={
+                                  'rounded-lg border px-3 py-3 text-left transition ' +
+                                  ((field.value || 'CALENDAR') === 'CALENDAR'
+                                    ? 'border-primary bg-primary/10'
+                                    : 'bg-background hover:bg-muted/40')
+                                }
+                                onClick={() => {
+                                  field.onChange('CALENDAR')
+                                  form.setValue('rentCycleStart', 1)
+                                  form.setValue('rentCycleEnd', 30)
+                                }}
+                              >
+                                <div className='text-sm font-semibold'>Calendar Month</div>
+                                <div className='mt-1 text-xs text-muted-foreground'>Rent month is 1st → 30th (or 31st).</div>
+                              </button>
+                              <button
+                                type='button'
+                                className={
+                                  'rounded-lg border px-3 py-3 text-left transition ' +
+                                  ((field.value || 'CALENDAR') === 'MIDMONTH'
+                                    ? 'border-primary bg-primary/10'
+                                    : 'bg-background hover:bg-muted/40')
+                                }
+                                onClick={() => {
+                                  field.onChange('MIDMONTH')
+                                  form.setValue('rentCycleStart', 1)
+                                  form.setValue('rentCycleEnd', 30)
+                                }}
+                              >
+                                <div className='text-sm font-semibold'>Mid‑Month / Check‑in based</div>
+                                <div className='mt-1 text-xs text-muted-foreground'>Rent cycle starts from tenant check‑in date.</div>
+                              </button>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+
+                      {(form.getValues('rentCycleType') || 'CALENDAR') === 'CALENDAR' ? (
+                        <FormField
+                          control={form.control}
+                          name='rentCycleEnd'
+                          render={({ field }) => (
+                            <FormItem className='lg:col-span-2'>
+                              <FormLabel>Rent Cycle End Day</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder='30'
+                                  value={field.value == null ? '' : String(field.value)}
+                                  onChange={(e) => {
+                                    const v = e.target.value
+                                    const n = v ? Number(v) : NaN
+                                    field.onChange(Number.isFinite(n) ? n : null)
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      ) : null}
+                    </div>
+
+                    <div className='grid gap-2'>
+                      <div className='flex items-start gap-2'>
+                        <Checkbox
+                          checked={hasAgreedToLegal}
+                          onCheckedChange={(v) => setHasAgreedToLegal(Boolean(v))}
+                          id='legal'
+                        />
+                        <label htmlFor='legal' className='text-sm text-muted-foreground'>
+                          I agree to{' '}
+                          {findLegalDocUrl(['TERMS', 'TERMS_AND_CONDITIONS', 'TNC', 'T_AND_C']) ? (
+                            <a
+                              className='text-primary underline'
+                              href={findLegalDocUrl(['TERMS', 'TERMS_AND_CONDITIONS', 'TNC', 'T_AND_C'])}
+                              target='_blank'
+                              rel='noreferrer'
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Terms & Conditions
+                            </a>
+                          ) : (
+                            <span>Terms & Conditions</span>
+                          )}{' '}
+                          and{' '}
+                          {findLegalDocUrl(['PRIVACY', 'PRIVACY_POLICY']) ? (
+                            <a
+                              className='text-primary underline'
+                              href={findLegalDocUrl(['PRIVACY', 'PRIVACY_POLICY'])}
+                              target='_blank'
+                              rel='noreferrer'
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Privacy Policy
+                            </a>
+                          ) : (
+                            <span>Privacy Policy</span>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+
+                    <Button type='button' onClick={onSignup} disabled={!phoneVerified || signingUp}>
+                      {signingUp ? 'Creating...' : 'Create account'}
+                    </Button>
+                  </>
+                ) : null}
+
+                <Button type='button' variant='link' onClick={() => navigate('/login')}>
+                  Already have an account? Login
+                </Button>
               </form>
             </Form>
           </CardContent>

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, HelpCircle } from 'lucide-react'
+import { LayoutDashboard, Building2, HelpCircle, Users, Bed, DoorOpen, UserRound, User } from 'lucide-react'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
@@ -23,6 +23,31 @@ export const sidebarData: SidebarData = {
           title: 'PG Locations',
           url: '/pg-locations',
           icon: Building2,
+        },
+        {
+          title: 'Employees',
+          url: '/employees',
+          icon: Users,
+        },
+        {
+          title: 'Tenants',
+          url: '/tenants',
+          icon: UserRound,
+        },
+        {
+          title: 'Visitors',
+          url: '/visitors',
+          icon: User,
+        },
+        {
+          title: 'Rooms',
+          url: '/rooms',
+          icon: DoorOpen,
+        },
+        {
+          title: 'Beds',
+          url: '/beds',
+          icon: Bed,
         },
         {
           title: 'Subscriptions',

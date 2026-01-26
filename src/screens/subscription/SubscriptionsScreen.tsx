@@ -92,7 +92,8 @@ export function SubscriptionsScreen() {
     return `₹${numPrice.toLocaleString('en-IN')}`
   }
 
-  const formatGstLabel = (value: number) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const formatGstLabel = (value: number) =>
+    `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   const formatDuration = (days: number) => {
     if (days === 30) return 'Monthly'
@@ -217,27 +218,6 @@ export function SubscriptionsScreen() {
               </div>
             </div>
           </div>
-          {!isFreePlan && plan.gst_breakdown ? (
-            <div className='mt-2 space-y-1 text-xs text-muted-foreground'>
-              <div className='flex items-center gap-1'>
-                <span className='font-semibold text-foreground'>GST breakdown:</span>
-                <span>{`Base ₹${Number(plan.price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</span>
-              </div>
-              <div className='flex flex-wrap gap-2'>
-                <div className='rounded-xl border border-slate-200 bg-white/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700'>
-                  {plan.gst_breakdown.igst_amount > 0
-                    ? `IGST @${plan.gst_breakdown.igst_rate}% ${formatGstLabel(plan.gst_breakdown.igst_amount)}`
-                    : `CGST @${plan.gst_breakdown.cgst_rate}% ${formatGstLabel(plan.gst_breakdown.cgst_amount)} · SGST @${plan.gst_breakdown.sgst_rate}% ${formatGstLabel(plan.gst_breakdown.sgst_amount)}`}
-                </div>
-                <div className='rounded-xl border border-slate-200 bg-white/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600'>
-                  {`Total ₹${plan.gst_breakdown.total_price_including_gst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                </div>
-              </div>
-              <div className='text-[11px] text-muted-foreground'>
-                Invoice includes GSTIN 33BHHPC9099Q1ZQ · HSN/SAC 9983
-              </div>
-            </div>
-          ) : null}
         </div>
         <CardContent className='flex flex-1 flex-col pt-4'>
           <div className='flex items-center justify-between gap-3'>
@@ -306,7 +286,6 @@ export function SubscriptionsScreen() {
           </div>
 
           <div className='mt-6 flex flex-col gap-3'>
-            <span className='text-xs text-muted-foreground'>GST & totals will appear in the dialog before payment.</span>
             <Button
               className='w-full'
               onClick={() => handleSubscribe(plan)}
@@ -328,10 +307,10 @@ export function SubscriptionsScreen() {
   )
 
   return (
-    <div className='relative'>
+    <div className='relative overflow-x-hidden'>
       {backgroundDecorators}
 
-      <div className='container mx-auto max-w-6xl px-4 py-10 sm:py-12'>
+      <div className='container mx-auto max-w-6xl px-3 py-8 sm:py-12'>
         <div className='relative overflow-hidden rounded-3xl border border-primary/10 bg-[radial-gradient(900px_circle_at_20%_0%,rgba(37,99,235,0.14),transparent_55%),radial-gradient(900px_circle_at_85%_70%,rgba(16,185,129,0.10),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.50))] p-6 shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur sm:p-10'>
           <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
             <div>
@@ -364,48 +343,48 @@ export function SubscriptionsScreen() {
         </div>
       </div>
 
-      <div className='mt-6'>
-        {fetchError ? (
-          <Alert variant='destructive'>
-            <CircleAlert />
-            <AlertTitle>Error Loading Subscription Plans</AlertTitle>
-            <AlertDescription>
-              <p>{fetchError}</p>
-            </AlertDescription>
-          </Alert>
-        ) : null}
-      </div>
+      <div className='container mx-auto max-w-6xl px-3'>
+        <div className='mt-6'>
+          {fetchError ? (
+            <Alert variant='destructive'>
+              <CircleAlert />
+              <AlertTitle>Error Loading Subscription Plans</AlertTitle>
+              <AlertDescription>
+                <p>{fetchError}</p>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+        </div>
 
-      <div className='mt-10'>
-        {plansLoading ? (
-          <div className='grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-3'>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className='h-[420px] rounded-2xl border bg-white/60 p-6 backdrop-blur'>
-                <div className='h-5 w-40 rounded bg-muted' />
-                <div className='mt-3 h-4 w-64 rounded bg-muted' />
-                <div className='mt-6 h-10 w-48 rounded bg-muted' />
-                <div className='mt-6 grid gap-2'>
-                  <div className='h-9 rounded bg-muted' />
-                  <div className='h-9 rounded bg-muted' />
-                  <div className='h-9 rounded bg-muted' />
+        <div className='mt-10'>
+          {plansLoading ? (
+            <div className='grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-3'>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className='h-[420px] rounded-2xl border bg-white/60 p-6 backdrop-blur'>
+                  <div className='h-5 w-40 rounded bg-muted' />
+                  <div className='mt-3 h-4 w-64 rounded bg-muted' />
+                  <div className='mt-6 h-10 w-48 rounded bg-muted' />
+                  <div className='mt-6 grid gap-2'>
+                    <div className='h-9 rounded bg-muted' />
+                    <div className='h-9 rounded bg-muted' />
+                    <div className='h-9 rounded bg-muted' />
+                  </div>
+                  <div className='mt-8 h-10 rounded bg-muted' />
                 </div>
-                <div className='mt-8 h-10 rounded bg-muted' />
-              </div>
-            ))}
-          </div>
-        ) : plans.length === 0 ? (
-          <div className='rounded-2xl border bg-white/70 px-4 py-6 text-sm text-muted-foreground backdrop-blur'>
-            No plans available.
-          </div>
-        ) : (
-          <>
+              ))}
+            </div>
+          ) : plans.length === 0 ? (
+            <div className='rounded-2xl border bg-white/70 px-4 py-6 text-sm text-muted-foreground backdrop-blur'>
+              No plans available.
+            </div>
+          ) : (
             <div className='grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-3'>
               {plans.map((p) => (
                 <div key={p.s_no}>{renderPlanCard(p)}</div>
               ))}
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
 
       <AlertDialog

@@ -1,10 +1,14 @@
-import { Link } from 'react-router-dom'
 import { Eye, Pencil, Trash2 } from 'lucide-react'
-
-import { Button } from '@/components/ui/button'
+import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
-export type ActionButtonsVariant = 'default' | 'outline' | 'destructive' | 'secondary' | 'ghost'
+export type ActionButtonsVariant =
+  | 'default'
+  | 'outline'
+  | 'destructive'
+  | 'secondary'
+  | 'ghost'
 export type ActionButtonsSize = 'icon' | 'sm' | 'default'
 
 export type ActionButtonsMode = 'icon' | 'compact' | 'full'
@@ -48,24 +52,29 @@ export function ActionButtons({
   editLabel = 'Edit',
   deleteLabel = 'Delete',
   viewVariant = 'secondary',
-  editVariant = 'secondary',
+  editVariant = 'outline',
   deleteVariant = 'outline',
   size,
 }: ActionButtonsProps) {
-  const effectiveSize: ActionButtonsSize = size ?? (mode === 'icon' ? 'icon' : mode === 'compact' ? 'sm' : 'default')
+  const effectiveSize: ActionButtonsSize =
+    size ?? (mode === 'icon' ? 'icon' : mode === 'compact' ? 'sm' : 'default')
 
   const showText = mode !== 'icon'
 
   return (
-    <div className={cn('flex items-center justify-end gap-2', className)}>
+    <div className={cn('flex items-center justify-end gap-1', className)}>
       {viewTo || onView ? (
         <Button
           type='button'
           size={effectiveSize}
-          variant={viewVariant as any}
+          variant={viewVariant}
           className={cn(
-            mode === 'icon' ? 'h-8 w-8 rounded-md' : undefined,
-            viewVariant === 'secondary' ? 'hover:bg-primary/10 hover:text-primary' : undefined
+            mode === 'icon'
+              ? 'flex h-8 w-8 items-center justify-center rounded-md p-0'
+              : undefined,
+            viewVariant === 'secondary'
+              ? 'hover:bg-muted hover:text-foreground'
+              : undefined
           )}
           aria-label={viewLabel}
           title={viewLabel}
@@ -74,7 +83,7 @@ export function ActionButtons({
           asChild={Boolean(viewTo)}
         >
           {viewTo ? (
-            <Link to={viewTo}>
+            <Link to={viewTo} className='flex items-center justify-center'>
               <Eye className={cn('size-4', showText ? 'me-2' : '')} />
               {showText ? viewLabel : null}
             </Link>
@@ -91,10 +100,13 @@ export function ActionButtons({
         <Button
           type='button'
           size={effectiveSize}
-          variant={editVariant as any}
+          variant={editVariant}
           className={cn(
-            mode === 'icon' ? 'h-8 w-8 rounded-md' : undefined,
-            editVariant === 'secondary' ? 'hover:bg-primary/10 hover:text-primary' : undefined
+            mode === 'icon'
+              ? 'flex h-8 w-8 items-center justify-center rounded-md p-0'
+              : undefined,
+            // Neutral grayscale hover
+            'text-foreground hover:bg-muted'
           )}
           aria-label={editLabel}
           title={editLabel}
@@ -110,10 +122,12 @@ export function ActionButtons({
         <Button
           type='button'
           size={effectiveSize}
-          variant={deleteVariant as any}
+          variant={deleteVariant}
           className={cn(
-            mode === 'icon' ? 'h-8 w-8 rounded-md' : undefined,
-            'border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive'
+            mode === 'icon'
+              ? 'flex h-8 w-8 items-center justify-center rounded-md p-0'
+              : undefined,
+            'border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700'
           )}
           aria-label={deleteLabel}
           title={deleteLabel}

@@ -15,7 +15,7 @@ export interface User {
   city_name?: string
   state_name?: string
   gender?: 'MALE' | 'FEMALE'
-  profile_images?: any
+  profile_images?: string[]
   pincode?: string
   country?: string
   created_at?: string
@@ -43,8 +43,12 @@ export interface PGLocation {
   city_id?: number
   state_id?: number
   status?: 'ACTIVE' | 'INACTIVE'
-  images?: any
+  images?: string[]
   organization_id: number
+  pg_type?: 'COLIVING' | 'MENS' | 'WOMENS'
+  rent_cycle_type?: 'CALENDAR' | 'MIDMONTH'
+  rent_cycle_start?: number | null
+  rent_cycle_end?: number | null
 }
 
 export interface Payment {
@@ -63,7 +67,12 @@ export interface Payment {
   end_date?: string
   current_bill?: number
   current_bill_id?: number
-  tenant_unavailable_reason?: 'NOT_FOUND' | 'DELETED' | 'CHECKED_OUT' | 'INACTIVE' | null
+  tenant_unavailable_reason?:
+    | 'NOT_FOUND'
+    | 'DELETED'
+    | 'CHECKED_OUT'
+    | 'INACTIVE'
+    | null
   tenants?: {
     s_no: number
     tenant_id: string
@@ -85,4 +94,23 @@ export interface Payment {
     s_no: number
     location_name: string
   }
+}
+
+export interface State {
+  s_no: number
+  name: string
+  iso_code: string
+  country_code: string
+}
+
+export interface City {
+  s_no: number
+  name: string
+  state_code: string
+}
+
+export interface ApiResponse<T> {
+  data: T[]
+  message?: string
+  status?: string
 }

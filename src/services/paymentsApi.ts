@@ -1,6 +1,10 @@
-import { baseApi } from './baseApi'
 import type { Payment } from '@/types'
-import { extractPaginatedData, extractResponseData, isApiResponseSuccess } from '@/utils/apiResponseHandler'
+import {
+  extractPaginatedData,
+  extractResponseData,
+  isApiResponseSuccess,
+} from '@/utils/apiResponseHandler'
+import { baseApi } from './baseApi'
 
 export type RentCycleType = 'CALENDAR' | 'MIDMONTH'
 
@@ -56,7 +60,12 @@ export interface AdvancePayment {
   remarks?: string
   created_at: string
   updated_at: string
-  tenant_unavailable_reason?: 'NOT_FOUND' | 'DELETED' | 'CHECKED_OUT' | 'INACTIVE' | null
+  tenant_unavailable_reason?:
+    | 'NOT_FOUND'
+    | 'DELETED'
+    | 'CHECKED_OUT'
+    | 'INACTIVE'
+    | null
   tenants?: {
     s_no: number
     tenant_id: string
@@ -119,7 +128,9 @@ export interface AdvancePaymentsResponse {
 
 type WithMessage = { message?: unknown }
 
-const normalizeEntity = <T>(response: unknown): { success: boolean; data: T; message?: string } => {
+const normalizeEntity = <T>(
+  response: unknown
+): { success: boolean; data: T; message?: string } => {
   const msg = (response as WithMessage | null | undefined)?.message
   return {
     success: isApiResponseSuccess(response as unknown),
@@ -190,7 +201,12 @@ export interface RefundPayment {
   created_at?: string
   updated_at?: string
   is_deleted?: boolean
-  tenant_unavailable_reason?: 'NOT_FOUND' | 'DELETED' | 'CHECKED_OUT' | 'INACTIVE' | null
+  tenant_unavailable_reason?:
+    | 'NOT_FOUND'
+    | 'DELETED'
+    | 'CHECKED_OUT'
+    | 'INACTIVE'
+    | null
   tenants?: {
     s_no: number
     tenant_id: string
@@ -262,7 +278,10 @@ export type RefundPaymentsListResponse = {
 
 export const paymentsApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
-    getTenantPayments: build.query<TenantPaymentsListResponse, TenantPaymentsListParams | void>({
+    getTenantPayments: build.query<
+      TenantPaymentsListResponse,
+      TenantPaymentsListParams | void
+    >({
       query: (params) => ({
         url: '/rent-payments',
         method: 'GET',
@@ -280,26 +299,42 @@ export const paymentsApi = baseApi.injectEndpoints({
         const items = result?.data || []
         return [
           { type: 'TenantPayments' as const, id: 'LIST' },
-          ...items.map((p) => ({ type: 'TenantPayment' as const, id: (p as { s_no: number }).s_no })),
+          ...items.map((p) => ({
+            type: 'TenantPayment' as const,
+            id: (p as { s_no: number }).s_no,
+          })),
         ]
       },
     }),
 
     getTenantPaymentById: build.query<TenantPaymentResponse, number>({
       query: (id) => ({ url: `/rent-payments/${id}`, method: 'GET' }),
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
-      providesTags: (_res, _err, id) => [{ type: 'TenantPayment' as const, id }],
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
+      providesTags: (_res, _err, id) => [
+        { type: 'TenantPayment' as const, id },
+      ],
     }),
 
     getPaymentsByTenant: build.query<TenantPaymentResponse, number>({
-      query: (tenant_id) => ({ url: `/rent-payments/tenant/${tenant_id}`, method: 'GET' }),
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
-      providesTags: (_res, _err, tenant_id) => [{ type: 'TenantPayments' as const, id: tenant_id }],
+      query: (tenant_id) => ({
+        url: `/rent-payments/tenant/${tenant_id}`,
+        method: 'GET',
+      }),
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
+      providesTags: (_res, _err, tenant_id) => [
+        { type: 'TenantPayments' as const, id: tenant_id },
+      ],
     }),
 
-    createTenantPayment: build.mutation<TenantPaymentResponse<Payment>, CreateTenantPaymentDto>({
+    createTenantPayment: build.mutation<
+      TenantPaymentResponse<Payment>,
+      CreateTenantPaymentDto
+    >({
       query: (body) => ({ url: '/rent-payments', method: 'POST', body }),
-      transformResponse: (response: unknown) => normalizeEntity<Payment>(response),
+      transformResponse: (response: unknown) =>
+        normalizeEntity<Payment>(response),
       invalidatesTags: [
         { type: 'TenantPayments' as const, id: 'LIST' },
         { type: 'Tenants', id: 'LIST' },
@@ -308,13 +343,17 @@ export const paymentsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    updatePaymentStatus: build.mutation<unknown, { id: number; status: string; payment_date?: string }>({
+    updatePaymentStatus: build.mutation<
+      unknown,
+      { id: number; status: string; payment_date?: string }
+    >({
       query: ({ id, status, payment_date }) => ({
         url: `/rent-payments/${id}/status`,
         method: 'PATCH',
         body: { status, payment_date },
       }),
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'TenantPayments', id: 'LIST' },
         { type: 'TenantPayment', id: arg.id },
@@ -323,17 +362,22 @@ export const paymentsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    voidTenantPayment: build.mutation<TenantPaymentResponse, number | VoidWithReasonArg>({
+    voidTenantPayment: build.mutation<
+      TenantPaymentResponse,
+      number | VoidWithReasonArg
+    >({
       query: (arg) => {
         const id = typeof arg === 'number' ? arg : arg.id
-        const voided_reason = typeof arg === 'number' ? undefined : arg.voided_reason
+        const voided_reason =
+          typeof arg === 'number' ? undefined : arg.voided_reason
         return {
           url: `/rent-payments/${id}/void`,
           method: 'PATCH',
           body: voided_reason ? { voided_reason } : undefined,
         }
       },
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
       invalidatesTags: (_res, _err, arg) => {
         const id = typeof arg === 'number' ? arg : arg.id
         return [
@@ -347,9 +391,15 @@ export const paymentsApi = baseApi.injectEndpoints({
     }),
 
     detectPaymentGaps: build.query<DetectPaymentGapsResponse, number>({
-      query: (tenant_id) => ({ url: `/rent-payments/gaps/${tenant_id}`, method: 'GET' }),
-      transformResponse: (response: unknown) => extractResponseData<DetectPaymentGapsResponse>(response),
-      providesTags: (_res, _err, tenant_id) => [{ type: 'TenantPaymentGaps' as const, id: tenant_id }],
+      query: (tenant_id) => ({
+        url: `/rent-payments/gaps/${tenant_id}`,
+        method: 'GET',
+      }),
+      transformResponse: (response: unknown) =>
+        extractResponseData<DetectPaymentGapsResponse>(response),
+      providesTags: (_res, _err, tenant_id) => [
+        { type: 'TenantPaymentGaps' as const, id: tenant_id },
+      ],
     }),
 
     getNextPaymentDates: build.query<
@@ -361,45 +411,81 @@ export const paymentsApi = baseApi.injectEndpoints({
         method: 'GET',
         params: { rentCycleType, skipGaps },
       }),
-      transformResponse: (response: unknown) => extractResponseData<NextPaymentDatesResponse>(response),
-      providesTags: (_res, _err, arg) => [{ type: 'TenantPaymentNextDates' as const, id: arg.tenant_id }],
+      transformResponse: (response: unknown) =>
+        extractResponseData<NextPaymentDatesResponse>(response),
+      providesTags: (_res, _err, arg) => [
+        { type: 'TenantPaymentNextDates' as const, id: arg.tenant_id },
+      ],
     }),
 
-    getAdvancePayments: build.query<AdvancePaymentsListResponse, GetAdvancePaymentsParams | void>({
-      query: (params) => ({ url: '/advance-payments', method: 'GET', params: params || undefined }),
+    getAdvancePayments: build.query<
+      AdvancePaymentsListResponse,
+      GetAdvancePaymentsParams | void
+    >({
+      query: (params) => ({
+        url: '/advance-payments',
+        method: 'GET',
+        params: params || undefined,
+      }),
       transformResponse: (response: unknown): AdvancePaymentsListResponse =>
         normalizePaginatedList<AdvancePayment>(response),
       providesTags: (result) => {
         const items = result?.data || []
         return [
           { type: 'AdvancePayments' as const, id: 'LIST' },
-          ...items.map((p) => ({ type: 'AdvancePayment' as const, id: p.s_no })),
+          ...items.map((p) => ({
+            type: 'AdvancePayment' as const,
+            id: p.s_no,
+          })),
         ]
       },
     }),
 
-    getAdvancePaymentsByTenant: build.query<AdvancePaymentsListResponse, number>({
-      query: (tenant_id) => ({ url: `/advance-payments/tenant/${tenant_id}`, method: 'GET' }),
+    getAdvancePaymentsByTenant: build.query<
+      AdvancePaymentsListResponse,
+      number
+    >({
+      query: (tenant_id) => ({
+        url: `/advance-payments/tenant/${tenant_id}`,
+        method: 'GET',
+      }),
       transformResponse: (response: unknown): AdvancePaymentsListResponse =>
         normalizePaginatedList<AdvancePayment>(response),
-      providesTags: (_res, _err, tenant_id) => [{ type: 'AdvancePayments' as const, id: tenant_id }],
+      providesTags: (_res, _err, tenant_id) => [
+        { type: 'AdvancePayments' as const, id: tenant_id },
+      ],
     }),
 
-    createAdvancePayment: build.mutation<AdvancePaymentResponse, CreateAdvancePaymentDto>({
+    createAdvancePayment: build.mutation<
+      AdvancePaymentResponse,
+      CreateAdvancePaymentDto
+    >({
       query: (body) => ({ url: '/advance-payments', method: 'POST', body }),
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'AdvancePayments' as const, id: 'LIST' },
         { type: 'Tenants' as const, id: 'LIST' },
-        { type: 'Tenant' as const, id: (arg as { tenant_id?: number }).tenant_id as number },
+        {
+          type: 'Tenant' as const,
+          id: (arg as { tenant_id?: number }).tenant_id as number,
+        },
         { type: 'Dashboard' as const, id: 'SUMMARY' },
         { type: 'Dashboard' as const, id: 'MONTHLY_METRICS' },
       ],
     }),
 
-    updateAdvancePayment: build.mutation<AdvancePaymentResponse, { id: number; data: Partial<CreateAdvancePaymentDto> }>({
-      query: ({ id, data }) => ({ url: `/advance-payments/${id}`, method: 'PATCH', body: data }),
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
+    updateAdvancePayment: build.mutation<
+      AdvancePaymentResponse,
+      { id: number; data: Partial<CreateAdvancePaymentDto> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/advance-payments/${id}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'AdvancePayments' as const, id: 'LIST' },
         { type: 'AdvancePayment' as const, id: arg.id },
@@ -408,13 +494,17 @@ export const paymentsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    updateAdvancePaymentStatus: build.mutation<unknown, { id: number; status: string; payment_date?: string }>({
+    updateAdvancePaymentStatus: build.mutation<
+      unknown,
+      { id: number; status: string; payment_date?: string }
+    >({
       query: ({ id, status, payment_date }) => ({
         url: `/advance-payments/${id}/status`,
         method: 'PATCH',
         body: { status, payment_date },
       }),
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'AdvancePayments' as const, id: 'LIST' },
         { type: 'AdvancePayment' as const, id: arg.id },
@@ -425,7 +515,8 @@ export const paymentsApi = baseApi.injectEndpoints({
 
     deleteAdvancePayment: build.mutation<unknown, number>({
       query: (id) => ({ url: `/advance-payments/${id}`, method: 'DELETE' }),
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
       invalidatesTags: (_res, _err, id) => [
         { type: 'AdvancePayments' as const, id: 'LIST' },
         { type: 'AdvancePayment' as const, id },
@@ -437,14 +528,16 @@ export const paymentsApi = baseApi.injectEndpoints({
     voidAdvancePayment: build.mutation<unknown, number | VoidWithReasonArg>({
       query: (arg) => {
         const id = typeof arg === 'number' ? arg : arg.id
-        const voided_reason = typeof arg === 'number' ? undefined : arg.voided_reason
+        const voided_reason =
+          typeof arg === 'number' ? undefined : arg.voided_reason
         return {
           url: `/advance-payments/${id}/void`,
           method: 'PATCH',
           body: voided_reason ? { voided_reason } : undefined,
         }
       },
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
       invalidatesTags: (_res, _err, arg) => {
         const id = typeof arg === 'number' ? arg : arg.id
         return [
@@ -456,9 +549,17 @@ export const paymentsApi = baseApi.injectEndpoints({
       },
     }),
 
-    getRefundPayments: build.query<RefundPaymentsListResponse, GetRefundPaymentsParams | void>({
-      query: (params) => ({ url: '/refund-payments', method: 'GET', params: params || undefined }),
-      transformResponse: (response: unknown): RefundPaymentsListResponse => normalizePaginatedList<RefundPayment>(response),
+    getRefundPayments: build.query<
+      RefundPaymentsListResponse,
+      GetRefundPaymentsParams | void
+    >({
+      query: (params) => ({
+        url: '/refund-payments',
+        method: 'GET',
+        params: params || undefined,
+      }),
+      transformResponse: (response: unknown): RefundPaymentsListResponse =>
+        normalizePaginatedList<RefundPayment>(response),
       providesTags: (result) => {
         const items = result?.data || []
         return [
@@ -470,8 +571,11 @@ export const paymentsApi = baseApi.injectEndpoints({
 
     getRefundPaymentById: build.query<unknown, number>({
       query: (id) => ({ url: `/refund-payments/${id}`, method: 'GET' }),
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
-      providesTags: (_res, _err, id) => [{ type: 'RefundPayment' as const, id }],
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
+      providesTags: (_res, _err, id) => [
+        { type: 'RefundPayment' as const, id },
+      ],
     }),
 
     createRefundPayment: build.mutation<unknown, unknown>({
@@ -481,19 +585,31 @@ export const paymentsApi = baseApi.injectEndpoints({
         body,
         headers: { 'X-Skip-Global-Error': 'true' },
       }),
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'RefundPayments' as const, id: 'LIST' },
         { type: 'Tenants' as const, id: 'LIST' },
-        { type: 'Tenant' as const, id: (arg as { tenant_id?: number }).tenant_id as number },
+        {
+          type: 'Tenant' as const,
+          id: (arg as { tenant_id?: number }).tenant_id as number,
+        },
         { type: 'Dashboard' as const, id: 'SUMMARY' },
         { type: 'Dashboard' as const, id: 'MONTHLY_METRICS' },
       ],
     }),
 
-    updateRefundPayment: build.mutation<unknown, { id: number; data: Partial<CreateRefundPaymentDto> }>({
-      query: ({ id, data }) => ({ url: `/refund-payments/${id}`, method: 'PATCH', body: data }),
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
+    updateRefundPayment: build.mutation<
+      unknown,
+      { id: number; data: Partial<CreateRefundPaymentDto> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/refund-payments/${id}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'RefundPayments' as const, id: 'LIST' },
         { type: 'RefundPayment' as const, id: arg.id },
@@ -504,7 +620,8 @@ export const paymentsApi = baseApi.injectEndpoints({
 
     deleteRefundPayment: build.mutation<unknown, number>({
       query: (id) => ({ url: `/refund-payments/${id}`, method: 'DELETE' }),
-      transformResponse: (response: unknown) => normalizeEntity<unknown>(response),
+      transformResponse: (response: unknown) =>
+        normalizeEntity<unknown>(response),
       invalidatesTags: (_res, _err, id) => [
         { type: 'RefundPayments' as const, id: 'LIST' },
         { type: 'RefundPayment' as const, id },

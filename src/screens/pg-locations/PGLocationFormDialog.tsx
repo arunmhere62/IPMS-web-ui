@@ -1,21 +1,27 @@
 import { useEffect, useMemo } from 'react'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-
-import { AppDialog } from '@/components/form/app-dialog'
-import { ImageUploadS3 } from '@/components/form/image-upload-s3'
-import { OptionSelector } from '@/components/form/option-selector'
+import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  useGetCitiesQuery,
+  useGetStatesQuery,
+  type State,
+  type City,
+} from '@/services/locationApi'
+import {
+  useCreatePGLocationMutation,
+  useUpdatePGLocationMutation,
+} from '@/services/pgLocationsApi'
+import type { PGLocation } from '@/types'
+import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+import { Button } from '@/components/ui/button'
+import { Form } from '@/components/ui/form'
+import { FormDialog } from '@/components/form/form-dialog'
 import { FormNumberInput } from '@/components/form/form-number-input'
 import { FormSelectField } from '@/components/form/form-select-field'
 import { FormTextInput } from '@/components/form/form-text-input'
-import { Form } from '@/components/ui/form'
-import { Button } from '@/components/ui/button'
-
-import { useGetCitiesQuery, useGetStatesQuery } from '@/services/locationApi'
-import { useCreatePGLocationMutation, useUpdatePGLocationMutation } from '@/services/pgLocationsApi'
-import type { PGLocation } from '@/types'
-import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+import { ImageUploadS3 } from '@/components/form/image-upload-s3'
+import { OptionSelector } from '@/components/form/option-selector'
 
 const schema = z
   .object({
@@ -25,10 +31,20 @@ const schema = z
     stateId: z.number().min(1, 'State is required'),
     cityId: z.number().min(1, 'City is required'),
     images: z.array(z.string()),
-    rentCycleType: z.enum(['CALENDAR', 'MIDMONTH']),
+    rentCycleType: z
+      .enum(['CALENDAR', 'MIDMONTH'])
+      .optional()
+      .refine((val) => val !== undefined, {
+        message: 'Rent cycle type is required',
+      }),
     rentCycleStart: z.number().nullable(),
     rentCycleEnd: z.number().nullable(),
-    pgType: z.enum(['COLIVING', 'MENS', 'WOMENS']),
+    pgType: z
+      .enum(['COLIVING', 'MENS', 'WOMENS'])
+      .optional()
+      .refine((val) => val !== undefined, {
+        message: 'PG type is required',
+      }),
   })
   .superRefine((v, ctx) => {
     if (v.rentCycleType !== 'MIDMONTH') return
@@ -57,12 +73,24 @@ export type PGLocationFormDialogProps = {
   onSaved: () => void
 }
 
-export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }: PGLocationFormDialogProps) {
-  const [createPGLocation, { isLoading: creating }] = useCreatePGLocationMutation()
-  const [updatePGLocation, { isLoading: updating }] = useUpdatePGLocationMutation()
+export function PGLocationFormDialog({
+  open,
+  onOpenChange,
+  editTarget,
+  onSaved,
+}: PGLocationFormDialogProps) {
+  const [createPGLocation, { isLoading: creating }] =
+    useCreatePGLocationMutation()
+  const [updatePGLocation, { isLoading: updating }] =
+    useUpdatePGLocationMutation()
 
-  const { data: statesResponse, isLoading: statesLoading } = useGetStatesQuery({ countryCode: 'IN' })
-  const states = statesResponse?.data || []
+  const { data: statesResponse, isLoading: statesLoading } = useGetStatesQuery({
+    countryCode: 'IN',
+  })
+  const states = useMemo(
+    () => statesResponse?.data || [],
+    [statesResponse?.data]
+  )
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -73,40 +101,45 @@ export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }
       stateId: 0,
       cityId: 0,
       images: [],
-      rentCycleType: 'CALENDAR',
+      rentCycleType: undefined,
       rentCycleStart: 1,
       rentCycleEnd: 30,
-      pgType: 'COLIVING',
+      pgType: undefined,
     },
   })
 
   const selectedStateId = form.watch('stateId')
   const selectedStateCode = useMemo(() => {
-    const state = states.find((s: any) => Number(s.s_no) === Number(selectedStateId))
+    const state = states.find(
+      (s: State) => Number(s.s_no) === Number(selectedStateId)
+    )
     return state?.iso_code ? String(state.iso_code) : ''
   }, [selectedStateId, states])
 
   const { data: citiesResponse, isLoading: citiesLoading } = useGetCitiesQuery(
     { stateCode: selectedStateCode },
-    { skip: !selectedStateCode } as any
+    { skip: !selectedStateCode }
   )
-  const cities = citiesResponse?.data || []
+  const cities = useMemo(
+    () => citiesResponse?.data || [],
+    [citiesResponse?.data]
+  )
 
   useEffect(() => {
     if (!open) return
 
     if (editTarget) {
       form.reset({
-        locationName: (editTarget as any)?.location_name || '',
-        address: (editTarget as any)?.address || '',
-        pincode: (editTarget as any)?.pincode || '',
-        stateId: Number((editTarget as any)?.state_id || 0),
-        cityId: Number((editTarget as any)?.city_id || 0),
-        images: Array.isArray((editTarget as any)?.images) ? ((editTarget as any).images as any) : [],
-        rentCycleType: ((editTarget as any)?.rent_cycle_type || 'CALENDAR') as any,
-        rentCycleStart: ((editTarget as any)?.rent_cycle_start ?? 1) as any,
-        rentCycleEnd: ((editTarget as any)?.rent_cycle_end ?? 30) as any,
-        pgType: ((editTarget as any)?.pg_type || 'COLIVING') as any,
+        locationName: editTarget.location_name || '',
+        address: editTarget.address || '',
+        pincode: editTarget.pincode || '',
+        stateId: Number(editTarget.state_id || 0),
+        cityId: Number(editTarget.city_id || 0),
+        images: Array.isArray(editTarget.images) ? editTarget.images : [],
+        rentCycleType: editTarget.rent_cycle_type || undefined,
+        rentCycleStart: editTarget.rent_cycle_start ?? 1,
+        rentCycleEnd: editTarget.rent_cycle_end ?? 30,
+        pgType: editTarget.pg_type || undefined,
       })
       return
     }
@@ -118,30 +151,28 @@ export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }
       stateId: 0,
       cityId: 0,
       images: [],
-      rentCycleType: 'CALENDAR',
+      rentCycleType: undefined,
       rentCycleStart: 1,
       rentCycleEnd: 30,
-      pgType: 'COLIVING',
+      pgType: undefined,
     })
   }, [open, editTarget, form])
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const payload: any = {
+      const payload = {
         locationName: values.locationName.trim(),
         address: values.address.trim(),
         stateId: values.stateId,
         cityId: values.cityId,
         images: Array.isArray(values.images) ? values.images : [],
-        rentCycleType: values.rentCycleType,
-        pgType: values.pgType,
-      }
-
-      if (values.pincode && values.pincode.trim()) payload.pincode = values.pincode.trim()
-
-      if (values.rentCycleType === 'MIDMONTH') {
-        payload.rentCycleStart = values.rentCycleStart
-        payload.rentCycleEnd = values.rentCycleEnd
+        rentCycleType: values.rentCycleType!,
+        pgType: values.pgType!,
+        ...(values.pincode?.trim() && { pincode: values.pincode.trim() }),
+        ...(values.rentCycleType === 'MIDMONTH' && {
+          rentCycleStart: values.rentCycleStart,
+          rentCycleEnd: values.rentCycleEnd,
+        }),
       }
 
       if (editTarget) {
@@ -154,7 +185,7 @@ export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }
 
       onOpenChange(false)
       onSaved()
-    } catch (e: any) {
+    } catch (e) {
       showErrorAlert(e, 'Save Error')
     }
   }
@@ -162,18 +193,30 @@ export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }
   const busy = creating || updating
 
   return (
-    <AppDialog
+    <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      size='xl'
+      size='2xl'
       title={editTarget ? 'Edit PG Location' : 'Add PG Location'}
-      description={editTarget ? `Update details for #${editTarget.s_no}` : 'Create a new PG location'}
+      description={
+        editTarget
+          ? `Update details for #${editTarget.s_no}`
+          : 'Create a new PG location'
+      }
       footer={
         <>
-          <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
+          <Button
+            type='button'
+            variant='outline'
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
-          <Button type='submit' form={editTarget ? 'pg-location-edit' : 'pg-location-create'} disabled={busy}>
+          <Button
+            type='submit'
+            form={editTarget ? 'pg-location-edit' : 'pg-location-create'}
+            disabled={busy}
+          >
             {busy ? 'Saving...' : editTarget ? 'Update' : 'Create'}
           </Button>
         </>
@@ -182,8 +225,8 @@ export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }
       <Form {...form}>
         <form
           id={editTarget ? 'pg-location-edit' : 'pg-location-create'}
-          className='grid gap-4'
           onSubmit={form.handleSubmit(onSubmit)}
+          className='space-y-5'
         >
           <FormTextInput
             control={form.control}
@@ -203,7 +246,7 @@ export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }
             disabled={busy}
           />
 
-          <div className='grid gap-4 sm:grid-cols-2'>
+          <div className='grid gap-4 md:grid-cols-2'>
             <FormSelectField
               control={form.control}
               name='stateId'
@@ -211,13 +254,19 @@ export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }
               required
               disabled={busy}
               placeholder={statesLoading ? 'Loading...' : 'Select a state'}
-              options={(states || []).map((s: any) => ({ label: s.name, value: String(s.s_no) }))}
+              options={states.map((s: State) => ({
+                label: s.name,
+                value: String(s.s_no),
+              }))}
               parse={(v) => {
                 const n = v ? Number(v) : 0
                 return Number.isFinite(n) ? n : 0
               }}
               onValueChange={() => {
-                form.setValue('cityId', 0, { shouldDirty: true, shouldValidate: false })
+                form.setValue('cityId', 0, {
+                  shouldDirty: true,
+                  shouldValidate: false,
+                })
                 form.clearErrors('cityId')
               }}
             />
@@ -229,7 +278,10 @@ export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }
               required
               disabled={busy || !selectedStateCode}
               placeholder={citiesLoading ? 'Loading...' : 'Select a city'}
-              options={(cities || []).map((c: any) => ({ label: c.name, value: String(c.s_no) }))}
+              options={cities.map((c: City) => ({
+                label: c.name,
+                value: String(c.s_no),
+              }))}
               parse={(v) => {
                 const n = v ? Number(v) : 0
                 return Number.isFinite(n) ? n : 0
@@ -257,8 +309,14 @@ export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }
               { label: 'Mid-Month Cycle', value: 'MIDMONTH' },
             ]}
             onValueChange={() => {
-              form.setValue('rentCycleStart', 1, { shouldDirty: true, shouldValidate: true })
-              form.setValue('rentCycleEnd', 30, { shouldDirty: true, shouldValidate: true })
+              form.setValue('rentCycleStart', 1, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+              form.setValue('rentCycleEnd', 30, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
             }}
           />
 
@@ -270,18 +328,21 @@ export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }
               { label: 'MENS', value: 'MENS', icon: '👨' },
               { label: 'WOMENS', value: 'WOMENS', icon: '👩' },
             ]}
-            selectedValue={form.watch('pgType')}
+            selectedValue={form.watch('pgType') || null}
             onSelect={(value) => {
               if (!value) return
-              form.setValue('pgType', value as any, { shouldDirty: true, shouldValidate: true })
+              form.setValue('pgType', value as 'COLIVING' | 'MENS' | 'WOMENS', {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
             }}
             required
             disabled={busy}
-            error={(form.formState.errors as any)?.pgType?.message}
+            error={form.formState.errors.pgType?.message}
           />
 
           {form.watch('rentCycleType') === 'MIDMONTH' ? (
-            <div className='grid gap-4 sm:grid-cols-2'>
+            <div className='grid gap-4 md:grid-cols-2'>
               <FormNumberInput
                 control={form.control}
                 name='rentCycleStart'
@@ -303,9 +364,12 @@ export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }
           ) : null}
 
           <ImageUploadS3
-            images={(form.watch('images') as any) || []}
+            images={form.watch('images') || []}
             onImagesChange={(images) => {
-              form.setValue('images', images as any, { shouldDirty: true, shouldValidate: true })
+              form.setValue('images', images, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
             }}
             maxImages={2}
             label='PG Location Images'
@@ -317,6 +381,6 @@ export function PGLocationFormDialog({ open, onOpenChange, editTarget, onSaved }
           />
         </form>
       </Form>
-    </AppDialog>
+    </FormDialog>
   )
 }

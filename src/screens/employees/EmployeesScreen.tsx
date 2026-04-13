@@ -1,6 +1,20 @@
 import { useMemo, useState } from 'react'
-import { CircleAlert, Plus, Search, Users } from 'lucide-react'
-
+import {
+  useDeleteEmployeeMutation,
+  useGetEmployeesQuery,
+  type Employee,
+} from '@/services/employeesApi'
+import { useAppSelector } from '@/store/hooks'
+import {
+  CircleAlert,
+  Mail,
+  Phone,
+  Plus,
+  Search,
+  User,
+  Users,
+} from 'lucide-react'
+import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -12,20 +26,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { ActionButtons } from '@/components/form/action-buttons'
-import { PageHeader } from '@/components/form/page-header'
 import { EmployeeFormDialog } from './EmployeeFormDialog'
-import { useAppSelector } from '@/store/hooks'
-import type { Employee } from '@/services/employeesApi'
-import { useDeleteEmployeeMutation, useGetEmployeesQuery } from '@/services/employeesApi'
-import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+
+type ErrorLike = {
+  data?: { message?: string }
+  message?: string
+}
 
 export function EmployeesScreen() {
-  const selectedPGLocationId = useAppSelector((s) => (s as any).pgLocations?.selectedPGLocationId) as number | null
+  const selectedPGLocationId =
+    useAppSelector((s) => s.pgLocations.selectedPGLocationId) ?? null
 
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
@@ -54,11 +69,11 @@ export function EmployeesScreen() {
 
   const [deleteEmployee, { isLoading: deleting }] = useDeleteEmployeeMutation()
 
-  const employees: Employee[] = Array.isArray((employeesResponse as any)?.data)
-    ? ((employeesResponse as any).data as Employee[])
+  const employees: Employee[] = Array.isArray(employeesResponse?.data)
+    ? employeesResponse!.data
     : []
 
-  const pagination = (employeesResponse as any)?.pagination as
+  const pagination = employeesResponse?.pagination as
     | {
         total?: number
         page?: number
@@ -69,9 +84,13 @@ export function EmployeesScreen() {
     | undefined
 
   const total = Number(pagination?.total ?? employees.length)
-  const totalPages = Number(pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1))
+  const totalPages = Number(
+    pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1)
+  )
 
-  const fetchErrorMessage = (error as any)?.data?.message || (error as any)?.message
+  const fetchErrorMessage =
+    (error as ErrorLike | undefined)?.data?.message ||
+    (error as ErrorLike | undefined)?.message
 
   const openCreate = () => {
     setEditTarget(null)
@@ -96,13 +115,15 @@ export function EmployeesScreen() {
       setDeleteDialogOpen(false)
       setDeleteTarget(null)
       void refetch()
-    } catch (e: any) {
+    } catch (e: unknown) {
       showErrorAlert(e, 'Delete Error')
     }
   }
 
   const canPrev = page > 1
-  const canNext = Boolean(pagination?.hasMore) || (Number.isFinite(totalPages) && page < totalPages)
+  const canNext =
+    Boolean(pagination?.hasMore) ||
+    (Number.isFinite(totalPages) && page < totalPages)
 
   const countLabel = useMemo(() => {
     if (!selectedPGLocationId) return 'Select PG'
@@ -111,24 +132,27 @@ export function EmployeesScreen() {
   }, [employees.length, selectedPGLocationId, total])
 
   return (
-    <div className='container mx-auto max-w-6xl px-3 py-6'>
-      <PageHeader
-        title='Employees'
-        subtitle='Manage your employees'
-        right={
-          <>
-            <Button type='button' size='icon' onClick={openCreate} aria-label='Add employee' title='Add employee'>
-              <Plus className='size-4' />
-            </Button>
-            <Button variant='outline' size='sm' onClick={() => refetch()}>
-              Refresh
-            </Button>
-          </>
-        }
-      />
+    <div className='container mx-auto max-w-7xl px-4 py-4'>
+      <div className='mb-4 flex items-center justify-between border-b pb-3'>
+        <div>
+          <h1 className='text-2xl font-bold'>Employees</h1>
+          <p className='text-xs text-muted-foreground'>
+            Manage employee records
+          </p>
+        </div>
+        <Button
+          size='sm'
+          onClick={openCreate}
+          disabled={!selectedPGLocationId}
+          className='bg-black text-white hover:bg-black/90'
+        >
+          <Plus className='mr-1 size-3.5' />
+          Add Employee
+        </Button>
+      </div>
 
       {fetchErrorMessage ? (
-        <div className='mt-6'>
+        <div className='mb-3'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load employees</AlertTitle>
@@ -137,76 +161,104 @@ export function EmployeesScreen() {
         </div>
       ) : null}
 
-      <div className='mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-        <div className='relative w-full sm:max-w-xs'>
-          <Search className='pointer-events-none absolute left-2.5 top-2 size-4 text-muted-foreground' />
+      <div className='mb-3 flex items-center justify-between gap-3'>
+        <div className='relative max-w-sm flex-1'>
+          <Search className='pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground' />
           <Input
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
               setPage(1)
             }}
-            placeholder='Search by name, email, phone'
+            placeholder='Search employees...'
             className='h-8 pl-8 text-sm'
             disabled={!selectedPGLocationId}
           />
         </div>
-
-        <Badge variant='secondary' className='h-7 px-2 text-xs'>
-          {countLabel}
-        </Badge>
+        <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+          <Users className='size-3.5' />
+          <span>{countLabel}</span>
+        </div>
       </div>
 
       {!selectedPGLocationId ? (
-        <div className='mt-4 rounded-md border bg-card px-3 py-8 text-center'>
-          <div className='text-base font-semibold'>Select a PG Location</div>
-          <div className='mt-1 text-xs text-muted-foreground'>Choose a PG from the top bar to manage employees.</div>
-        </div>
+        <EmptyState
+          icon={Users}
+          title='Select a PG Location'
+          description='Choose a PG from the top bar.'
+        />
       ) : (
-        <div className='mt-4'>
+        <div>
           {isLoading ? (
-            <div className='rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>Loading...</div>
-          ) : employees.length === 0 ? (
-            <div className='rounded-md border bg-card px-3 py-8 text-center'>
-              <div className='mx-auto flex size-12 items-center justify-center rounded-full bg-muted'>
-                <Users className='size-6 text-muted-foreground' />
-              </div>
-              <div className='mt-3 text-base font-semibold'>No Employees</div>
-              <div className='mt-1 text-xs text-muted-foreground'>Add your first employee to get started.</div>
-              <div className='mt-4'>
-                <Button onClick={openCreate}>Add Employee</Button>
-              </div>
+            <div className='rounded-lg border bg-card px-4 py-8 text-center'>
+              <div className='mx-auto size-6 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
+              <p className='mt-2 text-xs text-muted-foreground'>Loading...</p>
             </div>
+          ) : employees.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title='No Employees Found'
+              description={
+                query
+                  ? 'Try adjusting your search.'
+                  : 'Add your first employee.'
+              }
+            />
           ) : (
             <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
               {employees.map((e) => (
-                <Card key={e.s_no} className='h-full'>
-                  <CardContent className='flex h-full flex-col gap-2 p-3'>
-                    <div className='flex items-start justify-between gap-3'>
-                      <div className='min-w-0'>
-                        <div className='truncate text-sm font-semibold'>{e.name}</div>
-                        <div className='mt-0.5 line-clamp-2 text-xs text-muted-foreground'>
-                          {(e.roles as any)?.role_name ? String((e.roles as any).role_name) : 'Role: N/A'}
-                        </div>
+                <Card key={e.s_no} className='py-0 hover:border-primary/50'>
+                  <CardContent className='p-3'>
+                    <div className='mb-2 flex items-center gap-2'>
+                      <div className='flex size-9 items-center justify-center rounded-lg bg-black text-white'>
+                        <User className='size-4' />
                       </div>
-                      <div className='flex flex-col items-end gap-1'>
-                        <Badge variant='outline' className='shrink-0 px-2 text-xs'>
-                          #{e.s_no}
-                        </Badge>
-                        <Badge
-                          variant='secondary'
-                          className='h-6 px-2 text-[10px]'
-                        >
-                          {String((e as any).status ?? 'ACTIVE')}
-                        </Badge>
+                      <div className='min-w-0 flex-1'>
+                        <div className='truncate text-sm font-semibold'>
+                          {e.name}
+                        </div>
+                        <div className='text-xs text-muted-foreground'>
+                          ID: {e.s_no}
+                        </div>
                       </div>
                     </div>
 
-                    {e.email ? <div className='text-xs text-muted-foreground'>{e.email}</div> : null}
-                    {e.phone ? <div className='text-xs text-muted-foreground'>{e.phone}</div> : null}
+                    <div className='mb-2 flex items-center justify-between border-t pt-2'>
+                      <span className='text-xs text-muted-foreground'>
+                        Role
+                      </span>
+                      <span className='text-xs font-medium'>
+                        {e.roles?.role_name ?? 'N/A'}
+                      </span>
+                    </div>
 
-                    <div className='mt-auto pt-1'>
-                      <ActionButtons mode='icon' onEdit={() => openEdit(e)} onDelete={() => askDelete(e)} />
+                    {(e.email || e.phone) && (
+                      <div className='mb-2 space-y-1 border-t pt-2'>
+                        {e.email && (
+                          <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+                            <Mail className='size-3' />
+                            <span className='truncate'>{e.email}</span>
+                          </div>
+                        )}
+                        {e.phone && (
+                          <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+                            <Phone className='size-3' />
+                            <span>{e.phone}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className='flex items-center justify-between border-t pt-2'>
+                      <div className='text-xs font-medium text-primary'>
+                        {String(e.status ?? 'ACTIVE')}
+                      </div>
+                      <ActionButtons
+                        mode='icon'
+                        viewTo={`/employees/${e.s_no}`}
+                        onEdit={() => openEdit(e)}
+                        onDelete={() => askDelete(e)}
+                      />
                     </div>
                   </CardContent>
                 </Card>
@@ -214,18 +266,34 @@ export function EmployeesScreen() {
             </div>
           )}
 
-          <div className='mt-5 flex items-center justify-between gap-2'>
-            <Button variant='outline' size='sm' disabled={!canPrev} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-              Prev
-            </Button>
-            <div className='text-xs text-muted-foreground'>
-              Page {page}
-              {Number.isFinite(totalPages) && totalPages > 0 ? ` / ${totalPages}` : ''}
+          {employees.length > 0 && (
+            <div className='mt-3 flex items-center justify-between border-t pt-3'>
+              <div className='text-xs text-muted-foreground'>
+                Page {page}
+                {Number.isFinite(totalPages) && totalPages > 0
+                  ? ` of ${totalPages}`
+                  : ''}
+              </div>
+              <div className='flex gap-2'>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  disabled={!canPrev}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  disabled={!canNext}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
-            <Button variant='outline' size='sm' disabled={!canNext} onClick={() => setPage((p) => p + 1)}>
-              Next
-            </Button>
-          </div>
+          )}
         </div>
       )}
 
@@ -248,8 +316,9 @@ export function EmployeesScreen() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Employee</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <span className='font-semibold'>{deleteTarget?.name}</span>? This action cannot
-              be undone.
+              Are you sure you want to delete{' '}
+              <span className='font-semibold'>{deleteTarget?.name}</span>? This
+              action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

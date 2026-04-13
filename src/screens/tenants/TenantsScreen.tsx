@@ -1,7 +1,21 @@
 import { useMemo, useState } from 'react'
+import { useGetAllRoomsQuery, type Room } from '@/services/roomsApi'
+import {
+  useDeleteTenantMutation,
+  useGetTenantsQuery,
+  type Tenant,
+} from '@/services/tenantsApi'
+import { useAppSelector } from '@/store/hooks'
+import {
+  ChevronDown,
+  ChevronUp,
+  CircleAlert,
+  Filter,
+  Search,
+  Users,
+} from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronDown, ChevronUp, CircleAlert, Filter, Plus, Search, Users } from 'lucide-react'
-
+import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -16,15 +30,17 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { AppDialog } from '@/components/form/app-dialog'
 import { PageHeader } from '@/components/form/page-header'
-
-import { useGetAllRoomsQuery, type Room } from '@/services/roomsApi'
-import { useAppSelector } from '@/store/hooks'
-import { useDeleteTenantMutation, useGetTenantsQuery, type Tenant } from '@/services/tenantsApi'
-import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'CHECKED_OUT'
 
@@ -53,9 +69,13 @@ type ErrorLike = {
 
 export function TenantsScreen() {
   const navigate = useNavigate()
-  const selectedPGLocationId = useAppSelector((s) => s.pgLocations.selectedPGLocationId)
+  const selectedPGLocationId = useAppSelector(
+    (s) => s.pgLocations.selectedPGLocationId
+  )
 
-  const [expandedPaymentCards, setExpandedPaymentCards] = useState<Set<number>>(() => new Set())
+  const [expandedPaymentCards, setExpandedPaymentCards] = useState<Set<number>>(
+    () => new Set()
+  )
 
   const togglePaymentDetails = (tenantId: number) => {
     setExpandedPaymentCards((prev) => {
@@ -85,14 +105,26 @@ export function TenantsScreen() {
   const [draftPartialRent, setDraftPartialRent] = useState(false)
 
   const { data: roomsResponse } = useGetAllRoomsQuery(
-    selectedPGLocationId ? { pg_id: selectedPGLocationId, limit: 200 } : undefined,
+    selectedPGLocationId
+      ? { pg_id: selectedPGLocationId, limit: 200 }
+      : undefined,
     { skip: !selectedPGLocationId }
   )
 
-  const rooms = useMemo(() => asArray<Room>((roomsResponse as { data?: unknown } | undefined)?.data), [roomsResponse])
+  const rooms = useMemo(
+    () =>
+      asArray<Room>((roomsResponse as { data?: unknown } | undefined)?.data),
+    [roomsResponse]
+  )
 
   const roomOptions = useMemo(
-    () => [{ label: 'All Rooms', value: '' }, ...rooms.map((r) => ({ label: String(r.room_no), value: String(r.s_no) }))],
+    () => [
+      { label: 'All Rooms', value: '' },
+      ...rooms.map((r) => ({
+        label: String(r.room_no),
+        value: String(r.s_no),
+      })),
+    ],
     [rooms]
   )
 
@@ -119,9 +151,12 @@ export function TenantsScreen() {
 
   const [deleteTenant, { isLoading: deleting }] = useDeleteTenantMutation()
 
-  const tenants: Tenant[] = asArray<Tenant>((tenantsResponse as { data?: unknown } | undefined)?.data)
+  const tenants: Tenant[] = asArray<Tenant>(
+    (tenantsResponse as { data?: unknown } | undefined)?.data
+  )
 
-  const pagination = (tenantsResponse as { pagination?: unknown } | undefined)?.pagination as
+  const pagination = (tenantsResponse as { pagination?: unknown } | undefined)
+    ?.pagination as
     | {
         total?: number
         page?: number
@@ -132,9 +167,13 @@ export function TenantsScreen() {
     | undefined
 
   const total = Number(pagination?.total ?? tenants.length)
-  const totalPages = Number(pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1))
+  const totalPages = Number(
+    pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1)
+  )
 
-  const fetchErrorMessage = (error as ErrorLike | undefined)?.data?.message || (error as ErrorLike | undefined)?.message
+  const fetchErrorMessage =
+    (error as ErrorLike | undefined)?.data?.message ||
+    (error as ErrorLike | undefined)?.message
 
   const [deleteTarget, setDeleteTarget] = useState<Tenant | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -158,7 +197,9 @@ export function TenantsScreen() {
   }
 
   const canPrev = page > 1
-  const canNext = Boolean(pagination?.hasMore) || (Number.isFinite(totalPages) && page < totalPages)
+  const canNext =
+    Boolean(pagination?.hasMore) ||
+    (Number.isFinite(totalPages) && page < totalPages)
 
   const countLabel = useMemo(() => {
     if (!selectedPGLocationId) return 'Select PG'
@@ -202,18 +243,7 @@ export function TenantsScreen() {
       <PageHeader
         title='Tenants'
         subtitle='Manage tenants in your PG'
-        right={
-          <>
-            <Button asChild type='button' size='icon' aria-label='Add tenant' title='Add tenant' disabled={!selectedPGLocationId}>
-              <Link to='/tenants/new'>
-                <Plus className='size-4' />
-              </Link>
-            </Button>
-            <Button variant='outline' size='sm' onClick={() => refetch()} disabled={!selectedPGLocationId}>
-              Refresh
-            </Button>
-          </>
-        }
+        right={null}
       />
 
       {fetchErrorMessage ? (
@@ -227,15 +257,18 @@ export function TenantsScreen() {
       ) : null}
 
       {!selectedPGLocationId ? (
-        <div className='mt-4 rounded-md border bg-card px-3 py-8 text-center'>
-          <div className='text-base font-semibold'>Select a PG Location</div>
-          <div className='mt-1 text-xs text-muted-foreground'>Choose a PG from the top bar to manage tenants.</div>
+        <div className='mt-4'>
+          <EmptyState
+            icon={Users}
+            title='Select a PG Location'
+            description='Choose a PG from the top bar to manage tenants.'
+          />
         </div>
       ) : (
         <>
           <div className='mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
             <div className='relative w-full sm:max-w-xs'>
-              <Search className='pointer-events-none absolute left-2.5 top-2 size-4 text-muted-foreground' />
+              <Search className='pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground' />
               <Input
                 value={query}
                 onChange={(e) => {
@@ -266,7 +299,11 @@ export function TenantsScreen() {
               >
                 <Filter className='me-2 size-4' />
                 Filters
-                {filterCount > 0 ? <span className='ms-2 text-xs font-semibold'>({filterCount})</span> : null}
+                {filterCount > 0 ? (
+                  <span className='ms-2 text-xs font-semibold'>
+                    ({filterCount})
+                  </span>
+                ) : null}
               </Button>
 
               <Badge variant='outline' className='h-7 px-2 text-xs'>
@@ -277,24 +314,22 @@ export function TenantsScreen() {
 
           <div className='mt-4'>
             {isLoading ? (
-              <div className='rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>Loading...</div>
-            ) : tenants.length === 0 ? (
-              <div className='rounded-md border bg-card px-3 py-8 text-center'>
-                <div className='mx-auto flex size-12 items-center justify-center rounded-full bg-muted'>
-                  <Users className='size-6 text-muted-foreground' />
-                </div>
-                <div className='mt-3 text-base font-semibold'>No Tenants</div>
-                <div className='mt-1 text-xs text-muted-foreground'>Add your first tenant to get started.</div>
-                <div className='mt-4'>
-                  <Button asChild>
-                    <Link to='/tenants/new'>Add Tenant</Link>
-                  </Button>
-                </div>
+              <div className='rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>
+                Loading...
               </div>
+            ) : tenants.length === 0 ? (
+              <EmptyState
+                icon={Users}
+                title='No Tenants'
+                description='Tenants can be added from bed details pages.'
+              />
             ) : (
               <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
                 {tenants.map((t) => {
-                  const tenantImage = Array.isArray(t.images) && t.images.length > 0 ? (t.images[0] as string) : ''
+                  const tenantImage =
+                    Array.isArray(t.images) && t.images.length > 0
+                      ? (t.images[0] as string)
+                      : ''
 
                   const roomNo = t.rooms?.room_no
                   const bedNo = t.beds?.bed_no
@@ -310,8 +345,10 @@ export function TenantsScreen() {
                   const unpaidMonths = getUnpaidMonths(t)
 
                   const hasOutstandingAmount = rentDueAmount > 0
-                  const hasBothPartialAndPending = partialDueAmount > 0 && pendingDueAmount > 0
-                  const hasPendingRent = pendingDueAmount > 0 || unpaidMonths.length > 0
+                  const hasBothPartialAndPending =
+                    partialDueAmount > 0 && pendingDueAmount > 0
+                  const hasPendingRent =
+                    pendingDueAmount > 0 || unpaidMonths.length > 0
                   const showPaymentDetails = expandedPaymentCards.has(t.s_no)
 
                   const leftBorderClass = hasOutstandingAmount
@@ -320,18 +357,24 @@ export function TenantsScreen() {
                       : 'border-l-amber-500'
                     : 'border-l-transparent'
 
-                  const leftBorderWidthClass = hasOutstandingAmount ? 'border-l-4' : 'border-l-0'
+                  const leftBorderWidthClass = hasOutstandingAmount
+                    ? 'border-l-4'
+                    : 'border-l-0'
 
                   return (
                     <Card
                       key={t.s_no}
-                      className={`h-full ${leftBorderWidthClass} ${leftBorderClass}`}
+                      className={`h-full py-0 ${leftBorderWidthClass} ${leftBorderClass}`}
                     >
                       <CardContent className='flex h-full flex-col gap-3 p-4'>
                         <div className='flex items-start gap-3'>
                           <div className='h-14 w-14 shrink-0 overflow-hidden rounded-full bg-primary text-primary-foreground'>
                             {tenantImage ? (
-                              <img src={tenantImage} alt='' className='h-full w-full object-cover' />
+                              <img
+                                src={tenantImage}
+                                alt=''
+                                className='h-full w-full object-cover'
+                              />
                             ) : (
                               <div className='grid h-full w-full place-items-center text-lg font-bold'>
                                 {getInitial(t.name)}
@@ -342,12 +385,16 @@ export function TenantsScreen() {
                           <div className='min-w-0 flex-1'>
                             <div className='flex items-start justify-between gap-2'>
                               <div className='min-w-0'>
-                                <div className='truncate text-base font-bold'>{t.name || 'Tenant'}</div>
+                                <div className='truncate text-base font-bold'>
+                                  {t.name || 'Tenant'}
+                                </div>
                                 <div className='mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground'>
                                   {roomNo ? <span>🏠 {roomNo}</span> : null}
                                   {bedNo ? <span>🛏️ {bedNo}</span> : null}
                                   {typeof rentPrice === 'number' ? (
-                                    <span className='font-semibold text-primary'>💰 ₹{rentPrice}/mo</span>
+                                    <span className='font-semibold text-primary'>
+                                      💰 ₹{rentPrice}/mo
+                                    </span>
                                   ) : null}
                                 </div>
                               </div>
@@ -357,10 +404,10 @@ export function TenantsScreen() {
                                   className={
                                     'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ' +
                                     (t.status === 'ACTIVE'
-                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
                                       : t.status === 'CHECKED_OUT'
-                                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                        : 'bg-red-50 text-red-700 border border-red-200')
+                                        ? 'border border-amber-200 bg-amber-50 text-amber-700'
+                                        : 'border border-red-200 bg-red-50 text-red-700')
                                   }
                                 >
                                   {t.status}
@@ -368,48 +415,75 @@ export function TenantsScreen() {
                               </div>
                             </div>
 
-                            {occupation ? <div className='mt-2 text-sm text-muted-foreground'>💼 {occupation}</div> : null}
+                            {occupation ? (
+                              <div className='mt-2 text-sm text-muted-foreground'>
+                                💼 {occupation}
+                              </div>
+                            ) : null}
                           </div>
                         </div>
 
                         <div>
-                          <div className='text-[11px] font-semibold text-muted-foreground'>Payment Status</div>
+                          <div className='text-[11px] font-semibold text-muted-foreground'>
+                            Payment Status
+                          </div>
                           <div className='mt-2 flex flex-wrap items-center gap-2'>
                             {isRentPaid ? (
-                              <span className='rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white'>✅ Rent PAID</span>
+                              <span className='rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white'>
+                                ✅ Rent PAID
+                              </span>
                             ) : null}
                             {isAdvancePaid ? (
-                              <span className='rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white'>✅ Advance Paid</span>
+                              <span className='rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white'>
+                                ✅ Advance Paid
+                              </span>
                             ) : null}
                             {isRentPartial ? (
-                              <span className='rounded-full bg-orange-500 px-3 py-1 text-[11px] font-bold text-white'>⏳ PARTIAL</span>
+                              <span className='rounded-full bg-orange-500 px-3 py-1 text-[11px] font-bold text-white'>
+                                ⏳ PARTIAL
+                              </span>
                             ) : null}
                             {hasPendingRent ? (
-                              <span className='rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white'>📅 PENDING RENT</span>
+                              <span className='rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white'>
+                                📅 PENDING RENT
+                              </span>
                             ) : null}
                             {hasOutstandingAmount ? (
-                              <span className='rounded-full bg-red-500 px-3 py-1 text-[11px] font-bold text-white'>₹{rentDueAmount} DUE</span>
+                              <span className='rounded-full bg-red-500 px-3 py-1 text-[11px] font-bold text-white'>
+                                ₹{rentDueAmount} DUE
+                              </span>
                             ) : null}
                             {!isAdvancePaid ? (
-                              <span className='rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white'>💰 NO ADVANCE</span>
+                              <span className='rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white'>
+                                💰 NO ADVANCE
+                              </span>
                             ) : null}
                           </div>
                         </div>
 
                         {hasOutstandingAmount ? (
-                          <div className={
-                            'overflow-hidden rounded-lg border ' +
-                            (isRentPartial ? 'border-orange-200 bg-orange-50' : 'border-amber-200 bg-amber-50')
-                          }>
+                          <div
+                            className={
+                              'overflow-hidden rounded-lg border ' +
+                              (isRentPartial
+                                ? 'border-orange-200 bg-orange-50'
+                                : 'border-amber-200 bg-amber-50')
+                            }
+                          >
                             <button
                               type='button'
                               className='flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left'
                               onClick={() => togglePaymentDetails(t.s_no)}
                             >
                               <div className='min-w-0 flex-1'>
-                                <div className={
-                                  'truncate text-xs font-bold ' + (isRentPartial ? 'text-orange-600' : 'text-amber-700')
-                                }>
+                                <div
+                                  className={
+                                    'truncate text-xs font-bold ' +
+                                    (isRentPartial
+                                      ? 'text-orange-600'
+                                      : 'text-amber-700')
+                                  }
+                                >
                                   {hasBothPartialAndPending
                                     ? 'Partial + Pending'
                                     : isRentPartial
@@ -418,56 +492,92 @@ export function TenantsScreen() {
                                 </div>
                                 <div className='mt-0.5 truncate text-[11px] text-muted-foreground'>
                                   Due ₹{rentDueAmount}
-                                  {unpaidMonths.length > 0 ? ` · ${unpaidMonths.length} month(s)` : ''}
+                                  {unpaidMonths.length > 0
+                                    ? ` · ${unpaidMonths.length} month(s)`
+                                    : ''}
                                   {!isAdvancePaid ? ' · No advance' : ''}
                                 </div>
                               </div>
                               {showPaymentDetails ? (
-                                <ChevronUp className={isRentPartial ? 'size-4 text-orange-600' : 'size-4 text-amber-700'} />
+                                <ChevronUp
+                                  className={
+                                    isRentPartial
+                                      ? 'size-4 text-orange-600'
+                                      : 'size-4 text-amber-700'
+                                  }
+                                />
                               ) : (
-                                <ChevronDown className={isRentPartial ? 'size-4 text-orange-600' : 'size-4 text-amber-700'} />
+                                <ChevronDown
+                                  className={
+                                    isRentPartial
+                                      ? 'size-4 text-orange-600'
+                                      : 'size-4 text-amber-700'
+                                  }
+                                />
                               )}
                             </button>
 
                             {showPaymentDetails ? (
                               <div className='px-3 pb-3'>
-                                {partialDueAmount > 0 && pendingDueAmount > 0 ? (
+                                {partialDueAmount > 0 &&
+                                pendingDueAmount > 0 ? (
                                   <div className='mt-1 text-[11px] text-muted-foreground'>
-                                    Partial: ₹{partialDueAmount} • Pending: ₹{pendingDueAmount}
+                                    Partial: ₹{partialDueAmount} • Pending: ₹
+                                    {pendingDueAmount}
                                   </div>
                                 ) : null}
 
                                 {unpaidMonths.length > 0 ? (
                                   <div className='mt-3'>
-                                    <div className={
-                                      'text-[11px] font-bold ' + (isRentPartial ? 'text-orange-600' : 'text-amber-700')
-                                    }>
+                                    <div
+                                      className={
+                                        'text-[11px] font-bold ' +
+                                        (isRentPartial
+                                          ? 'text-orange-600'
+                                          : 'text-amber-700')
+                                      }
+                                    >
                                       Unpaid months
                                     </div>
                                     {unpaidMonths.slice(0, 2).map((m, idx) => (
-                                      <div key={String(idx)} className='mt-1 text-[10px] text-muted-foreground'>
+                                      <div
+                                        key={String(idx)}
+                                        className='mt-1 text-[10px] text-muted-foreground'
+                                      >
                                         {m.month_name ? m.month_name : 'Month'}
-                                        {m.cycle_start && m.cycle_end ? ` (${m.cycle_start} to ${m.cycle_end})` : ''}
+                                        {m.cycle_start && m.cycle_end
+                                          ? ` (${m.cycle_start} to ${m.cycle_end})`
+                                          : ''}
                                       </div>
                                     ))}
                                     {unpaidMonths.length > 2 ? (
-                                      <div className='mt-1 text-[10px] text-muted-foreground'>+{unpaidMonths.length - 2} more</div>
+                                      <div className='mt-1 text-[10px] text-muted-foreground'>
+                                        +{unpaidMonths.length - 2} more
+                                      </div>
                                     ) : null}
                                   </div>
                                 ) : null}
 
                                 {!isAdvancePaid ? (
-                                  <div className='mt-3 text-[11px] text-muted-foreground'>No advance payment</div>
+                                  <div className='mt-3 text-[11px] text-muted-foreground'>
+                                    No advance payment
+                                  </div>
                                 ) : null}
                               </div>
                             ) : null}
                           </div>
                         ) : null}
 
-                        <div className='text-[11px] text-muted-foreground'>Check-in: {formatDate(t.check_in_date)}</div>
+                        <div className='text-[11px] text-muted-foreground'>
+                          Check-in: {formatDate(t.check_in_date)}
+                        </div>
 
                         <div className='mt-auto flex flex-col gap-2 pt-1'>
-                          <Button asChild className='w-full' disabled={!selectedPGLocationId}>
+                          <Button
+                            asChild
+                            className='w-full'
+                            disabled={!selectedPGLocationId}
+                          >
                             <Link to={`/tenants/${t.s_no}`}>View Details</Link>
                           </Button>
                           <div className='flex items-center justify-between'>
@@ -475,7 +585,9 @@ export function TenantsScreen() {
                               type='button'
                               variant='outline'
                               size='sm'
-                              onClick={() => navigate(`/tenants/${t.s_no}/edit`)}
+                              onClick={() =>
+                                navigate(`/tenants/${t.s_no}/edit`)
+                              }
                             >
                               Edit
                             </Button>
@@ -499,14 +611,26 @@ export function TenantsScreen() {
             )}
 
             <div className='mt-5 flex items-center justify-between gap-2'>
-              <Button variant='outline' size='sm' disabled={!canPrev} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              <Button
+                variant='outline'
+                size='sm'
+                disabled={!canPrev}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
                 Prev
               </Button>
               <div className='text-xs text-muted-foreground'>
                 Page {page}
-                {Number.isFinite(totalPages) && totalPages > 0 ? ` / ${totalPages}` : ''}
+                {Number.isFinite(totalPages) && totalPages > 0
+                  ? ` / ${totalPages}`
+                  : ''}
               </div>
-              <Button variant='outline' size='sm' disabled={!canNext} onClick={() => setPage((p) => p + 1)}>
+              <Button
+                variant='outline'
+                size='sm'
+                disabled={!canNext}
+                onClick={() => setPage((p) => p + 1)}
+              >
                 Next
               </Button>
             </div>
@@ -519,7 +643,9 @@ export function TenantsScreen() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Tenant</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <span className='font-semibold'>{deleteTarget?.name}</span>? This action cannot be undone.
+              Are you sure you want to delete{' '}
+              <span className='font-semibold'>{deleteTarget?.name}</span>? This
+              action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -586,7 +712,10 @@ export function TenantsScreen() {
         <div className='grid gap-4'>
           <div className='grid gap-2'>
             <div className='text-sm font-medium'>Status</div>
-            <Select value={draftStatus} onValueChange={(v) => setDraftStatus(v as StatusFilter)}>
+            <Select
+              value={draftStatus}
+              onValueChange={(v) => setDraftStatus(v as StatusFilter)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder='All' />
               </SelectTrigger>

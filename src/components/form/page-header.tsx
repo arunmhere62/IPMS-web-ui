@@ -13,14 +13,23 @@ export function PageHeader({
   className?: string
 }) {
   return (
-    <div className={cn('flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between', className)}>
+    <div
+      className={cn(
+        'flex flex-row items-center justify-between gap-2',
+        className
+      )}
+    >
       <div className='min-w-0'>
-        <h1 className='truncate text-xl font-semibold leading-tight'>{title}</h1>
+        <h1 className='truncate text-xl leading-tight font-semibold'>
+          {title}
+        </h1>
         {subtitle ? (
           <div className='mt-0.5 text-xs text-muted-foreground'>{subtitle}</div>
         ) : null}
       </div>
-      {right ? <div className='flex shrink-0 items-center gap-2'>{right}</div> : null}
+      {right ? (
+        <div className='flex shrink-0 items-center gap-2'>{right}</div>
+      ) : null}
     </div>
   )
 }

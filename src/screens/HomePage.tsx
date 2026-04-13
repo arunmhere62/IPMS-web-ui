@@ -1,18 +1,23 @@
 import { useMemo, useState } from 'react'
-import { Phone, MessageCircle, TrendingUp } from 'lucide-react'
-
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   useGetDashboardMonthlyMetricsQuery,
   useGetDashboardSummaryQuery,
 } from '@/services/dashboardApi'
 import type { Tenant } from '@/services/tenantsApi'
 import { useAppSelector } from '@/store/hooks'
+import { Phone, MessageCircle, TrendingUp } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 type AttentionKey = 'pending_rent' | 'partial_rent' | 'without_advance'
 
@@ -22,14 +27,22 @@ type GapSnapshot = {
 }
 
 const getLast6Months = () => {
-  const months: Array<{ label: string; monthStart: string; monthEnd: string; isCurrentMonth: boolean }> = []
+  const months: Array<{
+    label: string
+    monthStart: string
+    monthEnd: string
+    isCurrentMonth: boolean
+  }> = []
   const now = new Date()
 
   for (let i = 0; i < 6; i++) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
     const year = date.getFullYear()
     const month = date.getMonth()
-    const label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    const label = date.toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric',
+    })
     const monthStart = new Date(year, month, 1).toISOString().split('T')[0]
     const monthEnd = new Date(year, month + 1, 1).toISOString().split('T')[0]
     months.push({ label, monthStart, monthEnd, isCurrentMonth: i === 0 })
@@ -39,21 +52,23 @@ const getLast6Months = () => {
 }
 
 export function HomePage() {
-  const selectedPGLocationId = useAppSelector((s) => (s as any).pgLocations?.selectedPGLocationId) as
-    | number
-    | null
+  const selectedPGLocationId = useAppSelector(
+    (s) => s.pgLocations?.selectedPGLocationId
+  ) as number | null
 
   const [attentionTab, setAttentionTab] = useState<AttentionKey>('pending_rent')
   const months = useMemo(() => getLast6Months(), [])
-  const [selectedMonthLabel, setSelectedMonthLabel] = useState(months[0]?.label ?? '')
+  const [selectedMonthLabel, setSelectedMonthLabel] = useState(
+    months[0]?.label ?? ''
+  )
 
-  const activeMonth = months.find((m) => m.label === selectedMonthLabel) ?? months[0]
+  const activeMonth =
+    months.find((m) => m.label === selectedMonthLabel) ?? months[0]
 
   const {
     data: summaryResponse,
     isFetching: summaryFetching,
     error: summaryError,
-    refetch: refetchSummary,
   } = useGetDashboardSummaryQuery(undefined, {
     skip: !selectedPGLocationId,
   })
@@ -62,13 +77,14 @@ export function HomePage() {
     data: monthlyResponse,
     isFetching: monthlyFetching,
     error: monthlyError,
-    refetch: refetchMonthly,
+    refetch: _refetchMonthly,
   } = useGetDashboardMonthlyMetricsQuery(
     { monthStart: activeMonth?.monthStart, monthEnd: activeMonth?.monthEnd },
     { skip: !selectedPGLocationId }
   )
 
-  const dashboardSummary = (summaryResponse as unknown as { data?: unknown })?.data as
+  const dashboardSummary = (summaryResponse as unknown as { data?: unknown })
+    ?.data as
     | {
         bed_metrics?: {
           total_beds?: number
@@ -87,7 +103,8 @@ export function HomePage() {
   const bedMetrics = dashboardSummary?.bed_metrics
   const tenantStatus = dashboardSummary?.tenant_status
 
-  const monthlyMetrics = (monthlyResponse as unknown as { data?: unknown })?.data as
+  const monthlyMetrics = (monthlyResponse as unknown as { data?: unknown })
+    ?.data as
     | {
         monthly_metrics?: {
           cash_received?: number
@@ -118,15 +135,19 @@ export function HomePage() {
     if (!n) return 'T'
     const parts = n.split(/\s+/).filter(Boolean)
     const a = parts[0]?.[0] ?? 'T'
-    const b = parts.length > 1 ? parts[1]?.[0] ?? '' : ''
+    const b = parts.length > 1 ? (parts[1]?.[0] ?? '') : ''
     return (a + b).toUpperCase()
   }
 
-  const getGapSnapshotForTab = (tab: AttentionKey, tenant?: Tenant): GapSnapshot => {
+  const getGapSnapshotForTab = (
+    tab: AttentionKey,
+    tenant?: Tenant
+  ): GapSnapshot => {
     if (!tenant) return { gapCount: 0, gapDueAmount: undefined }
 
     const readNum = (v: unknown): number | undefined => {
-      const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN
+      const n =
+        typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN
       return Number.isFinite(n) ? n : undefined
     }
 
@@ -136,8 +157,14 @@ export function HomePage() {
     }
 
     if (tab === 'pending_rent') {
-      const gapCount = readCount((tenant as unknown as { pending_gap_count?: unknown })?.pending_gap_count)
-      const gapDueAmount = readNum((tenant as unknown as { pending_gap_due_amount?: unknown })?.pending_gap_due_amount)
+      const gapCount = readCount(
+        (tenant as unknown as { pending_gap_count?: unknown })
+          ?.pending_gap_count
+      )
+      const gapDueAmount = readNum(
+        (tenant as unknown as { pending_gap_due_amount?: unknown })
+          ?.pending_gap_due_amount
+      )
       const fallbackDue =
         typeof tenant.pending_due_amount === 'number'
           ? tenant.pending_due_amount
@@ -148,13 +175,20 @@ export function HomePage() {
               : undefined
       return {
         gapCount,
-        gapDueAmount: typeof gapDueAmount === 'number' ? gapDueAmount : fallbackDue,
+        gapDueAmount:
+          typeof gapDueAmount === 'number' ? gapDueAmount : fallbackDue,
       }
     }
 
     if (tab === 'partial_rent') {
-      const gapCount = readCount((tenant as unknown as { partial_gap_count?: unknown })?.partial_gap_count)
-      const gapDueAmount = readNum((tenant as unknown as { partial_gap_due_amount?: unknown })?.partial_gap_due_amount)
+      const gapCount = readCount(
+        (tenant as unknown as { partial_gap_count?: unknown })
+          ?.partial_gap_count
+      )
+      const gapDueAmount = readNum(
+        (tenant as unknown as { partial_gap_due_amount?: unknown })
+          ?.partial_gap_due_amount
+      )
       const fallbackDue =
         typeof tenant.partial_due_amount === 'number'
           ? tenant.partial_due_amount
@@ -163,23 +197,34 @@ export function HomePage() {
             : undefined
       return {
         gapCount,
-        gapDueAmount: typeof gapDueAmount === 'number' ? gapDueAmount : fallbackDue,
+        gapDueAmount:
+          typeof gapDueAmount === 'number' ? gapDueAmount : fallbackDue,
       }
     }
 
-    const gapCount = readCount((tenant as unknown as { gap_count?: unknown })?.gap_count)
-    const gapDueAmount = readNum((tenant as unknown as { gap_due_amount?: unknown })?.gap_due_amount)
+    const gapCount = readCount(
+      (tenant as unknown as { gap_count?: unknown })?.gap_count
+    )
+    const gapDueAmount = readNum(
+      (tenant as unknown as { gap_due_amount?: unknown })?.gap_due_amount
+    )
     return { gapCount, gapDueAmount }
   }
 
   const widgetItems = useMemo(() => {
-    const pendingTenants = (tenantStatus?.pending_rent?.tenants ?? []) as Tenant[]
-    const partialTenants = (tenantStatus?.partial_rent?.tenants ?? []) as Tenant[]
-    const withoutAdvanceTenants = (tenantStatus?.without_advance?.tenants ?? []) as Tenant[]
+    const pendingTenants = (tenantStatus?.pending_rent?.tenants ??
+      []) as Tenant[]
+    const partialTenants = (tenantStatus?.partial_rent?.tenants ??
+      []) as Tenant[]
+    const withoutAdvanceTenants = (tenantStatus?.without_advance?.tenants ??
+      []) as Tenant[]
 
     const pendingUnion = [...pendingTenants, ...partialTenants].filter((t) => {
       const snap = getGapSnapshotForTab('pending_rent', t)
-      return snap.gapCount > 0 || (typeof snap.gapDueAmount === 'number' && snap.gapDueAmount > 0)
+      return (
+        snap.gapCount > 0 ||
+        (typeof snap.gapDueAmount === 'number' && snap.gapDueAmount > 0)
+      )
     })
 
     const uniqueById = (arr: Tenant[]) => {
@@ -196,7 +241,10 @@ export function HomePage() {
     const pendingUnique = uniqueById(pendingUnion)
     const partialFiltered = partialTenants.filter((t) => {
       const snap = getGapSnapshotForTab('partial_rent', t)
-      return snap.gapCount > 0 || (typeof snap.gapDueAmount === 'number' && snap.gapDueAmount > 0)
+      return (
+        snap.gapCount > 0 ||
+        (typeof snap.gapDueAmount === 'number' && snap.gapDueAmount > 0)
+      )
     })
 
     return [
@@ -225,15 +273,18 @@ export function HomePage() {
         tintClass: 'text-blue-600',
         badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
         tenants: withoutAdvanceTenants,
-        count: tenantStatus?.without_advance?.count ?? withoutAdvanceTenants.length,
+        count:
+          tenantStatus?.without_advance?.count ?? withoutAdvanceTenants.length,
       },
     ] as const
   }, [tenantStatus, attentionTab])
 
-  const selectedAttention = widgetItems.find((w) => w.key === attentionTab) ?? widgetItems[0]
+  const selectedAttention =
+    widgetItems.find((w) => w.key === attentionTab) ?? widgetItems[0]
 
   const canCall = (phone?: string) => Boolean(String(phone ?? '').trim())
-  const normalizePhone = (raw?: string) => String(raw ?? '').replace(/[^0-9]/g, '')
+  const normalizePhone = (raw?: string) =>
+    String(raw ?? '').replace(/[^0-9]/g, '')
 
   const openCall = (raw?: string) => {
     const digits = normalizePhone(raw)
@@ -251,23 +302,29 @@ export function HomePage() {
   const hasMonthly = Boolean(mm)
   const cashReceived = mm?.cash_received ?? 0
   const rentEarned = mm?.rent_earned ?? 0
-  const computedRate = hasMonthly && rentEarned > 0 ? cashReceived / rentEarned : 0
-  const collectionRateText = hasMonthly ? `${(computedRate * 100).toFixed(1)}%` : monthlyFetching ? '—' : '0%'
+  const computedRate =
+    hasMonthly && rentEarned > 0 ? cashReceived / rentEarned : 0
+  const collectionRateText = hasMonthly
+    ? `${(computedRate * 100).toFixed(1)}%`
+    : monthlyFetching
+      ? '—'
+      : '0%'
 
-  const dashboardErrorMessage = (summaryError as any)?.data?.message || (summaryError as any)?.message
-  const monthlyErrorMessage = (monthlyError as any)?.data?.message || (monthlyError as any)?.message
+  const dashboardErrorMessage =
+    (summaryError as { data?: { message?: string }; message?: string })?.data
+      ?.message || (summaryError as { message?: string })?.message
+  const monthlyErrorMessage =
+    (monthlyError as { data?: { message?: string }; message?: string })?.data
+      ?.message || (monthlyError as { message?: string })?.message
 
   return (
     <div className='container mx-auto max-w-6xl px-3 py-6'>
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
         <div>
           <div className='text-xl font-semibold'>Dashboard</div>
-          <div className='mt-1 text-sm text-muted-foreground'>Owner dashboard and monthly metrics</div>
-        </div>
-        <div className='flex items-center gap-2'>
-          <Button variant='outline' size='sm' onClick={() => { void refetchSummary(); void refetchMonthly(); }}>
-            Refresh
-          </Button>
+          <div className='mt-1 text-sm text-muted-foreground'>
+            Owner dashboard and monthly metrics
+          </div>
         </div>
       </div>
 
@@ -282,7 +339,9 @@ export function HomePage() {
           <CardContent className='space-y-4'>
             <div className='grid gap-3 sm:grid-cols-2'>
               <div className='rounded-lg border bg-muted/30 p-4'>
-                <div className='text-xs font-semibold text-muted-foreground'>OCCUPANCY</div>
+                <div className='text-xs font-semibold text-muted-foreground'>
+                  OCCUPANCY
+                </div>
                 <div className='mt-1 text-2xl font-bold'>
                   {typeof bedMetrics?.occupancy_rate === 'number'
                     ? `${bedMetrics.occupancy_rate.toFixed(0)}%`
@@ -292,9 +351,15 @@ export function HomePage() {
                 </div>
               </div>
               <div className='rounded-lg border bg-muted/30 p-4'>
-                <div className='text-xs font-semibold text-muted-foreground'>PG VALUE</div>
+                <div className='text-xs font-semibold text-muted-foreground'>
+                  PG VALUE
+                </div>
                 <div className='mt-1 text-xl font-bold'>
-                  {bedMetrics ? formatCurrency(bedMetrics.total_pg_value) : summaryFetching ? '—' : formatCurrency(0)}
+                  {bedMetrics
+                    ? formatCurrency(bedMetrics.total_pg_value)
+                    : summaryFetching
+                      ? '—'
+                      : formatCurrency(0)}
                 </div>
               </div>
             </div>
@@ -306,7 +371,11 @@ export function HomePage() {
                   <Badge variant='secondary'>Beds</Badge>
                 </div>
                 <div className='mt-2 text-3xl font-bold'>
-                  {typeof bedMetrics?.total_beds === 'number' ? bedMetrics.total_beds : summaryFetching ? '—' : 0}
+                  {typeof bedMetrics?.total_beds === 'number'
+                    ? bedMetrics.total_beds
+                    : summaryFetching
+                      ? '—'
+                      : 0}
                 </div>
               </div>
               <div className='rounded-lg border bg-secondary/10 p-4'>
@@ -315,7 +384,11 @@ export function HomePage() {
                   <Badge variant='secondary'>Active</Badge>
                 </div>
                 <div className='mt-2 text-3xl font-bold'>
-                  {typeof bedMetrics?.occupied_beds === 'number' ? bedMetrics.occupied_beds : summaryFetching ? '—' : 0}
+                  {typeof bedMetrics?.occupied_beds === 'number'
+                    ? bedMetrics.occupied_beds
+                    : summaryFetching
+                      ? '—'
+                      : 0}
                 </div>
               </div>
             </div>
@@ -345,7 +418,8 @@ export function HomePage() {
               <SelectContent>
                 {months.map((m) => (
                   <SelectItem key={m.label} value={m.label}>
-                    {m.label}{m.isCurrentMonth ? ' (Current)' : ''}
+                    {m.label}
+                    {m.isCurrentMonth ? ' (Current)' : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -353,16 +427,28 @@ export function HomePage() {
 
             <div className='grid gap-2'>
               <div className='flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2'>
-                <div className='text-sm text-muted-foreground'>Cash received</div>
-                <div className='text-sm font-semibold'>{monthlyFetching ? '—' : formatCurrency(mm?.cash_received ?? 0)}</div>
+                <div className='text-sm text-muted-foreground'>
+                  Cash received
+                </div>
+                <div className='text-sm font-semibold'>
+                  {monthlyFetching
+                    ? '—'
+                    : formatCurrency(mm?.cash_received ?? 0)}
+                </div>
               </div>
               <div className='flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2'>
                 <div className='text-sm text-muted-foreground'>Rent earned</div>
-                <div className='text-sm font-semibold'>{monthlyFetching ? '—' : formatCurrency(mm?.rent_earned ?? 0)}</div>
+                <div className='text-sm font-semibold'>
+                  {monthlyFetching ? '—' : formatCurrency(mm?.rent_earned ?? 0)}
+                </div>
               </div>
               <div className='flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2'>
-                <div className='text-sm text-muted-foreground'>Collection rate</div>
-                <div className='text-sm font-semibold'>{collectionRateText}</div>
+                <div className='text-sm text-muted-foreground'>
+                  Collection rate
+                </div>
+                <div className='text-sm font-semibold'>
+                  {collectionRateText}
+                </div>
               </div>
             </div>
 
@@ -377,13 +463,18 @@ export function HomePage() {
 
       <div className='mt-6'>
         <div className='text-base font-semibold'>Attention Required</div>
-        <div className='mt-1 text-sm text-muted-foreground'>Quick follow-ups for pending rent and advance</div>
+        <div className='mt-1 text-sm text-muted-foreground'>
+          Quick follow-ups for pending rent and advance
+        </div>
       </div>
 
       <Card className='mt-3'>
         <CardContent className='space-y-4'>
           <ScrollArea orientation='horizontal' className='w-full'>
-            <Tabs value={attentionTab} onValueChange={(v) => setAttentionTab(v as AttentionKey)}>
+            <Tabs
+              value={attentionTab}
+              onValueChange={(v) => setAttentionTab(v as AttentionKey)}
+            >
               <TabsList className='h-10'>
                 {widgetItems.map((w) => (
                   <TabsTrigger key={w.key} value={w.key} className='gap-2'>
@@ -404,8 +495,12 @@ export function HomePage() {
 
           <div className='flex items-center justify-between'>
             <div>
-              <div className='text-sm font-semibold'>{selectedAttention?.title ?? 'Attention'}</div>
-              <div className='text-xs text-muted-foreground'>{selectedAttention?.subtitle ?? ''}</div>
+              <div className='text-sm font-semibold'>
+                {selectedAttention?.title ?? 'Attention'}
+              </div>
+              <div className='text-xs text-muted-foreground'>
+                {selectedAttention?.subtitle ?? ''}
+              </div>
             </div>
           </div>
 
@@ -417,7 +512,10 @@ export function HomePage() {
                   const bedNo = t.beds?.bed_no
                   const phone = t.phone_no
                   const whatsapp = t.whatsapp_number ?? t.phone_no
-                  const { gapCount, gapDueAmount } = getGapSnapshotForTab(attentionTab, t)
+                  const { gapCount, gapDueAmount } = getGapSnapshotForTab(
+                    attentionTab,
+                    t
+                  )
 
                   return (
                     <div
@@ -429,15 +527,21 @@ export function HomePage() {
                           {getInitials(t.name)}
                         </div>
                         <div className='min-w-0'>
-                          <div className='truncate text-sm font-semibold'>{t.name || 'Tenant'}</div>
+                          <div className='truncate text-sm font-semibold'>
+                            {t.name || 'Tenant'}
+                          </div>
                           <div className='mt-0.5 text-xs text-muted-foreground'>
                             {roomNo ? `Room ${roomNo}` : 'Room —'}
                             {bedNo ? ` • Bed ${bedNo}` : ''}
                           </div>
                           {gapCount > 0 || typeof gapDueAmount === 'number' ? (
                             <div className='mt-0.5 text-xs text-muted-foreground'>
-                              {typeof gapDueAmount === 'number' ? `Due ${formatCurrency(gapDueAmount)}` : ''}
-                              {gapCount > 0 ? `${typeof gapDueAmount === 'number' ? ' • ' : ''}Gaps ${gapCount}` : ''}
+                              {typeof gapDueAmount === 'number'
+                                ? `Due ${formatCurrency(gapDueAmount)}`
+                                : ''}
+                              {gapCount > 0
+                                ? `${typeof gapDueAmount === 'number' ? ' • ' : ''}Gaps ${gapCount}`
+                                : ''}
                             </div>
                           ) : null}
                         </div>
@@ -472,7 +576,9 @@ export function HomePage() {
             ) : (
               <div className='flex flex-col items-center justify-center gap-1 py-8 text-center'>
                 <div className='text-sm font-semibold'>All good</div>
-                <div className='text-xs text-muted-foreground'>No tenants need attention in this section right now.</div>
+                <div className='text-xs text-muted-foreground'>
+                  No tenants need attention in this section right now.
+                </div>
               </div>
             )}
           </div>

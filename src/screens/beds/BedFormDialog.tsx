@@ -1,14 +1,7 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-
-import { AppDialog } from '@/components/form/app-dialog'
-import { FormTextInput } from '@/components/form/form-text-input'
-import { FormSelectField } from '@/components/form/form-select-field'
-import { Form } from '@/components/ui/form'
-import { Button } from '@/components/ui/button'
-
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   type Bed,
   type CreateBedDto,
@@ -17,9 +10,13 @@ import {
   useUpdateBedMutation,
 } from '@/services/roomsApi'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+import { Button } from '@/components/ui/button'
+import { Form } from '@/components/ui/form'
+import { FormDialog } from '@/components/form/form-dialog'
+import { FormPrefixInput } from '@/components/form/form-prefix-input'
+import { FormTextInput } from '@/components/form/form-text-input'
 
 const schema = z.object({
-  roomId: z.number().min(1, 'Room is required'),
   bedNo: z.string().min(1, 'Bed number is required'),
   bedPrice: z
     .string()
@@ -42,24 +39,20 @@ export type BedFormDialogProps = {
   onSaved: () => void
 }
 
-export function BedFormDialog({ open, onOpenChange, editTarget, rooms, defaultRoomId, pgId, onSaved }: BedFormDialogProps) {
+export function BedFormDialog({
+  open,
+  onOpenChange,
+  editTarget,
+  defaultRoomId,
+  pgId,
+  onSaved,
+}: BedFormDialogProps) {
   const [createBed, { isLoading: creating }] = useCreateBedMutation()
   const [updateBed, { isLoading: updating }] = useUpdateBedMutation()
-
-  const roomOptions = useMemo(
-    () =>
-      (Array.isArray(rooms) ? rooms : []).map((r) => ({
-        label: String(r.room_no),
-        value: String(r.s_no),
-        searchText: String(r.room_no),
-      })),
-    [rooms]
-  )
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      roomId: defaultRoomId ?? 0,
       bedNo: '',
       bedPrice: '',
     },
@@ -70,15 +63,14 @@ export function BedFormDialog({ open, onOpenChange, editTarget, rooms, defaultRo
 
     if (editTarget) {
       form.reset({
-        roomId: Number((editTarget as any).room_id ?? 0),
-        bedNo: String((editTarget as any).bed_no ?? ''),
-        bedPrice: (editTarget as any).bed_price != null ? String((editTarget as any).bed_price) : '',
+        bedNo: String(editTarget.bed_no ?? ''),
+        bedPrice:
+          editTarget.bed_price != null ? String(editTarget.bed_price) : '',
       })
       return
     }
 
     form.reset({
-      roomId: defaultRoomId ?? 0,
       bedNo: '',
       bedPrice: '',
     })
@@ -86,8 +78,14 @@ export function BedFormDialog({ open, onOpenChange, editTarget, rooms, defaultRo
 
   const onSubmit = async (values: FormValues) => {
     try {
+      const roomId = editTarget?.room_id ?? defaultRoomId
+      if (!roomId) {
+        showErrorAlert('Room is required', 'Save Error')
+        return
+      }
+
       const payload: Partial<CreateBedDto> = {
-        room_id: values.roomId,
+        room_id: roomId,
         pg_id: pgId,
         bed_no: values.bedNo.trim(),
         bed_price: Number(values.bedPrice),
@@ -103,7 +101,7 @@ export function BedFormDialog({ open, onOpenChange, editTarget, rooms, defaultRo
 
       onOpenChange(false)
       onSaved()
-    } catch (e: any) {
+    } catch (e: unknown) {
       showErrorAlert(e, 'Save Error')
     }
   }
@@ -111,40 +109,51 @@ export function BedFormDialog({ open, onOpenChange, editTarget, rooms, defaultRo
   const saving = creating || updating
 
   return (
-    <AppDialog
+    <FormDialog
       open={open}
       onOpenChange={onOpenChange}
       title={editTarget ? 'Edit Bed' : 'Add Bed'}
       description='Enter bed details.'
       size='sm'
       footer={
-        <div className='flex w-full justify-end gap-2 px-3 pb-3'>
-          <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={saving}>
+        <>
+          <Button
+            type='button'
+            variant='outline'
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
             Cancel
           </Button>
           <Button type='submit' form='bed-form' disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
           </Button>
-        </div>
+        </>
       }
     >
       <Form {...form}>
-        <form id='bed-form' onSubmit={form.handleSubmit(onSubmit)} className='grid gap-4'>
-          <FormSelectField
+        <form
+          id='bed-form'
+          onSubmit={form.handleSubmit(onSubmit)}
+          className='grid gap-4'
+        >
+          <FormPrefixInput
             control={form.control}
-            name='roomId'
-            label='Room'
+            name='bedNo'
+            label='Bed Number'
+            placeholder='1'
+            prefix='BED'
             required
-            placeholder='Select room'
-            options={roomOptions}
-            parse={(v) => Number(v)}
-            searchable
           />
-
-          <FormTextInput control={form.control} name='bedNo' label='Bed Number' placeholder='BED1' required />
-          <FormTextInput control={form.control} name='bedPrice' label='Bed Price' placeholder='5000' required />
+          <FormTextInput
+            control={form.control}
+            name='bedPrice'
+            label='Bed Price'
+            placeholder='5000'
+            required
+          />
         </form>
       </Form>
-    </AppDialog>
+    </FormDialog>
   )
 }

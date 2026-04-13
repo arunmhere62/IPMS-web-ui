@@ -1,23 +1,19 @@
 import { useEffect, useMemo } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { ChevronLeft, CircleAlert, Save } from 'lucide-react'
-
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Form } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-
-import { PageHeader } from '@/components/form/page-header'
-import { FormSelectField, FormTextInput, FormTextarea } from '@/components/form/form-fields'
-import { ImageUploadS3 } from '@/components/form/image-upload-s3'
-
-import { useGetCitiesQuery, useGetStatesQuery, type City, type State } from '@/services/locationApi'
-import { useGetAllBedsQuery, useGetAllRoomsQuery, type Bed, type Room } from '@/services/roomsApi'
+import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  useGetCitiesQuery,
+  useGetStatesQuery,
+  type City,
+  type State,
+} from '@/services/locationApi'
+import {
+  useGetAllBedsQuery,
+  useGetAllRoomsQuery,
+  type Bed,
+  type Room,
+} from '@/services/roomsApi'
 import {
   useCreateTenantMutation,
   useGetTenantByIdQuery,
@@ -27,11 +23,27 @@ import {
   type TenantResponse,
 } from '@/services/tenantsApi'
 import { useAppSelector } from '@/store/hooks'
+import { ChevronLeft, CircleAlert, Save } from 'lucide-react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Form } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import {
+  FormSelectField,
+  FormTextInput,
+  FormTextarea,
+} from '@/components/form/form-fields'
+import { ImageUploadS3 } from '@/components/form/image-upload-s3'
+import { PageHeader } from '@/components/form/page-header'
+import { PhoneInput } from '@/components/form/phone-input'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
-  phone_no: z.string().optional().or(z.literal('')),
+  phone_no: z.string().min(1, 'Phone number is required'),
   whatsapp_number: z.string().optional().or(z.literal('')),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   occupation: z.string().optional().or(z.literal('')),
@@ -48,7 +60,8 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-const asArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
+const asArray = <T,>(value: unknown): T[] =>
+  Array.isArray(value) ? (value as T[]) : []
 
 const coerceDateString = (value: unknown) => {
   const s = String(value ?? '')
@@ -57,7 +70,8 @@ const coerceDateString = (value: unknown) => {
 }
 
 const coerceStringArray = (value: unknown): string[] => {
-  if (Array.isArray(value)) return value.filter((v) => typeof v === 'string') as string[]
+  if (Array.isArray(value))
+    return value.filter((v) => typeof v === 'string') as string[]
   return []
 }
 
@@ -71,10 +85,22 @@ type ErrorLike = {
 export function TenantFormScreen() {
   const navigate = useNavigate()
   const params = useParams()
+  const [searchParams] = useSearchParams()
   const tenantId = params.id ? Number(params.id) : null
   const isEditMode = Number.isFinite(tenantId) && Number(tenantId) > 0
 
-  const selectedPGLocationId = useAppSelector((s) => s.pgLocations.selectedPGLocationId)
+  // Get pre-selected room and bed from URL parameters (from bed details)
+  const preSelectedRoomId = searchParams.get('roomId')
+    ? Number(searchParams.get('roomId'))
+    : null
+  const preSelectedBedId = searchParams.get('bedId')
+    ? Number(searchParams.get('bedId'))
+    : null
+  const isPreSelected = Boolean(preSelectedRoomId && preSelectedBedId)
+
+  const selectedPGLocationId = useAppSelector(
+    (s) => s.pgLocations.selectedPGLocationId
+  )
 
   const {
     data: tenantResponse,
@@ -82,17 +108,24 @@ export function TenantFormScreen() {
     error: tenantError,
   } = useGetTenantByIdQuery(tenantId ?? 0, { skip: !isEditMode })
 
-  const tenant: Tenant | null = (tenantResponse as TenantResponse | undefined)?.data ?? null
+  const tenant: Tenant | null =
+    (tenantResponse as TenantResponse | undefined)?.data ?? null
 
   const [createTenant, { isLoading: creating }] = useCreateTenantMutation()
   const [updateTenant, { isLoading: updating }] = useUpdateTenantMutation()
 
   const { data: roomsResponse } = useGetAllRoomsQuery(
-    selectedPGLocationId ? { pg_id: selectedPGLocationId, limit: 200 } : undefined,
+    selectedPGLocationId
+      ? { pg_id: selectedPGLocationId, limit: 200 }
+      : undefined,
     { skip: !selectedPGLocationId }
   )
 
-  const rooms: Room[] = useMemo(() => asArray<Room>((roomsResponse as { data?: unknown } | undefined)?.data), [roomsResponse])
+  const rooms: Room[] = useMemo(
+    () =>
+      asArray<Room>((roomsResponse as { data?: unknown } | undefined)?.data),
+    [roomsResponse]
+  )
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -104,8 +137,8 @@ export function TenantFormScreen() {
       occupation: '',
       tenant_address: '',
       status: 'ACTIVE',
-      room_id: 0,
-      bed_id: 0,
+      room_id: preSelectedRoomId || 0,
+      bed_id: preSelectedBedId || 0,
       check_in_date: new Date().toISOString().split('T')[0],
       state_id: null,
       city_id: null,
@@ -117,17 +150,33 @@ export function TenantFormScreen() {
   const watchedRoomId = useWatch({ control: form.control, name: 'room_id' })
   const watchedStateId = useWatch({ control: form.control, name: 'state_id' })
   const watchedImages = useWatch({ control: form.control, name: 'images' })
-  const watchedProofDocuments = useWatch({ control: form.control, name: 'proof_documents' })
+  const watchedProofDocuments = useWatch({
+    control: form.control,
+    name: 'proof_documents',
+  })
 
   const { data: bedsResponse, isLoading: bedsLoading } = useGetAllBedsQuery(
-    watchedRoomId ? { room_id: watchedRoomId, only_unoccupied: !isEditMode, limit: 500 } : undefined,
+    watchedRoomId
+      ? {
+          room_id: watchedRoomId,
+          only_unoccupied: !isEditMode && !isPreSelected,
+          limit: 500,
+        }
+      : undefined,
     { skip: !watchedRoomId }
   )
 
-  const beds: Bed[] = useMemo(() => asArray<Bed>((bedsResponse as { data?: unknown } | undefined)?.data), [bedsResponse])
+  const beds: Bed[] = useMemo(
+    () => asArray<Bed>((bedsResponse as { data?: unknown } | undefined)?.data),
+    [bedsResponse]
+  )
 
-  const { data: statesResponse } = useGetStatesQuery(undefined)
-  const states = useMemo(() => asArray<State>((statesResponse as { data?: unknown } | undefined)?.data), [statesResponse])
+  const { data: statesResponse } = useGetStatesQuery({ countryCode: 'IN' })
+  const states = useMemo(
+    () =>
+      asArray<State>((statesResponse as { data?: unknown } | undefined)?.data),
+    [statesResponse]
+  )
 
   const stateCode = useMemo(() => {
     if (!watchedStateId) return ''
@@ -139,7 +188,11 @@ export function TenantFormScreen() {
     { stateCode: stateCode || '' },
     { skip: !stateCode }
   )
-  const cities = useMemo(() => asArray<City>((citiesResponse as { data?: unknown } | undefined)?.data), [citiesResponse])
+  const cities = useMemo(
+    () =>
+      asArray<City>((citiesResponse as { data?: unknown } | undefined)?.data),
+    [citiesResponse]
+  )
 
   useEffect(() => {
     if (!isEditMode) return
@@ -182,25 +235,72 @@ export function TenantFormScreen() {
     if (!exists) form.setValue('city_id', null)
   }, [cities, form, watchedStateId])
 
+  // Ensure pre-selected bed is set when beds data loads
+  useEffect(() => {
+    if (!isPreSelected || !preSelectedBedId || !beds.length) return
+
+    const currentBedId = form.getValues('bed_id')
+    if (currentBedId === preSelectedBedId) return // Already set
+
+    // Check if the pre-selected bed exists in the loaded beds
+    const bedExists = beds.some(
+      (b) => Number(b.s_no) === Number(preSelectedBedId)
+    )
+    if (bedExists) {
+      form.setValue('bed_id', preSelectedBedId)
+    }
+  }, [beds, form, isPreSelected, preSelectedBedId])
+
   const roomOptions = useMemo(
-    () => rooms.map((r) => ({ label: `Room ${r.room_no}`, value: String(r.s_no), searchText: String(r.room_no) })),
+    () =>
+      rooms.map((r) => ({
+        label: `Room ${r.room_no}`,
+        value: String(r.s_no),
+        searchText: String(r.room_no),
+      })),
     [rooms]
   )
 
   const bedOptions = useMemo(
-    () => beds.map((b) => ({ label: `Bed ${b.bed_no}`, value: String(b.s_no), searchText: String(b.bed_no) })),
+    () =>
+      beds.map((b) => ({
+        label: `Bed ${b.bed_no}`,
+        value: String(b.s_no),
+        searchText: String(b.bed_no),
+      })),
     [beds]
   )
 
   const stateOptions = useMemo(
-    () => states.map((s) => ({ label: String(s.name ?? s.iso_code ?? s.s_no), value: String(s.s_no), searchText: String(s.name ?? s.iso_code) })),
+    () =>
+      states.map((s) => ({
+        label: String(s.name ?? s.iso_code ?? s.s_no),
+        value: String(s.s_no),
+        searchText: String(s.name ?? s.iso_code),
+      })),
     [states]
   )
 
   const cityOptions = useMemo(
-    () => cities.map((c) => ({ label: String(c.name ?? c.s_no), value: String(c.s_no), searchText: String(c.name ?? c.s_no) })),
+    () =>
+      cities.map((c) => ({
+        label: String(c.name ?? c.s_no),
+        value: String(c.s_no),
+        searchText: String(c.name ?? c.s_no),
+      })),
     [cities]
   )
+
+  // Get current room and bed data for display
+  const currentRoom = useMemo(() => {
+    const roomId = form.getValues('room_id')
+    return rooms.find((r) => Number(r.s_no) === Number(roomId))
+  }, [rooms, form])
+
+  const currentBed = useMemo(() => {
+    const bedId = form.getValues('bed_id')
+    return beds.find((b) => Number(b.s_no) === Number(bedId))
+  }, [beds, form])
 
   const saving = creating || updating
 
@@ -243,7 +343,9 @@ export function TenantFormScreen() {
     }
   }
 
-  const fetchErrorMessage = (tenantError as ErrorLike | undefined)?.data?.message || (tenantError as ErrorLike | undefined)?.message
+  const fetchErrorMessage =
+    (tenantError as ErrorLike | undefined)?.data?.message ||
+    (tenantError as ErrorLike | undefined)?.message
 
   return (
     <div className='container mx-auto max-w-4xl px-3 py-6'>
@@ -258,7 +360,9 @@ export function TenantFormScreen() {
                 Back
               </Link>
             </Button>
-            {isEditMode && tenantId ? <Badge variant='outline'>#{tenantId}</Badge> : null}
+            {isEditMode && tenantId ? (
+              <Badge variant='outline'>#{tenantId}</Badge>
+            ) : null}
           </>
         }
       />
@@ -276,19 +380,34 @@ export function TenantFormScreen() {
       {!selectedPGLocationId ? (
         <div className='mt-4 rounded-md border bg-card px-3 py-8 text-center'>
           <div className='text-base font-semibold'>Select a PG Location</div>
-          <div className='mt-1 text-xs text-muted-foreground'>Choose a PG from the top bar to manage tenants.</div>
+          <div className='mt-1 text-xs text-muted-foreground'>
+            Choose a PG from the top bar to manage tenants.
+          </div>
         </div>
       ) : isEditMode && tenantLoading ? (
-        <div className='mt-4 rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>Loading...</div>
+        <div className='mt-4 rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>
+          Loading...
+        </div>
       ) : (
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className='mt-4 grid gap-4'>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className='mt-4 grid gap-4'
+          >
             <Card>
               <CardContent className='grid gap-4 p-4'>
-                <div className='text-sm font-semibold'>Personal Information</div>
+                <div className='text-sm font-semibold'>
+                  Personal Information
+                </div>
 
                 <div className='grid gap-4 sm:grid-cols-2'>
-                  <FormTextInput control={form.control} name='name' label='Full Name' required placeholder='Enter full name' />
+                  <FormTextInput
+                    control={form.control}
+                    name='name'
+                    label='Full Name'
+                    required
+                    placeholder='Enter full name'
+                  />
                   <FormSelectField
                     control={form.control}
                     name='status'
@@ -304,16 +423,44 @@ export function TenantFormScreen() {
                 </div>
 
                 <div className='grid gap-4 sm:grid-cols-2'>
-                  <FormTextInput control={form.control} name='phone_no' label='Phone Number' placeholder='Enter phone number' />
-                  <FormTextInput control={form.control} name='whatsapp_number' label='WhatsApp Number' placeholder='Enter WhatsApp number' />
+                  <PhoneInput
+                    control={form.control}
+                    name='phone_no'
+                    label='Phone Number'
+                    placeholder='Enter phone number'
+                    required
+                    defaultCountryCode='+91'
+                  />
+                  <PhoneInput
+                    control={form.control}
+                    name='whatsapp_number'
+                    label='WhatsApp Number'
+                    placeholder='Enter WhatsApp number'
+                    defaultCountryCode='+91'
+                  />
                 </div>
 
                 <div className='grid gap-4 sm:grid-cols-2'>
-                  <FormTextInput control={form.control} name='email' label='Email' placeholder='name@example.com' />
-                  <FormTextInput control={form.control} name='occupation' label='Occupation' placeholder='Occupation (optional)' />
+                  <FormTextInput
+                    control={form.control}
+                    name='email'
+                    label='Email'
+                    placeholder='name@example.com'
+                  />
+                  <FormTextInput
+                    control={form.control}
+                    name='occupation'
+                    label='Occupation'
+                    placeholder='Occupation (optional)'
+                  />
                 </div>
 
-                <FormTextarea control={form.control} name='tenant_address' label='Address' placeholder='Address (optional)' />
+                <FormTextarea
+                  control={form.control}
+                  name='tenant_address'
+                  label='Address'
+                  placeholder='Address (optional)'
+                />
               </CardContent>
             </Card>
 
@@ -322,29 +469,85 @@ export function TenantFormScreen() {
                 <div className='text-sm font-semibold'>Accommodation</div>
 
                 <div className='grid gap-4 sm:grid-cols-2'>
-                  <FormSelectField
-                    control={form.control}
-                    name='room_id'
-                    label='Room'
-                    required
-                    placeholder='Select room'
-                    options={roomOptions}
-                    parse={(v) => Number(v)}
-                    searchable
-                  />
+                  {isEditMode ? (
+                    <>
+                      <div className='space-y-2'>
+                        <label className='text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+                          Room
+                        </label>
+                        <div className='relative flex items-center'>
+                          <div className='pointer-events-none absolute left-3 flex items-center'>
+                            <span className='text-sm font-medium text-muted-foreground'>
+                              RM
+                            </span>
+                          </div>
+                          <Input
+                            value={currentRoom?.room_no || ''}
+                            disabled
+                            className='bg-muted pl-16'
+                            placeholder='Room number'
+                          />
+                        </div>
+                      </div>
+                      <div className='space-y-2'>
+                        <label className='text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+                          Bed
+                        </label>
+                        <div className='relative flex items-center'>
+                          <div className='pointer-events-none absolute left-3 flex items-center'>
+                            <span className='text-sm font-medium text-muted-foreground'>
+                              BED
+                            </span>
+                          </div>
+                          <Input
+                            value={currentBed?.bed_no || ''}
+                            disabled
+                            className='bg-muted pl-16'
+                            placeholder='Bed number'
+                          />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <FormSelectField
+                        control={form.control}
+                        name='room_id'
+                        label='Room'
+                        required
+                        placeholder='Select room'
+                        options={roomOptions}
+                        parse={(v) => Number(v)}
+                        searchable
+                        disabled={isPreSelected}
+                      />
 
-                  <FormSelectField
-                    control={form.control}
-                    name='bed_id'
-                    label='Bed'
-                    required
-                    placeholder={bedsLoading ? 'Loading beds...' : 'Select bed'}
-                    options={bedOptions}
-                    parse={(v) => Number(v)}
-                    searchable
-                    disabled={!watchedRoomId}
-                  />
+                      <FormSelectField
+                        control={form.control}
+                        name='bed_id'
+                        label='Bed'
+                        required
+                        placeholder={
+                          bedsLoading ? 'Loading beds...' : 'Select bed'
+                        }
+                        options={bedOptions}
+                        parse={(v) => Number(v)}
+                        searchable
+                        disabled={!watchedRoomId || isPreSelected}
+                      />
+                    </>
+                  )}
                 </div>
+
+                {(isPreSelected || isEditMode) && (
+                  <div className='rounded-md bg-muted/30 p-3 text-xs text-muted-foreground'>
+                    <strong>Note:</strong>{' '}
+                    {isPreSelected
+                      ? 'Room and bed are pre-selected from the bed details page'
+                      : 'Room and bed cannot be changed'}{' '}
+                    in edit mode.
+                  </div>
+                )}
 
                 <div className='grid gap-2'>
                   <div className='text-sm font-medium'>Check-in Date</div>
@@ -352,11 +555,17 @@ export function TenantFormScreen() {
                     control={form.control}
                     name='check_in_date'
                     render={({ field }) => (
-                      <Input type='date' value={field.value || ''} onChange={(e) => field.onChange(e.target.value)} />
+                      <Input
+                        type='date'
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
                     )}
                   />
                   {form.formState.errors.check_in_date?.message ? (
-                    <div className='text-xs text-destructive'>{String(form.formState.errors.check_in_date.message)}</div>
+                    <div className='text-xs text-destructive'>
+                      {String(form.formState.errors.check_in_date.message)}
+                    </div>
                   ) : null}
                 </div>
               </CardContent>
@@ -402,30 +611,49 @@ export function TenantFormScreen() {
                   label='Tenant Image'
                   folder='tenants/images'
                   useS3={true}
-                  entityId={isEditMode && tenantId ? String(tenantId) : undefined}
+                  entityId={
+                    isEditMode && tenantId ? String(tenantId) : undefined
+                  }
                   autoSave={false}
                 />
 
                 <ImageUploadS3
-                  images={Array.isArray(watchedProofDocuments) ? watchedProofDocuments : []}
-                  onImagesChange={(imgs) => form.setValue('proof_documents', imgs)}
+                  images={
+                    Array.isArray(watchedProofDocuments)
+                      ? watchedProofDocuments
+                      : []
+                  }
+                  onImagesChange={(imgs) =>
+                    form.setValue('proof_documents', imgs)
+                  }
                   maxImages={3}
                   label='Proof Documents'
                   folder='tenants/documents'
                   useS3={true}
-                  entityId={isEditMode && tenantId ? String(tenantId) : undefined}
+                  entityId={
+                    isEditMode && tenantId ? String(tenantId) : undefined
+                  }
                   autoSave={false}
                 />
               </CardContent>
             </Card>
 
             <div className='flex items-center justify-end gap-2'>
-              <Button type='button' variant='outline' onClick={() => navigate('/tenants')} disabled={saving}>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => navigate('/tenants')}
+                disabled={saving}
+              >
                 Cancel
               </Button>
               <Button type='submit' disabled={saving}>
                 <Save className='me-2 size-4' />
-                {saving ? 'Saving...' : isEditMode ? 'Update Tenant' : 'Create Tenant'}
+                {saving
+                  ? 'Saving...'
+                  : isEditMode
+                    ? 'Update Tenant'
+                    : 'Create Tenant'}
               </Button>
             </div>
           </form>

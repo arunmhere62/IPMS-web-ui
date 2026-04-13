@@ -1,7 +1,24 @@
 import { useMemo, useState } from 'react'
+import { BedFormDialog } from '@/screens/beds/BedFormDialog'
+import { RoomFormDialog } from '@/screens/rooms/RoomFormDialog'
+import {
+  type Bed,
+  type Room,
+  useDeleteBedMutation,
+  useDeleteRoomMutation,
+  useGetBedsByRoomIdQuery,
+  useGetRoomByIdQuery,
+} from '@/services/roomsApi'
+import { useAppSelector } from '@/store/hooks'
+import {
+  Bed as BedIcon,
+  ChevronLeft,
+  CircleAlert,
+  DoorOpen,
+  Plus,
+} from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, CircleAlert, Plus } from 'lucide-react'
-
+import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -16,21 +33,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { PageHeader } from '@/components/form/page-header'
 import { ActionButtons } from '@/components/form/action-buttons'
-
-import { BedFormDialog } from '@/screens/beds/BedFormDialog'
-import { RoomFormDialog } from '@/screens/rooms/RoomFormDialog'
-import { useAppSelector } from '@/store/hooks'
-import {
-  type Bed,
-  type Room,
-  useDeleteBedMutation,
-  useDeleteRoomMutation,
-  useGetBedsByRoomIdQuery,
-  useGetRoomByIdQuery,
-} from '@/services/roomsApi'
-import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 
 const unwrapRoom = (response: any): Room | null => {
   if (!response) return null
@@ -43,7 +46,11 @@ const unwrapBeds = (response: any): Bed[] => {
   if (!response) return []
   const root = (response as any)?.data ?? response
   const nested = (root as any)?.data ?? root
-  const data = Array.isArray(nested) ? nested : Array.isArray((nested as any)?.data) ? (nested as any).data : []
+  const data = Array.isArray(nested)
+    ? nested
+    : Array.isArray((nested as any)?.data)
+      ? (nested as any).data
+      : []
   return Array.isArray(data) ? (data as Bed[]) : []
 }
 
@@ -52,7 +59,9 @@ export function RoomDetailsScreen() {
   const params = useParams()
   const roomId = Number(params.id)
 
-  const selectedPGLocationId = useAppSelector((s) => (s as any).pgLocations?.selectedPGLocationId) as number | null
+  const selectedPGLocationId = useAppSelector(
+    (s) => (s as any).pgLocations?.selectedPGLocationId
+  ) as number | null
 
   const [bedDialogOpen, setBedDialogOpen] = useState(false)
   const [editBed, setEditBed] = useState<Bed | null>(null)
@@ -88,14 +97,24 @@ export function RoomDetailsScreen() {
   const beds = unwrapBeds(bedsResponse)
 
   const fetchErrorMessage =
-    (roomError as any)?.data?.message || (roomError as any)?.message || (bedsError as any)?.data?.message || (bedsError as any)?.message
+    (roomError as any)?.data?.message ||
+    (roomError as any)?.message ||
+    (bedsError as any)?.data?.message ||
+    (bedsError as any)?.message
 
-  const images: string[] = Array.isArray((room as any)?.images) ? ((room as any).images as any) : []
+  const images: string[] = Array.isArray((room as any)?.images)
+    ? ((room as any).images as any)
+    : []
 
   const stats = useMemo(() => {
     const total = Number((room as any)?.total_beds ?? beds.length)
-    const occupied = Number((room as any)?.occupied_beds ?? beds.filter((b) => Boolean((b as any)?.is_occupied)).length)
-    const available = Number((room as any)?.available_beds ?? Math.max(0, total - occupied))
+    const occupied = Number(
+      (room as any)?.occupied_beds ??
+        beds.filter((b) => Boolean((b as any)?.is_occupied)).length
+    )
+    const available = Number(
+      (room as any)?.available_beds ?? Math.max(0, total - occupied)
+    )
     return { total, occupied, available }
   }, [beds, room])
 
@@ -140,31 +159,49 @@ export function RoomDetailsScreen() {
   }
 
   return (
-    <div className='container mx-auto max-w-6xl px-3 py-6'>
-      <PageHeader
-        title={room?.room_no ? `Room ${room.room_no}` : 'Room Details'}
-        subtitle={room?.pg_locations?.location_name ? String(room.pg_locations.location_name) : ''}
-        right={
-          <>
-            <Button asChild variant='outline' size='sm'>
-              <Link to='/rooms'>
-                <ChevronLeft className='me-1 size-4' />
-                Back
-              </Link>
-            </Button>
-            {room?.s_no ? <Badge variant='outline'>#{room.s_no}</Badge> : null}
-            <Button variant='outline' size='sm' onClick={() => {
+    <div className='container mx-auto max-w-5xl px-4 py-4'>
+      <div className='mb-4 flex items-center justify-between border-b pb-3'>
+        <div>
+          <h1 className='text-2xl font-bold'>
+            {room?.room_no ? `Room ${room.room_no}` : 'Room Details'}
+          </h1>
+          <p className='text-xs text-muted-foreground'>
+            {room?.pg_locations?.location_name
+              ? String(room.pg_locations.location_name)
+              : 'View and manage room information'}
+          </p>
+        </div>
+        <div className='flex items-center gap-2'>
+          <Button asChild variant='outline' size='sm'>
+            <Link to='/rooms'>
+              <ChevronLeft className='me-1 size-3.5' />
+              Back
+            </Link>
+          </Button>
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => {
               void refetchRoom()
               void refetchBeds()
-            }}>
-              Refresh
+            }}
+          >
+            Refresh
+          </Button>
+          {room && (
+            <Button
+              size='sm'
+              onClick={() => setRoomDialogOpen(true)}
+              className='bg-black text-white hover:bg-black/90'
+            >
+              Edit
             </Button>
-          </>
-        }
-      />
+          )}
+        </div>
+      </div>
 
       {fetchErrorMessage ? (
-        <div className='mt-4'>
+        <div className='mb-3'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load room details</AlertTitle>
@@ -174,107 +211,183 @@ export function RoomDetailsScreen() {
       ) : null}
 
       {!selectedPGLocationId ? (
-        <div className='mt-4 rounded-md border bg-card px-3 py-8 text-center'>
-          <div className='text-base font-semibold'>Select a PG Location</div>
-          <div className='mt-1 text-xs text-muted-foreground'>Choose a PG from the top bar to manage rooms.</div>
+        <div className='rounded-lg border border-dashed bg-muted/30 px-4 py-10 text-center'>
+          <div className='mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10'>
+            <DoorOpen className='size-6 text-primary' />
+          </div>
+          <div className='mt-3 text-sm font-semibold'>Select a PG Location</div>
+          <div className='mt-1 text-xs text-muted-foreground'>
+            Choose a PG from the top bar.
+          </div>
         </div>
       ) : roomLoading ? (
-        <div className='mt-4 rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>Loading...</div>
+        <div className='rounded-lg border bg-card px-4 py-8 text-center'>
+          <div className='mx-auto size-6 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
+          <p className='mt-2 text-xs text-muted-foreground'>Loading...</p>
+        </div>
       ) : !room ? (
-        <div className='mt-4 rounded-md border bg-card px-3 py-8 text-center'>
-          <div className='text-base font-semibold'>Room not found</div>
-          <div className='mt-1 text-xs text-muted-foreground'>Please check the room id and try again.</div>
+        <div className='rounded-lg border border-dashed bg-muted/30 px-4 py-10 text-center'>
+          <div className='mx-auto flex size-12 items-center justify-center rounded-full bg-destructive/10'>
+            <DoorOpen className='size-6 text-destructive' />
+          </div>
+          <div className='mt-3 text-sm font-semibold'>Room not found</div>
+          <div className='mt-1 text-xs text-muted-foreground'>
+            Please check the room ID.
+          </div>
         </div>
       ) : (
-        <div className='mt-4 grid gap-4'>
-          <Card>
-            <CardContent className='p-3'>
-              <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-                <div className='min-w-0'>
-                  <div className='text-sm font-semibold'>Room {room.room_no}</div>
-                  <div className='mt-1 text-xs text-muted-foreground'>PG ID: {room.pg_id}</div>
+        <div className='space-y-3'>
+          <Card className='border'>
+            <CardContent className='p-4'>
+              <div className='mb-3 flex items-center justify-between border-b pb-3'>
+                <div className='flex items-center gap-3'>
+                  <div className='flex size-12 items-center justify-center rounded-lg bg-blue-600 text-white'>
+                    <DoorOpen className='size-6' />
+                  </div>
+                  <div>
+                    <div className='text-lg font-bold'>Room {room.room_no}</div>
+                    <div className='text-xs text-muted-foreground'>
+                      ID: {room.s_no}
+                    </div>
+                  </div>
                 </div>
-
-                <div className='flex flex-wrap items-center justify-end gap-2'>
-                  <Button size='sm' onClick={() => setRoomDialogOpen(true)}>
-                    Edit Room
-                  </Button>
-                  <Button variant='destructive' size='sm' onClick={() => setDeleteRoomOpen(true)}>
-                    Delete Room
-                  </Button>
-                </div>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => setDeleteRoomOpen(true)}
+                  className='border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700'
+                >
+                  Delete Room
+                </Button>
               </div>
 
-              <div className='mt-3 grid grid-cols-3 gap-2 text-xs text-muted-foreground'>
-                <div>
-                  <div className='font-semibold text-foreground'>{stats.total}</div>
-                  <div>Total Beds</div>
+              <div className='grid grid-cols-3 gap-3'>
+                <div className='rounded-lg border p-2 text-center'>
+                  <div className='text-2xl font-bold'>{stats.total}</div>
+                  <div className='text-xs text-muted-foreground'>
+                    Total Beds
+                  </div>
                 </div>
-                <div>
-                  <div className='font-semibold text-foreground'>{stats.occupied}</div>
-                  <div>Occupied</div>
+                <div className='rounded-lg border p-2 text-center'>
+                  <div className='text-2xl font-bold text-blue-600'>
+                    {stats.occupied}
+                  </div>
+                  <div className='text-xs text-muted-foreground'>Occupied</div>
                 </div>
-                <div>
-                  <div className='font-semibold text-foreground'>{stats.available}</div>
-                  <div>Available</div>
+                <div className='rounded-lg border p-2 text-center'>
+                  <div className='text-2xl font-bold text-green-600'>
+                    {stats.available}
+                  </div>
+                  <div className='text-xs text-muted-foreground'>Available</div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className='p-3'>
-              <div className='text-sm font-semibold'>Room Images</div>
-              {images.length === 0 ? (
-                <div className='mt-2 text-xs text-muted-foreground'>No images</div>
-              ) : (
-                <div className='mt-2 flex flex-wrap gap-3'>
+          {images.length > 0 && (
+            <Card className='border'>
+              <CardContent className='p-4'>
+                <div className='mb-3 border-b pb-2 text-sm font-semibold'>
+                  Room Images
+                </div>
+                <div className='flex flex-wrap gap-2'>
                   {images.map((url) => (
-                    <div key={url} className='h-24 w-24 overflow-hidden rounded-md border bg-muted'>
-                      <img src={url} alt='' className='h-full w-full object-cover' />
+                    <div
+                      key={url}
+                      className='h-20 w-20 overflow-hidden rounded-lg border'
+                    >
+                      <img
+                        src={url}
+                        alt=''
+                        className='h-full w-full object-cover'
+                      />
                     </div>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
-          <Card>
-            <CardContent className='p-3'>
-              <div className='flex items-center justify-between gap-2'>
+          <Card className='border'>
+            <CardContent className='p-4'>
+              <div className='mb-3 flex items-center justify-between border-b pb-3'>
                 <div>
-                  <div className='text-sm font-semibold'>Beds</div>
-                  <div className='text-xs text-muted-foreground'>Manage beds in this room</div>
+                  <div className='text-sm font-semibold'>Beds in this Room</div>
+                  <div className='text-xs text-muted-foreground'>
+                    {beds.length} bed{beds.length !== 1 ? 's' : ''} total
+                  </div>
                 </div>
-
-                <Button size='sm' onClick={openAddBed} disabled={!selectedPGLocationId}>
-                  <Plus className='me-2 size-4' />
+                <Button
+                  size='sm'
+                  onClick={openAddBed}
+                  disabled={!selectedPGLocationId}
+                  className='bg-black text-white hover:bg-black/90'
+                >
+                  <Plus className='me-1 size-3.5' />
                   Add Bed
                 </Button>
               </div>
 
               {bedsLoading ? (
-                <div className='mt-3 rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>Loading...</div>
+                <div className='rounded-lg border bg-card px-4 py-6 text-center'>
+                  <div className='mx-auto size-6 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
+                  <p className='mt-2 text-xs text-muted-foreground'>
+                    Loading beds...
+                  </p>
+                </div>
               ) : beds.length === 0 ? (
-                <div className='mt-3 rounded-md border bg-card px-3 py-6 text-center'>
-                  <div className='text-base font-semibold'>No Beds</div>
-                  <div className='mt-1 text-xs text-muted-foreground'>Add your first bed to this room.</div>
+                <div className='rounded-lg border border-dashed bg-muted/30 px-4 py-8 text-center'>
+                  <div className='mx-auto flex size-10 items-center justify-center rounded-full bg-primary/10'>
+                    <BedIcon className='size-5 text-primary' />
+                  </div>
+                  <div className='mt-2 text-sm font-semibold'>No Beds</div>
+                  <div className='mt-1 text-xs text-muted-foreground'>
+                    Add your first bed to this room.
+                  </div>
                 </div>
               ) : (
-                <div className='mt-3 grid gap-2'>
+                <div className='space-y-2'>
                   {beds.map((b) => (
-                    <div key={b.s_no} className='rounded-md border p-3'>
-                      <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-                        <div className='min-w-0'>
-                          <div className='text-sm font-semibold'>{b.bed_no}</div>
-                          <div className='mt-0.5 text-xs text-muted-foreground'>
-                            {String((b as any).is_occupied ? 'Occupied' : 'Available')}
-                            {String(b.bed_price ?? '').length > 0 ? ` • ₹${String(b.bed_price)}` : ''}
-                            {(b as any).tenants?.[0]?.name ? ` • ${(b as any).tenants[0].name}` : ''}
-                            {(b as any).tenants?.[0]?.phone_no ? ` • ${(b as any).tenants[0].phone_no}` : ''}
+                    <div
+                      key={b.s_no}
+                      className='rounded-lg border p-3 hover:border-blue-500/50'
+                    >
+                      <div className='flex items-center justify-between'>
+                        <div className='flex min-w-0 flex-1 items-center gap-3'>
+                          <div className='flex size-9 items-center justify-center rounded-lg bg-black text-white'>
+                            <BedIcon className='size-4' />
+                          </div>
+                          <div className='min-w-0 flex-1'>
+                            <div className='text-sm font-semibold'>
+                              {b.bed_no}
+                            </div>
+                            <div className='truncate text-xs text-muted-foreground'>
+                              <Badge
+                                variant={
+                                  (b as any).is_occupied
+                                    ? 'secondary'
+                                    : 'default'
+                                }
+                                className='mr-1 text-xs'
+                              >
+                                {String(
+                                  (b as any).is_occupied
+                                    ? 'Occupied'
+                                    : 'Available'
+                                )}
+                              </Badge>
+                              {String(b.bed_price ?? '').length > 0
+                                ? `₹${String(b.bed_price)}`
+                                : ''}
+                              {(b as any).tenants?.[0]?.name
+                                ? ` • ${(b as any).tenants[0].name}`
+                                : ''}
+                              {(b as any).tenants?.[0]?.phone_no
+                                ? ` • ${(b as any).tenants[0].phone_no}`
+                                : ''}
+                            </div>
                           </div>
                         </div>
-
                         <ActionButtons
                           mode='icon'
                           onEdit={() => openEditBed(b)}
@@ -323,7 +436,11 @@ export function RoomDetailsScreen() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Bed</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Are you sure you want to delete <span className='font-semibold'>{deleteBedTarget?.bed_no}</span>? This action cannot be undone.
+                  Are you sure you want to delete{' '}
+                  <span className='font-semibold'>
+                    {deleteBedTarget?.bed_no}
+                  </span>
+                  ? This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -335,7 +452,10 @@ export function RoomDetailsScreen() {
                 >
                   Cancel
                 </AlertDialogCancel>
-                <AlertDialogAction onClick={confirmDeleteBed} disabled={deletingBed}>
+                <AlertDialogAction
+                  onClick={confirmDeleteBed}
+                  disabled={deletingBed}
+                >
                   {deletingBed ? 'Deleting...' : 'Delete'}
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -347,12 +467,19 @@ export function RoomDetailsScreen() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Room</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Are you sure you want to delete <span className='font-semibold'>{room.room_no}</span>? This action cannot be undone.
+                  Are you sure you want to delete{' '}
+                  <span className='font-semibold'>Room {room.room_no}</span>?
+                  This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setDeleteRoomOpen(false)}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={confirmDeleteRoom} disabled={deletingRoom}>
+                <AlertDialogCancel onClick={() => setDeleteRoomOpen(false)}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={confirmDeleteRoom}
+                  disabled={deletingRoom}
+                >
                   {deletingRoom ? 'Deleting...' : 'Delete'}
                 </AlertDialogAction>
               </AlertDialogFooter>

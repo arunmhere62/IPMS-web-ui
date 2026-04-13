@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import {
+  useDeleteVisitorMutation,
+  useGetVisitorsQuery,
+  type Visitor,
+} from '@/services/visitorsApi'
+import { useAppSelector } from '@/store/hooks'
 import { CircleAlert, Plus, Search, Users } from 'lucide-react'
-
+import { Link, useNavigate } from 'react-router-dom'
+import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -16,13 +22,10 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { ActionButtons } from '@/components/form/action-buttons'
 import { PageHeader } from '@/components/form/page-header'
-
-import { useAppSelector } from '@/store/hooks'
-import { useDeleteVisitorMutation, useGetVisitorsQuery, type Visitor } from '@/services/visitorsApi'
-import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 
 type ErrorLike = {
   data?: {
@@ -31,7 +34,8 @@ type ErrorLike = {
   message?: string
 }
 
-const asArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
+const asArray = <T,>(value: unknown): T[] =>
+  Array.isArray(value) ? (value as T[]) : []
 
 const toDateOnly = (value?: string) => {
   const s = String(value ?? '')
@@ -41,7 +45,9 @@ const toDateOnly = (value?: string) => {
 
 export function VisitorsScreen() {
   const navigate = useNavigate()
-  const selectedPGLocationId = useAppSelector((s) => s.pgLocations.selectedPGLocationId)
+  const selectedPGLocationId = useAppSelector(
+    (s) => s.pgLocations.selectedPGLocationId
+  )
 
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
@@ -65,9 +71,16 @@ export function VisitorsScreen() {
 
   const [deleteVisitor, { isLoading: deleting }] = useDeleteVisitorMutation()
 
-  const visitors: Visitor[] = useMemo(() => asArray<Visitor>((visitorsResponse as { data?: unknown } | undefined)?.data), [visitorsResponse])
+  const visitors: Visitor[] = useMemo(
+    () =>
+      asArray<Visitor>(
+        (visitorsResponse as { data?: unknown } | undefined)?.data
+      ),
+    [visitorsResponse]
+  )
 
-  const pagination = (visitorsResponse as { pagination?: unknown } | undefined)?.pagination as
+  const pagination = (visitorsResponse as { pagination?: unknown } | undefined)
+    ?.pagination as
     | {
         total?: number
         page?: number
@@ -78,9 +91,13 @@ export function VisitorsScreen() {
     | undefined
 
   const total = Number(pagination?.total ?? visitors.length)
-  const totalPages = Number(pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1))
+  const totalPages = Number(
+    pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1)
+  )
 
-  const fetchErrorMessage = (error as ErrorLike | undefined)?.data?.message || (error as ErrorLike | undefined)?.message
+  const fetchErrorMessage =
+    (error as ErrorLike | undefined)?.data?.message ||
+    (error as ErrorLike | undefined)?.message
 
   const [deleteTarget, setDeleteTarget] = useState<Visitor | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -104,7 +121,9 @@ export function VisitorsScreen() {
   }
 
   const canPrev = page > 1
-  const canNext = Boolean(pagination?.hasMore) || (Number.isFinite(totalPages) && page < totalPages)
+  const canNext =
+    Boolean(pagination?.hasMore) ||
+    (Number.isFinite(totalPages) && page < totalPages)
 
   const countLabel = useMemo(() => {
     if (!selectedPGLocationId) return 'Select PG'
@@ -119,12 +138,24 @@ export function VisitorsScreen() {
         subtitle='Manage visitors'
         right={
           <>
-            <Button asChild type='button' size='icon' aria-label='Add visitor' title='Add visitor' disabled={!selectedPGLocationId}>
+            <Button
+              asChild
+              type='button'
+              size='icon'
+              aria-label='Add visitor'
+              title='Add visitor'
+              disabled={!selectedPGLocationId}
+            >
               <Link to='/visitors/new'>
                 <Plus className='size-4' />
               </Link>
             </Button>
-            <Button variant='outline' size='sm' onClick={() => refetch()} disabled={!selectedPGLocationId}>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => refetch()}
+              disabled={!selectedPGLocationId}
+            >
               Refresh
             </Button>
           </>
@@ -142,15 +173,18 @@ export function VisitorsScreen() {
       ) : null}
 
       {!selectedPGLocationId ? (
-        <div className='mt-4 rounded-md border bg-card px-3 py-8 text-center'>
-          <div className='text-base font-semibold'>Select a PG Location</div>
-          <div className='mt-1 text-xs text-muted-foreground'>Choose a PG from the top bar to manage visitors.</div>
+        <div className='mt-4'>
+          <EmptyState
+            icon={Users}
+            title='Select a PG Location'
+            description='Choose a PG from the top bar to manage visitors.'
+          />
         </div>
       ) : (
         <>
           <div className='mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
             <div className='relative w-full sm:max-w-xs'>
-              <Search className='pointer-events-none absolute left-2.5 top-2 size-4 text-muted-foreground' />
+              <Search className='pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground' />
               <Input
                 value={query}
                 onChange={(e) => {
@@ -169,20 +203,19 @@ export function VisitorsScreen() {
 
           <div className='mt-4'>
             {isLoading ? (
-              <div className='rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>Loading...</div>
-            ) : visitors.length === 0 ? (
-              <div className='rounded-md border bg-card px-3 py-8 text-center'>
-                <div className='mx-auto flex size-12 items-center justify-center rounded-full bg-muted'>
-                  <Users className='size-6 text-muted-foreground' />
-                </div>
-                <div className='mt-3 text-base font-semibold'>No Visitors</div>
-                <div className='mt-1 text-xs text-muted-foreground'>Add your first visitor to get started.</div>
-                <div className='mt-4'>
-                  <Button asChild>
-                    <Link to='/visitors/new'>Add Visitor</Link>
-                  </Button>
-                </div>
+              <div className='rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>
+                Loading...
               </div>
+            ) : visitors.length === 0 ? (
+              <EmptyState
+                icon={Users}
+                title='No Visitors'
+                description={
+                  query
+                    ? 'Try adjusting your search.'
+                    : 'Add your first visitor to get started.'
+                }
+              />
             ) : (
               <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
                 {visitors.map((v) => (
@@ -190,19 +223,28 @@ export function VisitorsScreen() {
                     <CardContent className='flex h-full flex-col gap-3 p-4'>
                       <div className='flex items-start justify-between gap-2'>
                         <div className='min-w-0'>
-                          <div className='truncate text-base font-bold'>{v.visitor_name || 'Visitor'}</div>
-                          <div className='mt-1 text-xs text-muted-foreground'>{v.phone_no ? v.phone_no : 'Phone —'}</div>
+                          <div className='truncate text-base font-bold'>
+                            {v.visitor_name || 'Visitor'}
+                          </div>
+                          <div className='mt-1 text-xs text-muted-foreground'>
+                            {v.phone_no ? v.phone_no : 'Phone —'}
+                          </div>
                           <div className='mt-1 text-xs text-muted-foreground'>
                             {v.purpose ? v.purpose : 'Purpose —'}
-                            {v.visited_date ? ` • ${toDateOnly(v.visited_date)}` : ''}
+                            {v.visited_date
+                              ? ` • ${toDateOnly(v.visited_date)}`
+                              : ''}
                           </div>
                         </div>
-                        <Badge variant={v.convertedTo_tenant ? 'default' : 'outline'} className='shrink-0'>
+                        <Badge
+                          variant={v.convertedTo_tenant ? 'default' : 'outline'}
+                          className='shrink-0'
+                        >
                           {v.convertedTo_tenant ? 'Converted' : 'Not Converted'}
                         </Badge>
                       </div>
 
-                      {(v.rooms?.room_no || v.beds?.bed_no) ? (
+                      {v.rooms?.room_no || v.beds?.bed_no ? (
                         <div className='text-xs text-muted-foreground'>
                           {v.rooms?.room_no ? `Room ${v.rooms.room_no}` : ''}
                           {v.rooms?.room_no && v.beds?.bed_no ? ' • ' : ''}
@@ -210,10 +252,19 @@ export function VisitorsScreen() {
                         </div>
                       ) : null}
 
-                      {v.remarks ? <div className='text-xs text-muted-foreground line-clamp-2'>{v.remarks}</div> : null}
+                      {v.remarks ? (
+                        <div className='line-clamp-2 text-xs text-muted-foreground'>
+                          {v.remarks}
+                        </div>
+                      ) : null}
 
                       <div className='mt-auto flex items-center justify-between'>
-                        <Button type='button' variant='outline' size='sm' onClick={() => navigate(`/visitors/${v.s_no}`)}>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          onClick={() => navigate(`/visitors/${v.s_no}`)}
+                        >
                           View
                         </Button>
                         <ActionButtons
@@ -231,14 +282,26 @@ export function VisitorsScreen() {
             )}
 
             <div className='mt-5 flex items-center justify-between gap-2'>
-              <Button variant='outline' size='sm' disabled={!canPrev} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              <Button
+                variant='outline'
+                size='sm'
+                disabled={!canPrev}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
                 Prev
               </Button>
               <div className='text-xs text-muted-foreground'>
                 Page {page}
-                {Number.isFinite(totalPages) && totalPages > 0 ? ` / ${totalPages}` : ''}
+                {Number.isFinite(totalPages) && totalPages > 0
+                  ? ` / ${totalPages}`
+                  : ''}
               </div>
-              <Button variant='outline' size='sm' disabled={!canNext} onClick={() => setPage((p) => p + 1)}>
+              <Button
+                variant='outline'
+                size='sm'
+                disabled={!canNext}
+                onClick={() => setPage((p) => p + 1)}
+              >
                 Next
               </Button>
             </div>
@@ -251,7 +314,11 @@ export function VisitorsScreen() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Visitor</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <span className='font-semibold'>{deleteTarget?.visitor_name}</span>? This action cannot be undone.
+              Are you sure you want to delete{' '}
+              <span className='font-semibold'>
+                {deleteTarget?.visitor_name}
+              </span>
+              ? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

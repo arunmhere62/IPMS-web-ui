@@ -1,18 +1,24 @@
 import { useEffect } from 'react'
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import { getCookie, setCookie } from '@/lib/cookies'
-import { cn } from '@/lib/utils'
-import { LayoutProvider } from '@/context/layout-provider'
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { AppSidebar } from '@/components/layout/app-sidebar'
-import { SkipToMain } from '@/components/skip-to-main'
-import { Header } from '@/components/layout/header'
-import { ThemeSwitch } from '@/components/theme-switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useGetPGLocationsQuery } from '@/services/pgLocationsApi'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { setSelectedPGLocation } from '@/store/slices/pgLocationSlice'
 import type { PGLocation } from '@/types'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { getCookie, setCookie } from '@/lib/cookies'
+import { cn } from '@/lib/utils'
+import { LayoutProvider } from '@/context/layout-provider'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { AppSidebar } from '@/components/layout/app-sidebar'
+import { Header } from '@/components/layout/header'
+import { SkipToMain } from '@/components/skip-to-main'
+import { ThemeSwitch } from '@/components/theme-switch'
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
@@ -23,13 +29,15 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const accessToken = getCookie('access_token')
 
   const dispatch = useAppDispatch()
-  const selectedPGLocationId = useAppSelector((s) => (s as any).pgLocations?.selectedPGLocationId) as
-    | number
-    | null
+  const selectedPGLocationId = useAppSelector(
+    (s) => (s as any).pgLocations?.selectedPGLocationId
+  ) as number | null
 
   const { data: pgLocationsResponse } = useGetPGLocationsQuery(undefined)
 
-  const pgLocations: PGLocation[] = Array.isArray((pgLocationsResponse as any)?.data)
+  const pgLocations: PGLocation[] = Array.isArray(
+    (pgLocationsResponse as any)?.data
+  )
     ? ((pgLocationsResponse as any).data as PGLocation[])
     : Array.isArray(pgLocationsResponse)
       ? (pgLocationsResponse as any as PGLocation[])
@@ -75,9 +83,8 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
           )}
         >
           <Header fixed>
-            <div className='flex w-full items-center gap-3'>
-              <div className='text-sm font-semibold'>Dashboard</div>
-              <div className='ms-auto flex items-center'>
+            <div className='flex w-full items-center gap-2 sm:gap-3'>
+              <div className='ms-auto flex items-center gap-2 sm:gap-3'>
                 {pgLocations.length > 0 ? (
                   <Select
                     value={String(activePg?.s_no ?? '')}
@@ -86,7 +93,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
                       if (Number.isFinite(id) && id > 0) ensureSelectedPg(id)
                     }}
                   >
-                    <SelectTrigger className='me-3 w-[220px] max-w-[55vw]'>
+                    <SelectTrigger className='w-[180px] max-w-[45vw] sm:w-[220px] sm:max-w-[55vw]'>
                       <SelectValue placeholder='Select PG' />
                     </SelectTrigger>
                     <SelectContent>
@@ -98,7 +105,9 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
                     </SelectContent>
                   </Select>
                 ) : null}
-                <ThemeSwitch />
+                <div className='shrink-0'>
+                  <ThemeSwitch />
+                </div>
               </div>
             </div>
           </Header>

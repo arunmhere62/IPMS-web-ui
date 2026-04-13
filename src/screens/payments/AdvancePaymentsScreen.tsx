@@ -1,7 +1,23 @@
 import { useMemo, useState } from 'react'
+import {
+  type AdvancePayment,
+  type GetAdvancePaymentsParams,
+  useGetAdvancePaymentsQuery,
+} from '@/services/paymentsApi'
+import { useAppSelector } from '@/store/hooks'
+import {
+  ArrowLeft,
+  Calendar,
+  CircleAlert,
+  CreditCard,
+  Filter,
+  Home,
+  Bed,
+  MapPin,
+  RefreshCw,
+  DollarSign,
+} from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CircleAlert, Filter, RefreshCw } from 'lucide-react'
-
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -17,15 +33,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PageHeader } from '@/components/form/page-header'
-
 import {
-  type AdvancePayment,
-  type GetAdvancePaymentsParams,
-  useGetAdvancePaymentsQuery,
-} from '@/services/paymentsApi'
-import { useAppSelector } from '@/store/hooks'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { PageHeader } from '@/components/form/page-header'
 
 type StatusFilter = 'ALL' | 'PAID' | 'PARTIAL' | 'PENDING' | 'FAILED'
 
@@ -60,7 +75,11 @@ const formatDate = (value?: string) => {
   if (!s) return '—'
   const d = new Date(s)
   if (Number.isNaN(d.getTime())) return s.includes('T') ? s.split('T')[0] : s
-  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 
 const formatMoney = (value: unknown) => {
@@ -87,7 +106,8 @@ const statusBadgeVariant = (status?: string) => {
   return 'outline'
 }
 
-const asArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
+const asArray = <T,>(value: unknown): T[] =>
+  Array.isArray(value) ? (value as T[]) : []
 
 const readListData = (value: unknown): unknown => {
   if (!value || typeof value !== 'object') return undefined
@@ -101,7 +121,9 @@ const readPagination = (value: unknown): unknown => {
 
 export function AdvancePaymentsScreen() {
   const navigate = useNavigate()
-  const selectedPGLocationId = useAppSelector((s) => (s as any).pgLocations?.selectedPGLocationId) as number | null
+  const selectedPGLocationId = useAppSelector(
+    (s) => (s as any).pgLocations?.selectedPGLocationId
+  ) as number | null
 
   const [page, setPage] = useState(1)
   const limit = 50
@@ -128,7 +150,8 @@ export function AdvancePaymentsScreen() {
   }, [])
 
   const computedDates = useMemo(() => {
-    if (quickFilter === 'NONE') return { start_date: undefined, end_date: undefined }
+    if (quickFilter === 'NONE')
+      return { start_date: undefined, end_date: undefined }
     const end = new Date()
     const start = new Date()
     if (quickFilter === 'LAST_WEEK') start.setDate(end.getDate() - 7)
@@ -156,7 +179,17 @@ export function AdvancePaymentsScreen() {
     }
 
     return params
-  }, [computedDates.end_date, computedDates.start_date, endDate, limit, page, selectedMonth, selectedYear, startDate, statusFilter])
+  }, [
+    computedDates.end_date,
+    computedDates.start_date,
+    endDate,
+    limit,
+    page,
+    selectedMonth,
+    selectedYear,
+    startDate,
+    statusFilter,
+  ])
 
   const {
     data: listResponse,
@@ -179,12 +212,18 @@ export function AdvancePaymentsScreen() {
       }
     | undefined
 
-  const totalPages = Number(pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1))
+  const totalPages = Number(
+    pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1)
+  )
 
-  const fetchErrorMessage = (error as ErrorLike | undefined)?.data?.message || (error as ErrorLike | undefined)?.message
+  const fetchErrorMessage =
+    (error as ErrorLike | undefined)?.data?.message ||
+    (error as ErrorLike | undefined)?.message
 
   const canPrev = page > 1
-  const canNext = Boolean(pagination?.hasMore) || (Number.isFinite(totalPages) && page < totalPages)
+  const canNext =
+    Boolean(pagination?.hasMore) ||
+    (Number.isFinite(totalPages) && page < totalPages)
 
   const filterCount = useMemo(() => {
     let c = 0
@@ -193,7 +232,14 @@ export function AdvancePaymentsScreen() {
     if (selectedMonth || selectedYear) c++
     if (startDate || endDate) c++
     return c
-  }, [endDate, quickFilter, selectedMonth, selectedYear, startDate, statusFilter])
+  }, [
+    endDate,
+    quickFilter,
+    selectedMonth,
+    selectedYear,
+    startDate,
+    statusFilter,
+  ])
 
   const openFilters = () => {
     setDraftStatus(statusFilter)
@@ -255,21 +301,32 @@ export function AdvancePaymentsScreen() {
         subtitle='Manage advances paid by tenants'
         right={
           <>
-            <Button variant='outline' size='sm' onClick={() => void refetch()} disabled={isLoading}>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => void refetch()}
+              disabled={isLoading}
+            >
               <RefreshCw className='me-2 size-4' />
               Refresh
             </Button>
             <Button variant='outline' size='sm' onClick={openFilters}>
               <Filter className='me-2 size-4' />
               Filters
-              {filterCount > 0 ? <Badge variant='secondary' className='ms-2'>{filterCount}</Badge> : null}
+              {filterCount > 0 ? (
+                <Badge variant='secondary' className='ms-2'>
+                  {filterCount}
+                </Badge>
+              ) : null}
             </Button>
           </>
         }
       />
 
       {!selectedPGLocationId ? (
-        <div className='mt-4 rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>Select a PG location.</div>
+        <div className='mt-4 rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>
+          Select a PG location.
+        </div>
       ) : null}
 
       {fetchErrorMessage ? (
@@ -284,81 +341,138 @@ export function AdvancePaymentsScreen() {
 
       <div className='mt-4 grid gap-3'>
         {isLoading ? (
-          <div className='rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>Loading...</div>
+          <div className='rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>
+            Loading...
+          </div>
         ) : items.length === 0 ? (
           <div className='rounded-md border bg-card px-3 py-8 text-center'>
             <div className='text-base font-semibold'>No Payments</div>
-            <div className='mt-1 text-xs text-muted-foreground'>No advance payments found.</div>
+            <div className='mt-1 text-xs text-muted-foreground'>
+              No advance payments found.
+            </div>
           </div>
         ) : (
           items.map((p) => {
             const tenantName = p.tenants?.name || `Tenant #${p.tenant_id}`
-            const room = p.rooms?.room_no ? `Room ${p.rooms.room_no}` : undefined
-            const bed = p.beds?.bed_no ? `Bed ${p.beds.bed_no}` : undefined
-            const where = [room, bed].filter(Boolean).join(' · ')
-            const tenantIdLabel = p.tenants?.tenant_id ? `ID: ${p.tenants.tenant_id}` : null
-            const phoneLabel = p.tenants?.phone_no ? String(p.tenants.phone_no) : null
-            const canViewTenant = Boolean(p.tenants) && !p.tenant_unavailable_reason
+            const canViewTenant =
+              Boolean(p.tenants) && !p.tenant_unavailable_reason
+            const statusColor =
+              p.status === 'PAID'
+                ? 'bg-slate-700'
+                : p.status === 'PARTIAL'
+                  ? 'bg-orange-500'
+                  : p.status === 'PENDING'
+                    ? 'bg-amber-500'
+                    : 'bg-red-500'
 
             return (
-              <Card key={p.s_no}>
-                <CardContent className='p-4'>
-                  <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-                    <div className='min-w-0'>
+              <Card
+                key={p.s_no}
+                className='group cursor-pointer border-2 border-transparent bg-gradient-to-br from-white via-white to-slate-50 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200'
+                onClick={() =>
+                  canViewTenant && navigate(`/tenants/${p.tenant_id}`)
+                }
+              >
+                <CardContent className='p-5'>
+                  <div className='flex items-start gap-4'>
+                    <div className='min-w-0 flex-1'>
+                      <div className='mb-2 flex items-center gap-2'>
+                        <div className='h-8 w-1 rounded-full bg-gradient-to-b from-slate-400 to-slate-300'></div>
+                        <div>
+                          <h3 className='text-lg font-bold text-foreground'>
+                            {tenantName}
+                          </h3>
+                          {p.tenants?.phone_no && (
+                            <p className='text-xs text-muted-foreground'>
+                              {p.tenants.phone_no}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className='mt-3 grid grid-cols-2 gap-3'>
+                        <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
+                          <Calendar className='h-4 w-4 text-slate-500' />
+                          <span className='text-xs font-medium text-slate-700'>
+                            {p.payment_date ? formatDate(p.payment_date) : '—'}
+                          </span>
+                        </div>
+                        <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
+                          <CreditCard className='h-4 w-4 text-slate-500' />
+                          <span className='text-xs font-medium text-slate-700'>
+                            {String(p.payment_method ?? '')}
+                          </span>
+                        </div>
+                        <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
+                          <Home className='h-4 w-4 text-slate-500' />
+                          <span className='text-xs font-medium text-slate-700'>
+                            Room {(p as any).rooms?.room_no || 'N/A'}
+                          </span>
+                        </div>
+                        <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
+                          <Bed className='h-4 w-4 text-slate-500' />
+                          <span className='text-xs font-medium text-slate-700'>
+                            Bed {(p as any).beds?.bed_no || 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className='mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 p-2'>
+                        <MapPin className='h-4 w-4 text-slate-500' />
+                        <span className='text-xs font-medium text-slate-700'>
+                          {(p as any).pg_locations?.location_name || 'N/A'}
+                        </span>
+                      </div>
+
+                      {(p as any).actual_rent_amount &&
+                        (p as any).actual_rent_amount !== p.amount_paid && (
+                          <div className='mt-2 flex items-center gap-2 text-xs text-muted-foreground'>
+                            <DollarSign className='h-3 w-3' />
+                            <span>
+                              Actual Rent:{' '}
+                              {formatMoney((p as any).actual_rent_amount)}
+                            </span>
+                          </div>
+                        )}
+                    </div>
+
+                    <div className='flex flex-col items-end gap-2'>
+                      <Badge
+                        variant='outline'
+                        className='border-slate-200 bg-slate-100 text-xs font-semibold text-slate-700'
+                      >
+                        #{p.s_no}
+                      </Badge>
+                      <Badge
+                        variant={statusBadgeVariant(p.status) as BadgeVariant}
+                        className={`text-xs font-semibold ${statusColor} border-0 text-white`}
+                      >
+                        {String(p.status)}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className='mt-4 border-t border-slate-200 pt-4'>
+                    <div className='flex items-center justify-between'>
+                      <span className='text-sm text-muted-foreground'>
+                        Amount Paid
+                      </span>
                       <div className='flex items-center gap-2'>
-                        <div className='rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-700'>
-                          ⚡ ADVANCE PAYMENT
-                        </div>
-                        <Badge variant={statusBadgeVariant(p.status) as BadgeVariant}>{String(p.status)}</Badge>
+                        <span className='text-2xl font-bold text-slate-700'>
+                          {formatMoney(p.amount_paid)}
+                        </span>
                       </div>
-                      <div className='mt-2 truncate text-sm font-semibold'>{tenantName}</div>
-                      {tenantIdLabel ? <div className='mt-0.5 text-[11px] text-muted-foreground'>{tenantIdLabel}</div> : null}
-                      {p.tenant_unavailable_reason && !p.tenants ? (
-                        <div className='mt-2 inline-flex rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground'>
-                          {p.tenant_unavailable_reason}
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className='text-right'>
-                      <div className='text-base font-semibold text-emerald-700'>{formatMoney(p.amount_paid)}</div>
-                      {p.actual_rent_amount && p.actual_rent_amount !== p.amount_paid ? (
-                        <div className='mt-0.5 text-[11px] text-muted-foreground'>Actual Rent: {formatMoney(p.actual_rent_amount)}</div>
-                      ) : null}
                     </div>
                   </div>
 
-                  <div className='mt-3 rounded-md border bg-emerald-500/5 p-3 text-xs'>
-                    <div className='flex flex-wrap items-center justify-between gap-2'>
-                      <div className='text-muted-foreground'>{where ? where : 'Room N/A · Bed N/A'}</div>
-                      <div className='text-muted-foreground'>{p.payment_date ? formatDate(p.payment_date) : '—'}</div>
-                    </div>
-                    <div className='mt-2 flex flex-wrap items-center justify-between gap-2'>
-                      <div className='text-muted-foreground'>
-                        {paymentMethodIcon(p.payment_method)} {String(p.payment_method ?? '')}
+                  {p.remarks && (
+                    <div className='mt-4 rounded-lg border-l-4 border-slate-400 bg-slate-50 p-3'>
+                      <div className='mb-1 text-xs font-semibold text-muted-foreground'>
+                        Remarks
                       </div>
-                      {phoneLabel ? <div className='text-muted-foreground'>{phoneLabel}</div> : null}
+                      <div className='text-sm'>{p.remarks}</div>
                     </div>
-                  </div>
-
-                  {p.remarks ? (
-                    <div className='mt-3 rounded-md border bg-muted/20 p-3'>
-                      <div className='text-[11px] text-muted-foreground'>Remarks</div>
-                      <div className='mt-1 text-xs text-muted-foreground'>{p.remarks}</div>
-                    </div>
-                  ) : null}
-
-                  {p.tenant_unavailable_reason ? (
-                    <div className='mt-3 rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground'>
-                      Tenant unavailable: {p.tenant_unavailable_reason}
-                    </div>
-                  ) : null}
-
-                  <div className='mt-3 flex flex-col gap-2 sm:flex-row'>
-                    <Button asChild variant='outline' className='justify-center' disabled={!canViewTenant}>
-                      <Link to={canViewTenant ? `/tenants/${p.tenant_id}` : '#'}>View Details</Link>
-                    </Button>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             )
@@ -367,11 +481,23 @@ export function AdvancePaymentsScreen() {
       </div>
 
       <div className='mt-6 flex items-center justify-between gap-2'>
-        <Button type='button' variant='outline' size='sm' onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={!canPrev}>
+        <Button
+          type='button'
+          variant='outline'
+          size='sm'
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={!canPrev}
+        >
           Prev
         </Button>
         <div className='text-xs text-muted-foreground'>Page {page}</div>
-        <Button type='button' variant='outline' size='sm' onClick={() => setPage((p) => p + 1)} disabled={!canNext}>
+        <Button
+          type='button'
+          variant='outline'
+          size='sm'
+          onClick={() => setPage((p) => p + 1)}
+          disabled={!canNext}
+        >
           Next
         </Button>
       </div>
@@ -380,13 +506,18 @@ export function AdvancePaymentsScreen() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Filters</AlertDialogTitle>
-            <AlertDialogDescription>Filter payments by status and date.</AlertDialogDescription>
+            <AlertDialogDescription>
+              Filter payments by status and date.
+            </AlertDialogDescription>
           </AlertDialogHeader>
 
           <div className='grid gap-3'>
             <div className='grid gap-2'>
               <div className='text-sm font-medium'>Status</div>
-              <Select value={draftStatus} onValueChange={(v) => setDraftStatus(v as StatusFilter)}>
+              <Select
+                value={draftStatus}
+                onValueChange={(v) => setDraftStatus(v as StatusFilter)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder='Select status' />
                 </SelectTrigger>
@@ -461,7 +592,9 @@ export function AdvancePaymentsScreen() {
                   value={draftYear ? String(draftYear) : ''}
                   onValueChange={(v) => {
                     const next = v ? Number(v) : null
-                    setDraftYear(Number.isFinite(next as number) ? (next as number) : null)
+                    setDraftYear(
+                      Number.isFinite(next as number) ? (next as number) : null
+                    )
                     if (v) {
                       setDraftQuick('NONE')
                       setDraftStartDate('')
@@ -517,11 +650,15 @@ export function AdvancePaymentsScreen() {
               </div>
             </div>
 
-            <div className='text-xs text-muted-foreground'>Month + Year or Date Range will override quick filter.</div>
+            <div className='text-xs text-muted-foreground'>
+              Month + Year or Date Range will override quick filter.
+            </div>
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setFiltersOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setFiltersOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
             <Button type='button' variant='outline' onClick={clearFilters}>
               Clear
             </Button>

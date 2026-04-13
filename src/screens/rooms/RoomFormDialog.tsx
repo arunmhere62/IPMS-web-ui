@@ -1,14 +1,7 @@
 import { useEffect } from 'react'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-
-import { AppDialog } from '@/components/form/app-dialog'
-import { FormTextInput } from '@/components/form/form-text-input'
-import { ImageUploadS3 } from '@/components/form/image-upload-s3'
-import { Form } from '@/components/ui/form'
-import { Button } from '@/components/ui/button'
-
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   type CreateRoomDto,
   type Room,
@@ -16,6 +9,11 @@ import {
   useUpdateRoomMutation,
 } from '@/services/roomsApi'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+import { Button } from '@/components/ui/button'
+import { Form } from '@/components/ui/form'
+import { FormDialog } from '@/components/form/form-dialog'
+import { FormPrefixInput } from '@/components/form/form-prefix-input'
+import { ImageUploadS3 } from '@/components/form/image-upload-s3'
 
 const schema = z.object({
   roomNo: z.string().min(1, 'Room number is required'),
@@ -32,7 +30,13 @@ export type RoomFormDialogProps = {
   onSaved: () => void
 }
 
-export function RoomFormDialog({ open, onOpenChange, editTarget, pgId, onSaved }: RoomFormDialogProps) {
+export function RoomFormDialog({
+  open,
+  onOpenChange,
+  editTarget,
+  pgId,
+  onSaved,
+}: RoomFormDialogProps) {
   const [createRoom, { isLoading: creating }] = useCreateRoomMutation()
   const [updateRoom, { isLoading: updating }] = useUpdateRoomMutation()
 
@@ -49,8 +53,10 @@ export function RoomFormDialog({ open, onOpenChange, editTarget, pgId, onSaved }
 
     if (editTarget) {
       form.reset({
-        roomNo: String((editTarget as any).room_no ?? ''),
-        images: Array.isArray((editTarget as any).images) ? ((editTarget as any).images as any) : [],
+        roomNo: String(editTarget.room_no ?? ''),
+        images: Array.isArray(editTarget.images)
+          ? (editTarget.images as string[])
+          : [],
       })
       return
     }
@@ -79,7 +85,7 @@ export function RoomFormDialog({ open, onOpenChange, editTarget, pgId, onSaved }
 
       onOpenChange(false)
       onSaved()
-    } catch (e: any) {
+    } catch (e: unknown) {
       showErrorAlert(e, 'Save Error')
     }
   }
@@ -87,26 +93,42 @@ export function RoomFormDialog({ open, onOpenChange, editTarget, pgId, onSaved }
   const saving = creating || updating
 
   return (
-    <AppDialog
+    <FormDialog
       open={open}
       onOpenChange={onOpenChange}
       title={editTarget ? 'Edit Room' : 'Add Room'}
       description='Enter room details.'
       size='md'
       footer={
-        <div className='flex w-full justify-end gap-2 px-3 pb-3'>
-          <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={saving}>
+        <>
+          <Button
+            type='button'
+            variant='outline'
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
             Cancel
           </Button>
           <Button type='submit' form='room-form' disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
           </Button>
-        </div>
+        </>
       }
     >
       <Form {...form}>
-        <form id='room-form' onSubmit={form.handleSubmit(onSubmit)} className='grid gap-4'>
-          <FormTextInput control={form.control} name='roomNo' label='Room Number' placeholder='101' required />
+        <form
+          id='room-form'
+          onSubmit={form.handleSubmit(onSubmit)}
+          className='grid gap-4'
+        >
+          <FormPrefixInput
+            control={form.control}
+            name='roomNo'
+            label='Room Number'
+            placeholder='101'
+            prefix='RM'
+            required
+          />
 
           <ImageUploadS3
             images={form.watch('images')}
@@ -120,6 +142,6 @@ export function RoomFormDialog({ open, onOpenChange, editTarget, pgId, onSaved }
           />
         </form>
       </Form>
-    </AppDialog>
+    </FormDialog>
   )
 }

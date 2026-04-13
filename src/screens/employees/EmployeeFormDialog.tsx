@@ -1,30 +1,35 @@
 import { useEffect, useMemo } from 'react'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-
-import { AppDialog } from '@/components/form/app-dialog'
-import { FormSelectField } from '@/components/form/form-select-field'
-import { FormTextInput } from '@/components/form/form-text-input'
-import { Form } from '@/components/ui/form'
-import { Button } from '@/components/ui/button'
-
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   useCreateEmployeeMutation,
   useUpdateEmployeeMutation,
   type CreateEmployeeDto,
   type Employee,
   type UpdateEmployeeDto,
+  UserGender,
 } from '@/services/employeesApi'
 import { useGetRolesQuery } from '@/services/rolesApi'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+import { Button } from '@/components/ui/button'
+import { Form } from '@/components/ui/form'
+import { FormDialog } from '@/components/form/form-dialog'
+import { FormSelectField } from '@/components/form/form-select-field'
+import { FormTextInput } from '@/components/form/form-text-input'
+import { PhoneInput } from '@/components/form/phone-input'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
-  phone: z.string().optional().or(z.literal('')),
-  password: z.string().optional().or(z.literal('')),
+  phone: z.string().min(1, 'Phone is required'),
   roleId: z.number().min(1, 'Role is required'),
+  gender: z
+    .nativeEnum(UserGender)
+    .optional()
+    .refine((val) => val !== undefined, {
+      message: 'Gender is required',
+    }),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -36,22 +41,26 @@ export type EmployeeFormDialogProps = {
   onSaved: () => void
 }
 
-export function EmployeeFormDialog({ open, onOpenChange, editTarget, onSaved }: EmployeeFormDialogProps) {
+export function EmployeeFormDialog({
+  open,
+  onOpenChange,
+  editTarget,
+  onSaved,
+}: EmployeeFormDialogProps) {
   const [createEmployee, { isLoading: creating }] = useCreateEmployeeMutation()
   const [updateEmployee, { isLoading: updating }] = useUpdateEmployeeMutation()
 
   const { data: rolesResponse } = useGetRolesQuery()
-  const roles = (rolesResponse as any)?.data || []
+  const roles = rolesResponse?.data || []
 
-  const roleOptions = useMemo(
-    () =>
-      (Array.isArray(roles) ? roles : []).map((r: any) => ({
-        label: String(r.role_name ?? r.name ?? `Role ${r.s_no}`),
-        value: String(r.s_no),
-        searchText: String(r.role_name ?? r.name ?? r.s_no),
-      })),
-    [roles]
-  )
+  const roleOptions = useMemo(() => {
+    const roleList = Array.isArray(roles) ? roles : []
+    return roleList.map((r) => ({
+      label: String(r.role_name ?? `Role ${r.s_no}`),
+      value: String(r.s_no),
+      searchText: String(r.role_name ?? r.s_no),
+    }))
+  }, [roles])
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -59,8 +68,8 @@ export function EmployeeFormDialog({ open, onOpenChange, editTarget, onSaved }: 
       name: '',
       email: '',
       phone: '',
-      password: '',
       roleId: 0,
+      gender: undefined,
     },
   })
 
@@ -70,10 +79,10 @@ export function EmployeeFormDialog({ open, onOpenChange, editTarget, onSaved }: 
     if (editTarget) {
       form.reset({
         name: String(editTarget.name ?? ''),
-        email: String((editTarget as any)?.email ?? ''),
-        phone: String((editTarget as any)?.phone ?? ''),
-        password: '',
-        roleId: Number((editTarget as any)?.role_id ?? 0),
+        email: String(editTarget.email ?? ''),
+        phone: String(editTarget.phone ?? ''),
+        roleId: Number(editTarget.role_id ?? 0),
+        gender: editTarget.gender || undefined,
       })
       return
     }
@@ -82,8 +91,8 @@ export function EmployeeFormDialog({ open, onOpenChange, editTarget, onSaved }: 
       name: '',
       email: '',
       phone: '',
-      password: '',
       roleId: 0,
+      gender: undefined,
     })
   }, [open, editTarget, form])
 
@@ -97,14 +106,17 @@ export function EmployeeFormDialog({ open, onOpenChange, editTarget, onSaved }: 
       const email = values.email?.trim()
       if (email) base.email = email
 
+      // Phone is already formatted with country code from PhoneInput component
       const phone = values.phone?.trim()
       if (phone) base.phone = phone
 
-      const password = values.password?.trim()
-      if (password) base.password = password
+      base.gender = values.gender
 
       if (editTarget) {
-        await updateEmployee({ id: editTarget.s_no, data: base as UpdateEmployeeDto }).unwrap()
+        await updateEmployee({
+          id: editTarget.s_no,
+          data: base as UpdateEmployeeDto,
+        }).unwrap()
         showSuccessAlert('Employee updated successfully')
       } else {
         await createEmployee(base as CreateEmployeeDto).unwrap()
@@ -113,7 +125,7 @@ export function EmployeeFormDialog({ open, onOpenChange, editTarget, onSaved }: 
 
       onOpenChange(false)
       onSaved()
-    } catch (e: any) {
+    } catch (e) {
       showErrorAlert(e, 'Save Error')
     }
   }
@@ -121,31 +133,69 @@ export function EmployeeFormDialog({ open, onOpenChange, editTarget, onSaved }: 
   const saving = creating || updating
 
   return (
-    <AppDialog
+    <FormDialog
       open={open}
       onOpenChange={onOpenChange}
       title={editTarget ? 'Edit Employee' : 'Add Employee'}
       description='Enter employee details.'
       size='md'
       footer={
-        <div className='flex w-full justify-end gap-2 px-3 pb-3'>
-          <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={saving}>
+        <>
+          <Button
+            type='button'
+            variant='outline'
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
             Cancel
           </Button>
           <Button type='submit' form='employee-form' disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
           </Button>
-        </div>
+        </>
       }
     >
       <Form {...form}>
-        <form id='employee-form' onSubmit={form.handleSubmit(onSubmit)} className='grid gap-4'>
-          <FormTextInput control={form.control} name='name' label='Name' placeholder='Employee name' required />
+        <form
+          id='employee-form'
+          onSubmit={form.handleSubmit(onSubmit)}
+          className='space-y-5'
+        >
+          <FormTextInput
+            control={form.control}
+            name='name'
+            label='Name'
+            placeholder='Employee name'
+            required
+          />
 
-          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-            <FormTextInput control={form.control} name='email' label='Email' placeholder='name@example.com' />
-            <FormTextInput control={form.control} name='phone' label='Phone' placeholder='Phone number' />
-          </div>
+          <FormTextInput
+            control={form.control}
+            name='email'
+            label='Email'
+            placeholder='name@example.com'
+          />
+
+          <PhoneInput
+            control={form.control}
+            name='phone'
+            label='Phone'
+            placeholder='Enter phone number'
+            required
+            defaultCountryCode='+91'
+          />
+
+          <FormSelectField
+            control={form.control}
+            name='gender'
+            label='Gender'
+            required
+            placeholder='Select gender'
+            options={[
+              { label: 'Male', value: UserGender.MALE },
+              { label: 'Female', value: UserGender.FEMALE },
+            ]}
+          />
 
           <FormSelectField
             control={form.control}
@@ -157,15 +207,8 @@ export function EmployeeFormDialog({ open, onOpenChange, editTarget, onSaved }: 
             parse={(v) => Number(v)}
             searchable
           />
-
-          <FormTextInput
-            control={form.control}
-            name='password'
-            label={editTarget ? 'New Password (optional)' : 'Password (optional)'}
-            placeholder='Enter password'
-          />
         </form>
       </Form>
-    </AppDialog>
+    </FormDialog>
   )
 }

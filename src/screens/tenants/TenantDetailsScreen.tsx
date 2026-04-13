@@ -80,6 +80,13 @@ type PaymentCycleSummary = {
     payment_method: string
     status: string
     remarks: string
+    rooms?: { room_no?: string }
+    beds?: { bed_no?: string }
+    pg_locations?: { location_name?: string }
+    tenant_rent_cycles?: {
+      cycle_start?: string
+      cycle_end?: string
+    }
   }>
   totalPaid: number
   due: number
@@ -144,7 +151,7 @@ export function TenantDetailsScreen() {
   const [updateTenantCheckoutDate, { isLoading: updatingCheckout }] =
     useUpdateTenantCheckoutDateMutation()
 
-  const [createAdvancePayment, { isLoading: creatingAdvance }] =
+  const [_createAdvancePayment, { isLoading: creatingAdvance }] =
     useCreateAdvancePaymentMutation()
   const [createRefundPayment, { isLoading: creatingRefund }] =
     useCreateRefundPaymentMutation()
@@ -216,7 +223,7 @@ export function TenantDetailsScreen() {
   const hasBothPartialAndPending = partialDueAmount > 0 && pendingDueAmount > 0
 
   const advancePayments = useMemo(
-    () => asArray<AdvancePayment>((tenant as any)?.advance_payments),
+    () => asArray<AdvancePayment>(tenant?.advance_payments),
     [tenant]
   )
 
@@ -872,230 +879,221 @@ export function TenantDetailsScreen() {
                 </div>
 
                 {/* Payment Cycle Summaries */}
-                {(tenant as any)?.payment_cycle_summaries &&
-                (tenant as any).payment_cycle_summaries.length > 0 ? (
+                {tenant?.payment_cycle_summaries &&
+                tenant.payment_cycle_summaries.length > 0 ? (
                   <div className='grid gap-4'>
-                    {(tenant as any).payment_cycle_summaries.map(
-                      (cycle: PaymentCycleSummary) => (
-                        <Card key={cycle.cycle_id}>
-                          <CardContent className='p-4'>
-                            <div className='mb-4 flex items-start justify-between'>
-                              <div>
-                                <div className='text-sm font-semibold'>
-                                  {toDateOnly(cycle.start_date)} -{' '}
-                                  {toDateOnly(cycle.end_date)}
-                                </div>
-                                <div className='text-xs text-muted-foreground'>
-                                  {cycle.days} days {cycle.cycle_type}
-                                </div>
+                    {(
+                      tenant.payment_cycle_summaries as PaymentCycleSummary[]
+                    ).map((cycle) => (
+                      <Card key={cycle.cycle_id}>
+                        <CardContent className='p-4'>
+                          <div className='mb-4 flex items-start justify-between'>
+                            <div>
+                              <div className='text-sm font-semibold'>
+                                {toDateOnly(cycle.start_date)} -{' '}
+                                {toDateOnly(cycle.end_date)}
                               </div>
-                              <Badge
-                                variant={
-                                  cycle.status === 'PAID'
-                                    ? 'default'
-                                    : cycle.status === 'PARTIAL'
-                                      ? 'secondary'
-                                      : 'outline'
-                                }
-                                className='text-xs'
+                              <div className='text-xs text-muted-foreground'>
+                                {cycle.days} days {cycle.cycle_type}
+                              </div>
+                            </div>
+                            <Badge
+                              variant={
+                                cycle.status === 'PAID'
+                                  ? 'default'
+                                  : cycle.status === 'PARTIAL'
+                                    ? 'secondary'
+                                    : 'outline'
+                              }
+                              className='text-xs'
+                            >
+                              {cycle.status}
+                            </Badge>
+                          </div>
+
+                          <div className='mb-4 grid grid-cols-2 gap-4 md:grid-cols-4'>
+                            <div>
+                              <div className='text-xs text-muted-foreground'>
+                                Expected Rent
+                              </div>
+                              <div className='text-sm font-semibold'>
+                                ₹${cycle.due}
+                              </div>
+                            </div>
+                            <div>
+                              <div className='text-xs text-muted-foreground'>
+                                Total Paid
+                              </div>
+                              <div className='text-sm font-semibold'>
+                                ₹${cycle.totalPaid}
+                              </div>
+                            </div>
+                            <div>
+                              <div className='text-xs text-muted-foreground'>
+                                Remaining Due
+                              </div>
+                              <div
+                                className={`text-sm font-semibold ${(cycle.remainingDue || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}
                               >
-                                {cycle.status}
-                              </Badge>
-                            </div>
-
-                            <div className='mb-4 grid grid-cols-2 gap-4 md:grid-cols-4'>
-                              <div>
-                                <div className='text-xs text-muted-foreground'>
-                                  Expected Rent
-                                </div>
-                                <div className='text-sm font-semibold'>
-                                  ₹${cycle.due}
-                                </div>
-                              </div>
-                              <div>
-                                <div className='text-xs text-muted-foreground'>
-                                  Total Paid
-                                </div>
-                                <div className='text-sm font-semibold'>
-                                  ₹${cycle.totalPaid}
-                                </div>
-                              </div>
-                              <div>
-                                <div className='text-xs text-muted-foreground'>
-                                  Remaining Due
-                                </div>
-                                <div
-                                  className={`text-sm font-semibold ${(cycle.remainingDue || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}
-                                >
-                                  ₹${cycle.remainingDue || 0}
-                                </div>
-                              </div>
-                              <div>
-                                <div className='text-xs text-muted-foreground'>
-                                  From Allocations
-                                </div>
-                                <div className='text-sm font-semibold'>
-                                  ₹${cycle.expected_from_allocations}
-                                </div>
+                                ₹${cycle.remainingDue || 0}
                               </div>
                             </div>
+                            <div>
+                              <div className='text-xs text-muted-foreground'>
+                                From Allocations
+                              </div>
+                              <div className='text-sm font-semibold'>
+                                ₹${cycle.expected_from_allocations}
+                              </div>
+                            </div>
+                          </div>
 
-                            {/* Individual Payments for this Cycle */}
-                            {cycle.payments && cycle.payments.length > 0 && (
-                              <div>
-                                <div className='mb-2 text-sm font-medium'>
-                                  Payments in this cycle
-                                </div>
-                                <div className='grid gap-2'>
-                                  {cycle.payments.map((payment) => (
-                                    <div
-                                      key={payment.s_no}
-                                      className='rounded-md border bg-muted/30 p-4'
-                                    >
-                                      <div className='flex items-start justify-between gap-4'>
-                                        <div className='flex-1'>
-                                          <div className='flex items-center gap-3'>
-                                            <div className='text-lg font-semibold'>
-                                              ₹${payment.amount_paid}
-                                            </div>
-                                            <Badge
-                                              variant={
-                                                payment.status === 'PAID'
-                                                  ? 'default'
-                                                  : 'secondary'
-                                              }
-                                              className='text-xs'
-                                            >
-                                              {payment.status}
-                                            </Badge>
+                          {/* Individual Payments for this Cycle */}
+                          {cycle.payments && cycle.payments.length > 0 && (
+                            <div>
+                              <div className='mb-2 text-sm font-medium'>
+                                Payments in this cycle
+                              </div>
+                              <div className='grid gap-2'>
+                                {cycle.payments?.map((payment) => (
+                                  <div
+                                    key={payment.s_no}
+                                    className='rounded-md border bg-muted/30 p-4'
+                                  >
+                                    <div className='flex items-start justify-between gap-4'>
+                                      <div className='flex-1'>
+                                        <div className='flex items-center gap-3'>
+                                          <div className='text-lg font-semibold'>
+                                            ₹${payment.amount_paid}
+                                          </div>
+                                          <Badge
+                                            variant={
+                                              payment.status === 'PAID'
+                                                ? 'default'
+                                                : 'secondary'
+                                            }
+                                            className='text-xs'
+                                          >
+                                            {payment.status}
+                                          </Badge>
+                                        </div>
+
+                                        <div className='mt-2 space-y-1'>
+                                          <div className='flex items-center gap-4 text-sm text-muted-foreground'>
+                                            <span className='flex items-center gap-1'>
+                                              <Calendar className='h-3 w-3' />
+                                              {toDateOnly(payment.payment_date)}
+                                            </span>
+                                            <span className='flex items-center gap-1'>
+                                              <CreditCard className='h-3 w-3' />
+                                              {payment.payment_method}
+                                            </span>
                                           </div>
 
-                                          <div className='mt-2 space-y-1'>
-                                            <div className='flex items-center gap-4 text-sm text-muted-foreground'>
-                                              <span className='flex items-center gap-1'>
-                                                <Calendar className='h-3 w-3' />
-                                                {toDateOnly(
-                                                  payment.payment_date
-                                                )}
-                                              </span>
-                                              <span className='flex items-center gap-1'>
-                                                <CreditCard className='h-3 w-3' />
-                                                {payment.payment_method}
-                                              </span>
-                                            </div>
+                                          <div className='flex items-center gap-4 text-sm text-muted-foreground'>
+                                            <span className='flex items-center gap-1'>
+                                              <Home className='h-3 w-3' />
+                                              Room{' '}
+                                              {payment.rooms?.room_no || 'N/A'}
+                                            </span>
+                                            <span className='flex items-center gap-1'>
+                                              <Bed className='h-3 w-3' />
+                                              Bed{' '}
+                                              {payment.beds?.bed_no || 'N/A'}
+                                            </span>
+                                          </div>
 
-                                            <div className='flex items-center gap-4 text-sm text-muted-foreground'>
-                                              <span className='flex items-center gap-1'>
-                                                <Home className='h-3 w-3' />
-                                                Room{' '}
-                                                {(payment as any).rooms
-                                                  ?.room_no || 'N/A'}
-                                              </span>
-                                              <span className='flex items-center gap-1'>
-                                                <Bed className='h-3 w-3' />
-                                                Bed{' '}
-                                                {(payment as any).beds
-                                                  ?.bed_no || 'N/A'}
-                                              </span>
-                                            </div>
+                                          <div className='text-sm text-muted-foreground'>
+                                            <span className='flex items-center gap-1'>
+                                              <MapPin className='h-3 w-3' />
+                                              {payment.pg_locations
+                                                ?.location_name || 'N/A'}
+                                            </span>
+                                          </div>
 
+                                          {payment.actual_rent_amount && (
                                             <div className='text-sm text-muted-foreground'>
                                               <span className='flex items-center gap-1'>
-                                                <MapPin className='h-3 w-3' />
-                                                {(payment as any).pg_locations
-                                                  ?.location_name || 'N/A'}
+                                                <DollarSign className='h-3 w-3' />
+                                                Actual Rent: ₹$
+                                                {safeNum(
+                                                  payment.actual_rent_amount
+                                                )}
                                               </span>
                                             </div>
+                                          )}
 
-                                            {(payment as any)
-                                              .actual_rent_amount && (
-                                              <div className='text-sm text-muted-foreground'>
-                                                <span className='flex items-center gap-1'>
-                                                  <DollarSign className='h-3 w-3' />
-                                                  Actual Rent: ₹$
-                                                  {safeNum(
-                                                    (payment as any)
-                                                      .actual_rent_amount
-                                                  )}
-                                                </span>
-                                              </div>
-                                            )}
-
-                                            {(payment as any)
-                                              .tenant_rent_cycles && (
-                                              <div className='text-sm text-muted-foreground'>
-                                                <span className='flex items-center gap-1'>
-                                                  <Calendar className='h-3 w-3' />
-                                                  Cycle:{' '}
-                                                  {toDateOnly(
-                                                    (payment as any)
-                                                      .tenant_rent_cycles
-                                                      .cycle_start
-                                                  )}{' '}
-                                                  -{' '}
-                                                  {toDateOnly(
-                                                    (payment as any)
-                                                      .tenant_rent_cycles
-                                                      .cycle_end
-                                                  )}
-                                                </span>
-                                              </div>
-                                            )}
-                                          </div>
-
-                                          {payment.remarks && (
-                                            <div className='mt-2 rounded border bg-background p-2'>
-                                              <div className='mb-1 text-xs text-muted-foreground'>
-                                                Remarks
-                                              </div>
-                                              <div className='text-sm'>
-                                                {payment.remarks}
-                                              </div>
+                                          {payment.tenant_rent_cycles && (
+                                            <div className='text-sm text-muted-foreground'>
+                                              <span className='flex items-center gap-1'>
+                                                <Calendar className='h-3 w-3' />
+                                                Cycle:{' '}
+                                                {toDateOnly(
+                                                  payment.tenant_rent_cycles
+                                                    .cycle_start
+                                                )}{' '}
+                                                -{' '}
+                                                {toDateOnly(
+                                                  payment.tenant_rent_cycles
+                                                    .cycle_end
+                                                )}
+                                              </span>
                                             </div>
                                           )}
                                         </div>
 
-                                        <div className='flex flex-col items-end gap-2'>
-                                          <Badge
-                                            variant='outline'
-                                            className='text-xs'
-                                          >
-                                            #{payment.s_no}
-                                          </Badge>
-                                          <Button
-                                            size='icon'
-                                            variant='ghost'
-                                            className='h-6 w-6 text-red-600 hover:bg-red-50 hover:text-red-700'
-                                            onClick={() =>
-                                              handleDeleteRentPayment(payment)
-                                            }
-                                            title='Cancel Payment'
-                                          >
-                                            <Trash2 className='h-3 w-3' />
-                                          </Button>
-                                        </div>
+                                        {payment.remarks && (
+                                          <div className='mt-2 rounded border bg-background p-2'>
+                                            <div className='mb-1 text-xs text-muted-foreground'>
+                                              Remarks
+                                            </div>
+                                            <div className='text-sm'>
+                                              {payment.remarks}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <div className='flex flex-col items-end gap-2'>
+                                        <Badge
+                                          variant='outline'
+                                          className='text-xs'
+                                        >
+                                          #{payment.s_no}
+                                        </Badge>
+                                        <Button
+                                          size='icon'
+                                          variant='ghost'
+                                          className='h-6 w-6 text-red-600 hover:bg-red-50 hover:text-red-700'
+                                          onClick={() =>
+                                            handleDeleteRentPayment(payment)
+                                          }
+                                          title='Cancel Payment'
+                                        >
+                                          <Trash2 className='h-3 w-3' />
+                                        </Button>
                                       </div>
                                     </div>
-                                  ))}
-                                </div>
+                                  </div>
+                                ))}
                               </div>
-                            )}
+                            </div>
+                          )}
 
-                            {(cycle.remainingDue || 0) > 0 && (
-                              <div className='mt-3 rounded-md border border-amber-200 bg-amber-50 p-3'>
-                                <div className='text-sm font-medium text-amber-800'>
-                                  Outstanding: ₹${cycle.remainingDue}
-                                </div>
-                                <div className='mt-1 text-xs text-amber-600'>
-                                  Click "Add Rent" to record payment for this
-                                  cycle
-                                </div>
+                          {(cycle.remainingDue || 0) > 0 && (
+                            <div className='mt-3 rounded-md border border-amber-200 bg-amber-50 p-3'>
+                              <div className='text-sm font-medium text-amber-800'>
+                                Outstanding: ₹${cycle.remainingDue}
                               </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      )
-                    )}
+                              <div className='mt-1 text-xs text-amber-600'>
+                                Click "Add Rent" to record payment for this
+                                cycle
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 ) : (
                   <Card>
@@ -1132,7 +1130,7 @@ export function TenantDetailsScreen() {
                             Current Status
                           </div>
                           <div className='text-sm font-semibold'>
-                            {(tenant as any).payment_status || 'N/A'}
+                            {tenant.pending_payment?.payment_status || 'N/A'}
                           </div>
                         </div>
                         <div>
@@ -1225,28 +1223,27 @@ export function TenantDetailsScreen() {
                                   <div className='flex items-center gap-4 text-sm text-muted-foreground'>
                                     <span className='flex items-center gap-1'>
                                       <Home className='h-3 w-3' />
-                                      Room {(p as any).rooms?.room_no || 'N/A'}
+                                      Room {p.rooms?.room_no || 'N/A'}
                                     </span>
                                     <span className='flex items-center gap-1'>
                                       <Bed className='h-3 w-3' />
-                                      Bed {(p as any).beds?.bed_no || 'N/A'}
+                                      Bed {p.beds?.bed_no || 'N/A'}
                                     </span>
                                   </div>
 
                                   <div className='text-sm text-muted-foreground'>
                                     <span className='flex items-center gap-1'>
                                       <MapPin className='h-3 w-3' />
-                                      {(p as any).pg_locations?.location_name ||
-                                        'N/A'}
+                                      {p.pg_locations?.location_name || 'N/A'}
                                     </span>
                                   </div>
 
-                                  {(p as any).actual_rent_amount && (
+                                  {p.actual_rent_amount && (
                                     <div className='text-sm text-muted-foreground'>
                                       <span className='flex items-center gap-1'>
                                         <DollarSign className='h-3 w-3' />
                                         Actual Rent: $
-                                        {safeNum((p as any).actual_rent_amount)}
+                                        {safeNum(p.actual_rent_amount)}
                                       </span>
                                     </div>
                                   )}

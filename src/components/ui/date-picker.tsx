@@ -178,7 +178,6 @@ export function PresetDatePicker({
   const selectedDate = value ? new Date(value) : undefined
 
   const handleSelect = (date: Date | undefined) => {
-    const formattedDate = date ? format(date, 'yyyy-MM-dd') : ''
     onDateChange?.(date)
     setOpen(false)
   }

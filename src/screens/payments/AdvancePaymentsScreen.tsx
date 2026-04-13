@@ -5,6 +5,7 @@ import {
   useGetAdvancePaymentsQuery,
 } from '@/services/paymentsApi'
 import { useAppSelector } from '@/store/hooks'
+import type { RootState } from '@/store/store'
 import {
   ArrowLeft,
   Calendar,
@@ -17,7 +18,7 @@ import {
   RefreshCw,
   DollarSign,
 } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -88,15 +89,6 @@ const formatMoney = (value: unknown) => {
   return `₹${n.toLocaleString('en-IN')}`
 }
 
-const paymentMethodIcon = (method?: string) => {
-  const m = String(method ?? '').toUpperCase()
-  if (m === 'GPAY') return '📱'
-  if (m === 'PHONEPE') return '📱'
-  if (m === 'CASH') return '💵'
-  if (m === 'BANK_TRANSFER') return '🏦'
-  return '💰'
-}
-
 const statusBadgeVariant = (status?: string) => {
   const s = String(status ?? '').toUpperCase()
   if (s === 'PAID') return 'default'
@@ -122,8 +114,8 @@ const readPagination = (value: unknown): unknown => {
 export function AdvancePaymentsScreen() {
   const navigate = useNavigate()
   const selectedPGLocationId = useAppSelector(
-    (s) => (s as any).pgLocations?.selectedPGLocationId
-  ) as number | null
+    (s: RootState) => s.pgLocations?.selectedPGLocationId
+  )
 
   const [page, setPage] = useState(1)
   const limit = 50
@@ -406,13 +398,13 @@ export function AdvancePaymentsScreen() {
                         <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
                           <Home className='h-4 w-4 text-slate-500' />
                           <span className='text-xs font-medium text-slate-700'>
-                            Room {(p as any).rooms?.room_no || 'N/A'}
+                            Room {p.rooms?.room_no || 'N/A'}
                           </span>
                         </div>
                         <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
                           <Bed className='h-4 w-4 text-slate-500' />
                           <span className='text-xs font-medium text-slate-700'>
-                            Bed {(p as any).beds?.bed_no || 'N/A'}
+                            Bed {p.beds?.bed_no || 'N/A'}
                           </span>
                         </div>
                       </div>
@@ -420,17 +412,16 @@ export function AdvancePaymentsScreen() {
                       <div className='mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 p-2'>
                         <MapPin className='h-4 w-4 text-slate-500' />
                         <span className='text-xs font-medium text-slate-700'>
-                          {(p as any).pg_locations?.location_name || 'N/A'}
+                          {p.pg_locations?.location_name || 'N/A'}
                         </span>
                       </div>
 
-                      {(p as any).actual_rent_amount &&
-                        (p as any).actual_rent_amount !== p.amount_paid && (
+                      {p.actual_rent_amount &&
+                        p.actual_rent_amount !== p.amount_paid && (
                           <div className='mt-2 flex items-center gap-2 text-xs text-muted-foreground'>
                             <DollarSign className='h-3 w-3' />
                             <span>
-                              Actual Rent:{' '}
-                              {formatMoney((p as any).actual_rent_amount)}
+                              Actual Rent: {formatMoney(p.actual_rent_amount)}
                             </span>
                           </div>
                         )}

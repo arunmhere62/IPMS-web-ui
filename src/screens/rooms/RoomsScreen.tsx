@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   useDeleteRoomMutation,
-  useGetAllRoomsQuery,
+  useLazyGetAllRoomsQuery,
   type Room,
 } from '@/services/roomsApi'
 import { useAppSelector } from '@/store/hooks'
-import { CircleAlert, DoorOpen, Plus, Search } from 'lucide-react'
+import { CircleAlert, DoorOpen, Plus, Filter } from 'lucide-react'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -22,9 +24,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Input } from '@/components/ui/input'
 import { ActionButtons } from '@/components/form/action-buttons'
 import { RoomFormDialog } from './RoomFormDialog'
+import { RoomSkeleton } from '@/components/ui/room-skeleton'
+import { FilterModal } from '@/components/rooms/FilterModal'
+import { motion, AnimatePresence } from 'framer-motion'
 
 type ErrorLike = {
   data?: { message?: string }
@@ -32,81 +36,91 @@ type ErrorLike = {
 }
 
 export function RoomsScreen() {
+  const navigate = useNavigate()
   const selectedPGLocationId =
     useAppSelector((s) => s.pgLocations.selectedPGLocationId) ?? null
 
-  const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const limit = 20
+  const [filter, setFilter] = useState<'all' | 'occupied' | 'available'>('all')
   const [allRooms, setAllRooms] = useState<Room[]>([])
   const [hasMore, setHasMore] = useState(true)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
+  const listContainerRef = useRef<HTMLDivElement>(null)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Room | null>(null)
+  const [filterModalOpen, setFilterModalOpen] = useState(false)
 
   const [deleteTarget, setDeleteTarget] = useState<Room | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
-  const {
-    data: roomsResponse,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useGetAllRoomsQuery(
-    selectedPGLocationId
-      ? {
-          page,
-          limit,
-          pg_id: selectedPGLocationId,
-          search: query.trim() ? query.trim() : undefined,
-        }
-      : undefined,
-    { skip: !selectedPGLocationId }
-  )
+  const queryOptions = useMemo(() => {
+    if (!selectedPGLocationId) return undefined;
+    
+    return {
+      page,
+      limit,
+      occupancy: filter === 'all' ? undefined : filter,
+    };
+  }, [page, limit, selectedPGLocationId, filter]);
 
+  const [trigger, { data: roomsResponse, isLoading, isFetching, error }] = useLazyGetAllRoomsQuery()
   const [deleteRoom, { isLoading: deleting }] = useDeleteRoomMutation()
 
-  const sentinelRef = useRef<HTMLDivElement>(null)
+  // Reset state when location or filter changes
+  useEffect(() => {
+    setPage(1)
+    setAllRooms([])
+    setHasMore(true)
+    setHasLoadedOnce(false)
+  }, [selectedPGLocationId, filter])
 
-  // Update all rooms when new data is fetched
+  // Load initial data or when page changes
+  useEffect(() => {
+    if (selectedPGLocationId && queryOptions) {
+      void trigger(queryOptions)
+    }
+  }, [trigger, queryOptions, selectedPGLocationId])
+
+  const { isFetching: isInfiniteFetching, checkScroll } = useInfiniteScroll({
+    hasMore,
+    isLoading: isFetching,
+  })
+
+  // Accumulate rooms data when response changes
   useEffect(() => {
     if (roomsResponse?.data) {
-      const newRooms = roomsResponse.data as Room[]
       if (page === 1) {
-        setAllRooms(newRooms)
+        setAllRooms(roomsResponse.data)
       } else {
-        setAllRooms((prev) => [...prev, ...newRooms])
+        setAllRooms(prev => {
+          const existingIds = new Set(prev.map(room => room.s_no))
+          const newRooms = roomsResponse.data.filter(room => !existingIds.has(room.s_no))
+          return [...prev, ...newRooms]
+        })
       }
-      const totalPages = roomsResponse.pagination?.totalPages ?? 1
-      setHasMore(page < totalPages)
+      setHasMore(roomsResponse.pagination?.hasMore ?? false)
+      setHasLoadedOnce(true)
+      
+      // Check if we need to load more immediately after data loads
+      setTimeout(() => {
+        checkScroll()
+      }, 100)
     }
-  }, [roomsResponse, page])
+  }, [roomsResponse, page, checkScroll])
 
-  // Reset when query or location changes
+  // Load more data when infinite scroll triggers
   useEffect(() => {
-    setAllRooms([])
-    setPage(1)
-    setHasMore(true)
-  }, [query, selectedPGLocationId])
-
-  // Intersection Observer for infinite scroll
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isFetching && !isLoading) {
-          setPage((prev) => prev + 1)
-        }
-      },
-      { threshold: 0.1 }
-    )
-
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [hasMore, isFetching, isLoading])
+    if (isInfiniteFetching && hasMore && !isFetching && selectedPGLocationId) {
+      const nextPage = page + 1
+      setPage(nextPage)
+      void trigger({
+        ...queryOptions!,
+        page: nextPage,
+      })
+    }
+  }, [isInfiniteFetching, hasMore, isFetching, page, trigger, queryOptions, selectedPGLocationId])
 
   const rooms = allRooms
 
@@ -136,9 +150,12 @@ export function RoomsScreen() {
       showSuccessAlert('Room deleted successfully')
       setDeleteDialogOpen(false)
       setDeleteTarget(null)
-      setAllRooms([])
       setPage(1)
-      void refetch()
+      setAllRooms([])
+      setHasMore(true)
+      if (selectedPGLocationId && queryOptions) {
+        void trigger(queryOptions)
+      }
     } catch (e) {
       showErrorAlert(e, 'Delete Error')
     }
@@ -146,8 +163,9 @@ export function RoomsScreen() {
 
   const countLabel = useMemo(() => {
     if (!selectedPGLocationId) return 'Select PG'
-    return `${rooms.length} Rooms`
-  }, [rooms.length, selectedPGLocationId])
+    const total = roomsResponse?.pagination?.total ?? allRooms.length
+    return `${allRooms.length} of ${total} Rooms`
+  }, [allRooms.length, selectedPGLocationId, roomsResponse])
 
   return (
     <div className='container mx-auto max-w-7xl px-4 py-4'>
@@ -187,55 +205,65 @@ export function RoomsScreen() {
         />
       ) : (
         <>
-          <div className='mb-3 flex items-center justify-between gap-3'>
-            <div className='relative max-w-sm flex-1'>
-              <Search className='pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground' />
-              <Input
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  setPage(1)
-                }}
-                placeholder='Search rooms...'
-                className='h-8 pl-8 text-sm'
-              />
-            </div>
+          <div className='mb-3 flex items-center justify-between gap-2'>
             <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
               <DoorOpen className='size-3.5' />
               <span>{countLabel}</span>
+              {filter !== 'all' && (
+                <span className='ml-2 px-2 py-1 bg-primary text-primary-foreground rounded-full text-xs font-medium'>
+                  {filter === 'occupied' ? 'Occupied' : 'Available'}
+                </span>
+              )}
             </div>
+            <Button
+              variant={filter !== 'all' ? 'default' : 'outline'}
+              size='sm'
+              onClick={() => setFilterModalOpen(true)}
+              className='h-8 text-xs'
+            >
+              <Filter className='mr-1 size-3' />
+              Filter
+            </Button>
           </div>
 
-          <div>
+          <div className='pb-16'>
             {isLoading ? (
-              <div className='rounded-lg border bg-card px-4 py-8 text-center'>
-                <div className='mx-auto size-6 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
-                <p className='mt-2 text-xs text-muted-foreground'>Loading...</p>
+              <div className='space-y-2'>
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <RoomSkeleton key={`initial-skeleton-${index}`} />
+                ))}
               </div>
-            ) : rooms.length === 0 ? (
+            ) : rooms.length === 0 && hasLoadedOnce ? (
               <EmptyState
                 icon={DoorOpen}
                 title='No Rooms Found'
-                description={
-                  query ? 'Try adjusting your search.' : 'Add your first room.'
-                }
+                description='Add your first room.'
               />
             ) : (
               <div className='space-y-2'>
-                {rooms.map((r) => {
-                  const totalBeds = Number(r.total_beds ?? 0)
-                  const occupiedBeds = Number(r.occupied_beds ?? 0)
-                  const availableBeds = Number(r.available_beds ?? 0)
-                  const occupancyPercent =
-                    totalBeds > 0
-                      ? Math.round((occupiedBeds / totalBeds) * 100)
-                      : 0
+                <AnimatePresence>
+                  {rooms.map((r, index) => {
+                    const totalBeds = Number(r.total_beds ?? 0)
+                    const occupiedBeds = Number(r.occupied_beds ?? 0)
+                    const availableBeds = Number(r.available_beds ?? 0)
+                    const occupancyPercent =
+                      totalBeds > 0
+                        ? Math.round((occupiedBeds / totalBeds) * 100)
+                        : 0
 
-                  return (
-                    <Card
-                      key={r.s_no}
-                      className='py-0 transition-colors hover:border-blue-500/50'
-                    >
+                    return (
+                      <motion.div
+                        key={`room-${r.s_no}-${r.room_no}-${filter}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ 
+                          duration: 0.3, 
+                          delay: index * 0.05,
+                          ease: "easeOut"
+                        }}
+                      >
+                        <Card className='py-0 transition-colors hover:border-blue-500/50 cursor-pointer' onClick={() => navigate(`/rooms/${r.s_no}`)}>
                       <CardContent className='p-3'>
                         {/* Mobile Layout (< md) */}
                         <div className='space-y-3 md:hidden'>
@@ -255,11 +283,11 @@ export function RoomsScreen() {
                             </div>
                             <Badge
                               variant={
-                                availableBeds > 0 ? 'default' : 'secondary'
+                                totalBeds === 0 ? 'outline' : availableBeds > 0 ? 'default' : 'secondary'
                               }
                               className='text-xs'
                             >
-                              {availableBeds > 0 ? 'Available' : 'Full'}
+                              {totalBeds === 0 ? 'No Beds' : availableBeds > 0 ? 'Available' : 'Full'}
                             </Badge>
                           </div>
 
@@ -300,7 +328,7 @@ export function RoomsScreen() {
                                 {occupancyPercent}%
                               </span>
                             </div>
-                            <div className='ml-3'>
+                            <div className='ml-3' onClick={(e) => e.stopPropagation()}>
                               <ActionButtons
                                 mode='icon'
                                 viewTo={`/rooms/${r.s_no}`}
@@ -324,11 +352,11 @@ export function RoomsScreen() {
                               </h3>
                               <Badge
                                 variant={
-                                  availableBeds > 0 ? 'default' : 'secondary'
+                                  totalBeds === 0 ? 'outline' : availableBeds > 0 ? 'default' : 'secondary'
                                 }
                                 className='text-xs'
                               >
-                                {availableBeds > 0 ? 'Available' : 'Full'}
+                                {totalBeds === 0 ? 'No Beds' : availableBeds > 0 ? 'Available' : 'Full'}
                               </Badge>
                             </div>
                             <div className='text-xs text-muted-foreground'>
@@ -373,7 +401,7 @@ export function RoomsScreen() {
                             </span>
                           </div>
 
-                          <div className='flex-shrink-0'>
+                          <div className='flex-shrink-0' onClick={(e) => e.stopPropagation()}>
                             <ActionButtons
                               mode='icon'
                               viewTo={`/rooms/${r.s_no}`}
@@ -383,33 +411,74 @@ export function RoomsScreen() {
                           </div>
                         </div>
                       </CardContent>
-                    </Card>
-                  )
-                })}
+                        </Card>
+                      </motion.div>
+                    )
+                  })}
+                </AnimatePresence>
               </div>
             )}
 
-            {rooms.length > 0 && (
+            {allRooms.length > 0 && (
               <>
-                {/* Sentinel element for infinite scroll */}
-                <div ref={sentinelRef} className='h-4' />
-
-                {/* Loading indicator at the bottom */}
-                {isFetching && hasMore && (
-                  <div className='mt-3 flex items-center justify-center py-4'>
-                    <div className='size-5 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
-                    <span className='ml-2 text-xs text-muted-foreground'>
-                      Loading more...
-                    </span>
-                  </div>
-                )}
-
-                {/* End of list indicator */}
-                {!hasMore && rooms.length > 0 && (
-                  <div className='mt-3 py-4 text-center text-xs text-muted-foreground'>
-                    No more rooms to load
-                  </div>
-                )}
+                {/* Skeleton loading at the bottom */}
+                <AnimatePresence>
+                  {(isFetching || (isInfiniteFetching && hasMore)) && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className='space-y-2 mb-8'
+                    >
+                      {Array.from({ length: 2 }).map((_, index) => (
+                        <motion.div
+                          key={`skeleton-${index}`}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1, duration: 0.3 }}
+                        >
+                          <RoomSkeleton />
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                
+                {/* End of data indicator */}
+                <AnimatePresence>
+                  {!hasMore && allRooms.length > 0 && !isFetching && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      className='mt-8 mb-12 text-center py-4 border-t'
+                    >
+                      <div className='flex items-center justify-center gap-2 text-sm text-muted-foreground'>
+                        <motion.div 
+                          className='h-px bg-border flex-1 max-w-16'
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          transition={{ duration: 0.5, delay: 0.2 }}
+                        ></motion.div>
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.3, delay: 0.3 }}
+                        >
+                          Showing all {allRooms.length} rooms
+                        </motion.span>
+                        <motion.div 
+                          className='h-px bg-border flex-1 max-w-16'
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          transition={{ duration: 0.5, delay: 0.2 }}
+                        ></motion.div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </>
             )}
           </div>
@@ -425,10 +494,20 @@ export function RoomsScreen() {
             onSaved={() => {
               setDialogOpen(false)
               setEditTarget(null)
-              setAllRooms([])
               setPage(1)
-              void refetch()
+              setAllRooms([])
+              setHasMore(true)
+              if (selectedPGLocationId && queryOptions) {
+                void trigger(queryOptions)
+              }
             }}
+          />
+
+          <FilterModal
+            open={filterModalOpen}
+            onOpenChange={setFilterModalOpen}
+            filter={filter}
+            onFilterChange={setFilter}
           />
 
           <AlertDialog

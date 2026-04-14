@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useGetBedByIdQuery, useDeleteBedMutation } from '@/services/roomsApi'
 import { useAppSelector } from '@/store/hooks'
-import { CircleAlert, Plus, User, Edit, Trash2 } from 'lucide-react'
+import { CircleAlert, Plus, User, Edit, Trash2, ArrowLeft } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -63,7 +63,6 @@ export function BedDetailsScreen() {
   }
 
   const handleAddTenant = () => {
-    // Navigate to tenant creation with bed context
     navigate(`/tenants/new?bedId=${bed?.s_no}&roomId=${bed?.room_id}`)
   }
 
@@ -74,234 +73,209 @@ export function BedDetailsScreen() {
   }
 
   return (
-    <div className='container mx-auto max-w-6xl px-4 py-6'>
-      {/* Header */}
-      <div className='mb-6 flex items-center justify-between border-b pb-4'>
-        <div>
-          <h1 className='text-2xl font-bold'>
-            {bed?.bed_no ? `Bed ${bed.bed_no}` : 'Bed Details'}
-          </h1>
-          <p className='text-sm text-muted-foreground'>
-            {bed?.rooms?.room_no ? `Room ${bed.rooms.room_no}` : ''}
-            {bed?.rooms?.pg_locations?.location_name
-              ? ` • ${bed.rooms.pg_locations.location_name}`
-              : ''}
-          </p>
-        </div>
-        <div className='flex items-center gap-2'>
-          {bed?.s_no ? <Badge variant='outline'>#{bed.s_no}</Badge> : null}
-          {bed && (
-            <div className='ml-2 flex items-center gap-1'>
-              <Button
-                size='icon'
-                onClick={() => setBedDialogOpen(true)}
-                className='h-8 w-8 bg-black text-white hover:bg-black/90'
-                title='Edit Bed'
-                aria-label='Edit Bed'
-              >
-                <Edit className='size-4' />
-              </Button>
-              <Button
-                variant='destructive'
-                size='icon'
-                onClick={() => setDeleteBedOpen(true)}
-                className='h-8 w-8'
-                title='Delete Bed'
-                aria-label='Delete Bed'
-              >
-                <Trash2 className='size-4' />
-              </Button>
+    <div className='min-h-screen bg-background'>
+      {/* Compact Header */}
+      <div className='sticky top-0 z-10 border-b bg-background px-3 py-2'>
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center gap-2'>
+            <Button
+              variant='ghost'
+              size='icon'
+              onClick={() => navigate('/beds')}
+              className='h-7 w-7'
+            >
+              <ArrowLeft className='size-4' />
+            </Button>
+            <div>
+              <h1 className='text-sm font-semibold'>
+                {bed?.bed_no ? `Bed ${bed.bed_no}` : 'Bed Details'}
+              </h1>
+              <p className='text-[10px] text-muted-foreground'>
+                {bed?.rooms?.room_no ? `Room ${bed.rooms.room_no}` : ''}
+              </p>
             </div>
-          )}
+          </div>
+          <div className='flex items-center gap-1'>
+            {bed?.s_no ? (
+              <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
+                #{bed.s_no}
+              </Badge>
+            ) : null}
+            {bed && (
+              <>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  onClick={() => setBedDialogOpen(true)}
+                  className='h-7 w-7'
+                >
+                  <Edit className='size-3.5' />
+                </Button>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  onClick={() => setDeleteBedOpen(true)}
+                  className='h-7 w-7 text-destructive'
+                >
+                  <Trash2 className='size-3.5' />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       {fetchErrorMessage ? (
-        <div className='mb-4'>
-          <Alert variant='destructive'>
-            <CircleAlert />
-            <AlertTitle>Failed to load bed details</AlertTitle>
-            <AlertDescription>{fetchErrorMessage}</AlertDescription>
+        <div className='px-3 py-2'>
+          <Alert variant='destructive' className='py-2'>
+            <CircleAlert className='size-3' />
+            <AlertTitle className='text-xs'>Error</AlertTitle>
+            <AlertDescription className='text-[10px]'>{fetchErrorMessage}</AlertDescription>
           </Alert>
         </div>
       ) : null}
 
       {!selectedPGLocationId ? (
-        <div className='rounded-md border bg-card px-4 py-8 text-center'>
-          <div className='text-base font-semibold'>Select a PG Location</div>
-          <div className='mt-1 text-xs text-muted-foreground'>
+        <div className='px-3 py-8 text-center'>
+          <div className='text-xs font-medium'>Select a PG Location</div>
+          <div className='text-[10px] text-muted-foreground'>
             Choose a PG from the top bar to view bed details.
           </div>
         </div>
       ) : bedLoading ? (
-        <div className='rounded-md border bg-card px-4 py-4 text-sm text-muted-foreground'>
+        <div className='px-3 py-4 text-center text-[10px] text-muted-foreground'>
           Loading...
         </div>
       ) : !bed ? (
-        <div className='rounded-md border bg-card px-4 py-8 text-center'>
-          <div className='text-base font-semibold'>Bed not found</div>
-          <div className='mt-1 text-xs text-muted-foreground'>
+        <div className='px-3 py-8 text-center'>
+          <div className='text-xs font-medium'>Bed not found</div>
+          <div className='text-[10px] text-muted-foreground'>
             Please check the bed ID and try again.
           </div>
         </div>
       ) : (
-        <div className='grid gap-6'>
-          {/* Bed Information Card */}
+        <div className='space-y-2 px-3 py-3'>
+          {/* Compact Bed Info Card */}
           <Card>
-            <CardContent className='p-6'>
-              <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
-                <div className='flex items-center gap-4'>
-                  <div className='flex size-12 items-center justify-center rounded-lg bg-black text-white'>
-                    <User className='size-6' />
+            <CardContent className='p-3'>
+              <div className='flex items-start justify-between gap-2'>
+                <div className='flex items-center gap-2'>
+                  <div className='flex size-8 items-center justify-center rounded-lg bg-black text-white'>
+                    <User className='size-4' />
                   </div>
                   <div>
-                    <h2 className='text-xl font-semibold'>Bed {bed.bed_no}</h2>
-                    <p className='text-sm text-muted-foreground'>
+                    <h2 className='text-sm font-semibold'>Bed {bed.bed_no}</h2>
+                    <p className='text-[10px] text-muted-foreground'>
                       Room {bed.rooms?.room_no || bed.room_id} • ID: {bed.s_no}
                     </p>
                   </div>
                 </div>
-
-                <div className='flex items-center gap-3'>
-                  <Badge
-                    variant={isOccupied ? 'secondary' : 'outline'}
-                    className='text-sm'
-                  >
-                    {isOccupied ? 'Occupied' : 'Available'}
-                  </Badge>
-                </div>
+                <Badge
+                  variant={isOccupied ? 'secondary' : 'outline'}
+                  className='text-[10px] h-5'
+                >
+                  {isOccupied ? 'Occupied' : 'Available'}
+                </Badge>
               </div>
 
-              <div className='mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4'>
-                <div>
-                  <div className='text-sm text-muted-foreground'>Price</div>
-                  <div className='text-lg font-semibold'>
+              <div className='mt-3 grid grid-cols-2 gap-2'>
+                <div className='rounded-md bg-muted/30 p-2'>
+                  <div className='text-[10px] text-muted-foreground'>Price</div>
+                  <div className='text-xs font-semibold'>
                     {bed.bed_price != null && String(bed.bed_price).length > 0
                       ? `₹${String(bed.bed_price)}`
-                      : 'Not set'}
+                      : '—'}
                   </div>
                 </div>
-                <div>
-                  <div className='text-sm text-muted-foreground'>Status</div>
-                  <div className='text-lg font-semibold'>
-                    {isOccupied ? 'Occupied' : 'Available'}
-                  </div>
-                </div>
-                <div>
-                  <div className='text-sm text-muted-foreground'>Room</div>
-                  <div className='text-lg font-semibold'>
-                    {bed.rooms?.room_no || 'N/A'}
-                  </div>
-                </div>
-                <div>
-                  <div className='text-sm text-muted-foreground'>
-                    PG Location
-                  </div>
-                  <div className='text-lg font-semibold'>
-                    {bed.rooms?.pg_locations?.location_name || 'N/A'}
+                <div className='rounded-md bg-muted/30 p-2'>
+                  <div className='text-[10px] text-muted-foreground'>Room</div>
+                  <div className='text-xs font-semibold'>
+                    {bed.rooms?.room_no || '—'}
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Tenant Information Card */}
+          {/* Compact Tenant Card */}
           <Card>
-            <CardContent className='p-6'>
-              <div className='mb-4 flex items-center justify-between'>
-                <div>
-                  <h3 className='text-lg font-semibold'>Tenant Information</h3>
-                  <p className='text-sm text-muted-foreground'>
-                    {isOccupied
-                      ? 'Current tenant details'
-                      : 'No tenant assigned'}
-                  </p>
-                </div>
-
+            <CardContent className='p-3'>
+              <div className='mb-2 flex items-center justify-between'>
+                <h3 className='text-xs font-semibold'>Tenant</h3>
                 {!isOccupied ? (
                   <Button
+                    size='sm'
                     onClick={handleAddTenant}
-                    className='bg-black text-white hover:bg-black/90'
+                    className='h-6 text-xs bg-black text-white hover:bg-black/90'
                   >
-                    <Plus className='mr-1 size-4' />
-                    Add Tenant
+                    <Plus className='mr-1 size-3' />
+                    Add
                   </Button>
                 ) : (
-                  <div className='flex gap-2'>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={handleViewTenant}
-                    >
-                      View Details
-                    </Button>
-                  </div>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={handleViewTenant}
+                    className='h-6 text-[10px]'
+                  >
+                    View
+                  </Button>
                 )}
               </div>
 
               {isOccupied && tenant ? (
-                <div className='rounded-lg border bg-muted/30 p-4'>
-                  <div className='flex items-center gap-3'>
-                    <div className='flex size-10 items-center justify-center rounded-full bg-blue-600 text-white'>
-                      <User className='size-5' />
-                    </div>
-                    <div className='flex-1'>
-                      <h4 className='font-semibold'>{tenant.name}</h4>
-                      <p className='text-sm text-muted-foreground'>
-                        {tenant.phone_no
-                          ? `Phone: ${tenant.phone_no}`
-                          : 'No phone number'}
-                      </p>
-                      <p className='text-sm text-muted-foreground'>
-                        Status:{' '}
-                        <span className='capitalize'>
-                          {tenant.status || 'Active'}
-                        </span>
-                      </p>
+                <div className='flex items-center gap-2 rounded-md border bg-muted/30 p-2'>
+                  <div className='flex size-6 items-center justify-center rounded-full bg-blue-600 text-white'>
+                    <User className='size-3' />
+                  </div>
+                  <div className='flex-1 min-w-0'>
+                    <div className='text-xs font-medium truncate'>{tenant.name}</div>
+                    <div className='text-[10px] text-muted-foreground'>
+                      {tenant.phone_no ? tenant.phone_no : 'No phone'}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className='rounded-lg border border-dashed bg-muted/30 p-8 text-center'>
-                  <div className='mx-auto flex size-12 items-center justify-center rounded-full bg-muted'>
-                    <User className='size-6 text-muted-foreground' />
-                  </div>
-                  <div className='mt-3 text-sm font-medium'>
-                    No Tenant Assigned
-                  </div>
-                  <div className='mt-1 text-xs text-muted-foreground'>
-                    This bed is available for a new tenant.
-                  </div>
+                <div className='rounded-md border border-dashed bg-muted/30 p-3 text-center'>
+                  <User className='mx-auto size-4 text-muted-foreground' />
+                  <div className='mt-1 text-[10px] font-medium'>No Tenant</div>
+                  <div className='text-[9px] text-muted-foreground'>Available</div>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Bed Images Card */}
-          {bed.images && (
+          {/* Compact Images Card */}
+          {bed.images && Array.isArray(bed.images) && bed.images.length > 0 && (
             <Card>
-              <CardContent className='p-6'>
-                <h3 className='mb-4 text-lg font-semibold'>Bed Images</h3>
-                {Array.isArray(bed.images) && bed.images.length > 0 ? (
-                  <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4'>
-                    {bed.images.map((url: string, index: number) => (
-                      <div
-                        key={index}
-                        className='aspect-square overflow-hidden rounded-lg border bg-muted'
-                      >
-                        <img
-                          src={url}
-                          alt={`Bed ${bed.bed_no} - Image ${index + 1}`}
-                          className='h-full w-full object-cover'
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className='text-sm text-muted-foreground'>
-                    No images available
-                  </div>
-                )}
+              <CardContent className='p-3'>
+                <h3 className='mb-2 text-xs font-semibold'>Images</h3>
+                <div className='grid grid-cols-3 gap-1'>
+                  {bed.images.map((url: string, index: number) => (
+                    <div
+                      key={index}
+                      className='aspect-square overflow-hidden rounded-md border bg-muted'
+                    >
+                      <img
+                        src={url}
+                        alt={`Bed ${bed.bed_no} - ${index + 1}`}
+                        className='h-full w-full object-cover'
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* PG Location Card */}
+          {bed.rooms?.pg_locations?.location_name && (
+            <Card>
+              <CardContent className='p-3'>
+                <h3 className='mb-2 text-xs font-semibold'>PG Location</h3>
+                <div className='text-[10px] text-muted-foreground'>
+                  {bed.rooms.pg_locations.location_name}
+                </div>
               </CardContent>
             </Card>
           )}
@@ -337,22 +311,26 @@ export function BedDetailsScreen() {
 
       {/* Delete Bed Dialog */}
       <AlertDialog open={deleteBedOpen} onOpenChange={setDeleteBedOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className='max-w-sm'>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Bed</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className='text-sm'>Delete Bed</AlertDialogTitle>
+            <AlertDialogDescription className='text-xs'>
               Are you sure you want to delete{' '}
               <span className='font-semibold'>Bed {bed?.bed_no}</span>? This
               action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteBedOpen(false)}>
+            <AlertDialogCancel
+              onClick={() => setDeleteBedOpen(false)}
+              className='text-xs'
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteBed}
               disabled={deletingBed}
+              className='text-xs'
             >
               {deletingBed ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>

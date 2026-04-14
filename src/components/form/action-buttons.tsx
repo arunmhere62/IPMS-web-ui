@@ -70,7 +70,7 @@ export function ActionButtons({
           variant={viewVariant}
            className={cn(
             mode === 'icon'
-              ? 'flex h-8 w-8 items-center justify-center rounded-md p-0'
+              ? 'flex h-7 w-7 items-center justify-center rounded-md p-0'
               : undefined,
             // Neutral grayscale hover
             'text-foreground hover:bg-muted'
@@ -83,12 +83,12 @@ export function ActionButtons({
         >
           {viewTo ? (
             <Link to={viewTo} className='flex items-center justify-center'>
-              <Eye className={cn('size-4', showText ? 'me-2' : '')} />
+              <Eye className={cn('size-3', showText ? 'me-2' : '')} />
               {showText ? viewLabel : null}
             </Link>
           ) : (
             <>
-              <Eye className={cn('size-4', showText ? 'me-2' : '')} />
+              <Eye className={cn('size-3', showText ? 'me-2' : '')} />
               {showText ? viewLabel : null}
             </>
           )}
@@ -102,7 +102,7 @@ export function ActionButtons({
           variant={editVariant}
           className={cn(
             mode === 'icon'
-              ? 'flex h-8 w-8 items-center justify-center rounded-md p-0'
+              ? 'flex h-7 w-7 items-center justify-center rounded-md p-0'
               : undefined,
             // Neutral grayscale hover
             'text-foreground hover:bg-muted'
@@ -112,7 +112,7 @@ export function ActionButtons({
           disabled={disabled || editDisabled}
           onClick={onEdit}
         >
-          <Pencil className={cn('size-4', showText ? 'me-2' : '')} />
+          <Pencil className={cn('size-3', showText ? 'me-2' : '')} />
           {showText ? editLabel : null}
         </Button>
       ) : null}
@@ -124,7 +124,7 @@ export function ActionButtons({
           variant={deleteVariant}
           className={cn(
             mode === 'icon'
-              ? 'flex h-8 w-8 items-center justify-center rounded-md p-0'
+              ? 'flex h-7 w-7 items-center justify-center rounded-md p-0'
               : undefined,
             'border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700'
           )}
@@ -133,7 +133,7 @@ export function ActionButtons({
           disabled={disabled || deleteDisabled}
           onClick={onDelete}
         >
-          <Trash2 className={cn('size-4', showText ? 'me-2' : '')} />
+          <Trash2 className={cn('size-3', showText ? 'me-2' : '')} />
           {showText ? deleteLabel : null}
         </Button>
       ) : null}

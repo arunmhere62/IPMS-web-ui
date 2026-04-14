@@ -45,7 +45,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
 
   const activePg =
     pgLocations.find((l) => l.s_no === selectedPGLocationId) ||
-    (selectedPGLocationId ? undefined : pgLocations[0])
+    pgLocations[0]
 
   const ensureSelectedPg = (id: number | null) => {
     dispatch(setSelectedPGLocation(id))

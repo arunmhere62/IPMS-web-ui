@@ -159,22 +159,22 @@ export function RoomDetailsScreen() {
   }
 
   return (
-    <div className='container mx-auto max-w-5xl px-4 py-4'>
-      <div className='mb-4 flex items-center justify-between border-b pb-3'>
+    <div className='container mx-auto max-w-5xl px-3 py-3'>
+      <div className='mb-3 flex items-center justify-between border-b pb-2'>
         <div>
-          <h1 className='text-2xl font-bold'>
+          <h1 className='text-lg font-bold'>
             {room?.room_no ? `Room ${room.room_no}` : 'Room Details'}
           </h1>
-          <p className='text-xs text-muted-foreground'>
+          <p className='text-[10px] text-muted-foreground'>
             {room?.pg_locations?.location_name
               ? String(room.pg_locations.location_name)
               : 'View and manage room information'}
           </p>
         </div>
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center gap-1.5'>
           <Button asChild variant='outline' size='sm'>
             <Link to='/rooms'>
-              <ChevronLeft className='me-1 size-3.5' />
+              <ChevronLeft className='me-1 size-3' />
               Back
             </Link>
           </Button>
@@ -201,7 +201,7 @@ export function RoomDetailsScreen() {
       </div>
 
       {fetchErrorMessage ? (
-        <div className='mb-3'>
+        <div className='mb-2'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load room details</AlertTitle>
@@ -211,42 +211,42 @@ export function RoomDetailsScreen() {
       ) : null}
 
       {!selectedPGLocationId ? (
-        <div className='rounded-lg border border-dashed bg-muted/30 px-4 py-10 text-center'>
-          <div className='mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10'>
-            <DoorOpen className='size-6 text-primary' />
+        <div className='rounded-lg border border-dashed bg-muted/30 px-3 py-6 text-center'>
+          <div className='mx-auto flex size-10 items-center justify-center rounded-full bg-primary/10'>
+            <DoorOpen className='size-5 text-primary' />
           </div>
-          <div className='mt-3 text-sm font-semibold'>Select a PG Location</div>
-          <div className='mt-1 text-xs text-muted-foreground'>
+          <div className='mt-2 text-xs font-semibold'>Select a PG Location</div>
+          <div className='mt-1 text-[10px] text-muted-foreground'>
             Choose a PG from the top bar.
           </div>
         </div>
       ) : roomLoading ? (
-        <div className='rounded-lg border bg-card px-4 py-8 text-center'>
-          <div className='mx-auto size-6 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
-          <p className='mt-2 text-xs text-muted-foreground'>Loading...</p>
+        <div className='rounded-lg border bg-card px-3 py-6 text-center'>
+          <div className='mx-auto size-5 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
+          <p className='mt-2 text-[10px] text-muted-foreground'>Loading...</p>
         </div>
       ) : !room ? (
-        <div className='rounded-lg border border-dashed bg-muted/30 px-4 py-10 text-center'>
-          <div className='mx-auto flex size-12 items-center justify-center rounded-full bg-destructive/10'>
-            <DoorOpen className='size-6 text-destructive' />
+        <div className='rounded-lg border border-dashed bg-muted/30 px-3 py-6 text-center'>
+          <div className='mx-auto flex size-10 items-center justify-center rounded-full bg-destructive/10'>
+            <DoorOpen className='size-5 text-destructive' />
           </div>
-          <div className='mt-3 text-sm font-semibold'>Room not found</div>
-          <div className='mt-1 text-xs text-muted-foreground'>
+          <div className='mt-2 text-xs font-semibold'>Room not found</div>
+          <div className='mt-1 text-[10px] text-muted-foreground'>
             Please check the room ID.
           </div>
         </div>
       ) : (
-        <div className='space-y-3'>
+        <div className='space-y-2'>
           <Card className='border'>
-            <CardContent className='p-4'>
-              <div className='mb-3 flex items-center justify-between border-b pb-3'>
-                <div className='flex items-center gap-3'>
-                  <div className='flex size-12 items-center justify-center rounded-lg bg-blue-600 text-white'>
-                    <DoorOpen className='size-6' />
+            <CardContent className='p-3'>
+              <div className='mb-2 flex items-center justify-between border-b pb-2'>
+                <div className='flex items-center gap-2'>
+                  <div className='flex size-9 items-center justify-center rounded-lg bg-blue-600 text-white'>
+                    <DoorOpen className='size-4.5' />
                   </div>
                   <div>
-                    <div className='text-lg font-bold'>Room {room.room_no}</div>
-                    <div className='text-xs text-muted-foreground'>
+                    <div className='text-sm font-bold'>Room {room.room_no}</div>
+                    <div className='text-[10px] text-muted-foreground'>
                       ID: {room.s_no}
                     </div>
                   </div>
@@ -255,30 +255,30 @@ export function RoomDetailsScreen() {
                   variant='outline'
                   size='sm'
                   onClick={() => setDeleteRoomOpen(true)}
-                  className='border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700'
+                  className='border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-xs'
                 >
                   Delete Room
                 </Button>
               </div>
 
-              <div className='grid grid-cols-3 gap-3'>
-                <div className='rounded-lg border p-2 text-center'>
-                  <div className='text-2xl font-bold'>{stats.total}</div>
-                  <div className='text-xs text-muted-foreground'>
+              <div className='grid grid-cols-3 gap-2'>
+                <div className='rounded-lg border p-1.5 text-center'>
+                  <div className='text-lg font-bold'>{stats.total}</div>
+                  <div className='text-[10px] text-muted-foreground'>
                     Total Beds
                   </div>
                 </div>
-                <div className='rounded-lg border p-2 text-center'>
-                  <div className='text-2xl font-bold text-blue-600'>
+                <div className='rounded-lg border p-1.5 text-center'>
+                  <div className='text-lg font-bold text-blue-600'>
                     {stats.occupied}
                   </div>
-                  <div className='text-xs text-muted-foreground'>Occupied</div>
+                  <div className='text-[10px] text-muted-foreground'>Occupied</div>
                 </div>
-                <div className='rounded-lg border p-2 text-center'>
-                  <div className='text-2xl font-bold text-green-600'>
+                <div className='rounded-lg border p-1.5 text-center'>
+                  <div className='text-lg font-bold text-green-600'>
                     {stats.available}
                   </div>
-                  <div className='text-xs text-muted-foreground'>Available</div>
+                  <div className='text-[10px] text-muted-foreground'>Available</div>
                 </div>
               </div>
             </CardContent>
@@ -286,15 +286,15 @@ export function RoomDetailsScreen() {
 
           {images.length > 0 && (
             <Card className='border'>
-              <CardContent className='p-4'>
-                <div className='mb-3 border-b pb-2 text-sm font-semibold'>
+              <CardContent className='p-3'>
+                <div className='mb-2 border-b pb-2 text-xs font-semibold'>
                   Room Images
                 </div>
-                <div className='flex flex-wrap gap-2'>
+                <div className='flex flex-wrap gap-1.5'>
                   {images.map((url) => (
                     <div
                       key={url}
-                      className='h-20 w-20 overflow-hidden rounded-lg border'
+                      className='h-16 w-16 overflow-hidden rounded-lg border'
                     >
                       <img
                         src={url}
@@ -309,11 +309,11 @@ export function RoomDetailsScreen() {
           )}
 
           <Card className='border'>
-            <CardContent className='p-4'>
-              <div className='mb-3 flex items-center justify-between border-b pb-3'>
+            <CardContent className='p-3'>
+              <div className='mb-2 flex items-center justify-between border-b pb-2'>
                 <div>
-                  <div className='text-sm font-semibold'>Beds in this Room</div>
-                  <div className='text-xs text-muted-foreground'>
+                  <div className='text-xs font-semibold'>Beds in this Room</div>
+                  <div className='text-[10px] text-muted-foreground'>
                     {beds.length} bed{beds.length !== 1 ? 's' : ''} total
                   </div>
                 </div>
@@ -321,54 +321,54 @@ export function RoomDetailsScreen() {
                   size='sm'
                   onClick={openAddBed}
                   disabled={!selectedPGLocationId}
-                  className='bg-black text-white hover:bg-black/90'
+                  className='bg-black text-white hover:bg-black/90 text-xs'
                 >
-                  <Plus className='me-1 size-3.5' />
+                  <Plus className='me-1 size-3' />
                   Add Bed
                 </Button>
               </div>
 
               {bedsLoading ? (
-                <div className='rounded-lg border bg-card px-4 py-6 text-center'>
-                  <div className='mx-auto size-6 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
-                  <p className='mt-2 text-xs text-muted-foreground'>
+                <div className='rounded-lg border bg-card px-3 py-5 text-center'>
+                  <div className='mx-auto size-5 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
+                  <p className='mt-2 text-[10px] text-muted-foreground'>
                     Loading beds...
                   </p>
                 </div>
               ) : beds.length === 0 ? (
-                <div className='rounded-lg border border-dashed bg-muted/30 px-4 py-8 text-center'>
-                  <div className='mx-auto flex size-10 items-center justify-center rounded-full bg-primary/10'>
-                    <BedIcon className='size-5 text-primary' />
+                <div className='rounded-lg border border-dashed bg-muted/30 px-3 py-6 text-center'>
+                  <div className='mx-auto flex size-8 items-center justify-center rounded-full bg-primary/10'>
+                    <BedIcon className='size-4 text-primary' />
                   </div>
-                  <div className='mt-2 text-sm font-semibold'>No Beds</div>
-                  <div className='mt-1 text-xs text-muted-foreground'>
+                  <div className='mt-2 text-xs font-semibold'>No Beds</div>
+                  <div className='mt-1 text-[10px] text-muted-foreground'>
                     Add your first bed to this room.
                   </div>
                 </div>
               ) : (
-                <div className='space-y-2'>
+                <div className='space-y-1.5'>
                   {beds.map((b) => (
                     <div
                       key={b.s_no}
-                      className='rounded-lg border p-3 hover:border-blue-500/50'
+                      className='rounded-lg border p-2 hover:border-blue-500/50'
                     >
                       <div className='flex items-center justify-between'>
-                        <div className='flex min-w-0 flex-1 items-center gap-3'>
-                          <div className='flex size-9 items-center justify-center rounded-lg bg-black text-white'>
-                            <BedIcon className='size-4' />
+                        <div className='flex min-w-0 flex-1 items-center gap-2'>
+                          <div className='flex size-7 items-center justify-center rounded-lg bg-black text-white'>
+                            <BedIcon className='size-3.5' />
                           </div>
                           <div className='min-w-0 flex-1'>
-                            <div className='text-sm font-semibold'>
+                            <div className='text-xs font-semibold'>
                               {b.bed_no}
                             </div>
-                            <div className='truncate text-xs text-muted-foreground'>
+                            <div className='truncate text-[10px] text-muted-foreground'>
                               <Badge
                                 variant={
                                   (b as any).is_occupied
                                     ? 'secondary'
                                     : 'default'
                                 }
-                                className='mr-1 text-xs'
+                                className='mr-1 text-[10px]'
                               >
                                 {String(
                                   (b as any).is_occupied
@@ -388,11 +388,25 @@ export function RoomDetailsScreen() {
                             </div>
                           </div>
                         </div>
-                        <ActionButtons
-                          mode='icon'
-                          onEdit={() => openEditBed(b)}
-                          onDelete={() => askDeleteBed(b)}
-                        />
+                        <div className='flex items-center gap-1'>
+                          {!(b as any).is_occupied && (
+                            <Button
+                              asChild
+                              variant='outline'
+                              size='sm'
+                              className='text-xs'
+                            >
+                              <Link to={`/tenants/new?bedId=${b.s_no}&roomId=${room.s_no}`}>
+                                Add Tenant
+                              </Link>
+                            </Button>
+                          )}
+                          <ActionButtons
+                            mode='icon'
+                            onEdit={() => openEditBed(b)}
+                            onDelete={() => askDeleteBed(b)}
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}

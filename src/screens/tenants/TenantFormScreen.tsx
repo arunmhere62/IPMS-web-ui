@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -11,6 +11,7 @@ import {
 import {
   useGetAllBedsQuery,
   useGetAllRoomsQuery,
+  useGetBedByIdQuery,
   type Bed,
   type Room,
 } from '@/services/roomsApi'
@@ -40,6 +41,7 @@ import {
 import { ImageUploadS3 } from '@/components/form/image-upload-s3'
 import { PageHeader } from '@/components/form/page-header'
 import { PhoneInput } from '@/components/form/phone-input'
+import { DatePicker } from '@/components/form/date-picker'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -48,7 +50,6 @@ const schema = z.object({
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   occupation: z.string().optional().or(z.literal('')),
   tenant_address: z.string().optional().or(z.literal('')),
-  status: z.enum(['ACTIVE', 'INACTIVE', 'CHECKED_OUT']).optional(),
   room_id: z.number().min(1, 'Room is required'),
   bed_id: z.number().min(1, 'Bed is required'),
   check_in_date: z.string().min(1, 'Check-in date is required'),
@@ -96,7 +97,15 @@ export function TenantFormScreen() {
   const preSelectedBedId = searchParams.get('bedId')
     ? Number(searchParams.get('bedId'))
     : null
-  const isPreSelected = Boolean(preSelectedRoomId && preSelectedBedId)
+
+  // Fetch bed details when only bedId is passed to get room_id
+  const { data: bedResponse } = useGetBedByIdQuery(
+    preSelectedBedId && !preSelectedRoomId ? preSelectedBedId : 0,
+    { skip: !preSelectedBedId || !!preSelectedRoomId || isEditMode }
+  )
+  const bedDetails = (bedResponse as any)?.data ?? null
+  const bedRoomId = bedDetails?.room_id ?? null
+  const isPreSelected = Boolean((preSelectedRoomId || bedRoomId) && preSelectedBedId)
 
   const selectedPGLocationId = useAppSelector(
     (s) => s.pgLocations.selectedPGLocationId
@@ -116,7 +125,7 @@ export function TenantFormScreen() {
 
   const { data: roomsResponse } = useGetAllRoomsQuery(
     selectedPGLocationId
-      ? { pg_id: selectedPGLocationId, limit: 200 }
+      ? { limit: 200 }
       : undefined,
     { skip: !selectedPGLocationId }
   )
@@ -136,10 +145,9 @@ export function TenantFormScreen() {
       email: '',
       occupation: '',
       tenant_address: '',
-      status: 'ACTIVE',
-      room_id: preSelectedRoomId || 0,
+      room_id: preSelectedRoomId || bedRoomId || 0,
       bed_id: preSelectedBedId || 0,
-      check_in_date: new Date().toISOString().split('T')[0],
+      check_in_date: '',
       state_id: null,
       city_id: null,
       images: [],
@@ -154,6 +162,8 @@ export function TenantFormScreen() {
     control: form.control,
     name: 'proof_documents',
   })
+
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
 
   const { data: bedsResponse, isLoading: bedsLoading } = useGetAllBedsQuery(
     watchedRoomId
@@ -198,6 +208,7 @@ export function TenantFormScreen() {
     if (!isEditMode) return
     if (!tenant) return
 
+    const checkInDate = coerceDateString(tenant.check_in_date)
     form.reset({
       name: String(tenant.name ?? ''),
       phone_no: String(tenant.phone_no ?? ''),
@@ -205,15 +216,17 @@ export function TenantFormScreen() {
       email: String(tenant.email ?? ''),
       occupation: String(tenant.occupation ?? ''),
       tenant_address: String(tenant.tenant_address ?? ''),
-      status: (tenant.status ?? 'ACTIVE') as FormValues['status'],
       room_id: Number(tenant.room_id ?? 0),
       bed_id: Number(tenant.bed_id ?? 0),
-      check_in_date: coerceDateString(tenant.check_in_date),
+      check_in_date: checkInDate,
       state_id: tenant.state_id ?? null,
       city_id: tenant.city_id ?? null,
       images: coerceStringArray(tenant.images),
       proof_documents: coerceStringArray(tenant.proof_documents),
     })
+    if (checkInDate) {
+      setSelectedDate(new Date(checkInDate))
+    }
   }, [form, isEditMode, tenant])
 
   useEffect(() => {
@@ -322,7 +335,7 @@ export function TenantFormScreen() {
         room_id: values.room_id,
         bed_id: values.bed_id,
         check_in_date: values.check_in_date,
-        status: values.status,
+        status: 'ACTIVE',
         state_id: values.state_id ?? undefined,
         city_id: values.city_id ?? undefined,
         images: values.images ?? [],
@@ -384,6 +397,13 @@ export function TenantFormScreen() {
             Choose a PG from the top bar to manage tenants.
           </div>
         </div>
+      ) : !isEditMode && !preSelectedBedId && !preSelectedRoomId ? (
+        <div className='mt-4 rounded-md border bg-card px-3 py-8 text-center'>
+          <div className='text-base font-semibold'>Room and Bed Required</div>
+          <div className='mt-1 text-xs text-muted-foreground'>
+            Please select a room and bed from the bed details page to add a tenant.
+          </div>
+        </div>
       ) : isEditMode && tenantLoading ? (
         <div className='mt-4 rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>
           Loading...
@@ -394,33 +414,19 @@ export function TenantFormScreen() {
             onSubmit={form.handleSubmit(onSubmit)}
             className='mt-4 grid gap-4'
           >
-            <Card>
+            <Card className='shadow-none border p-0'>
               <CardContent className='grid gap-4 p-4'>
-                <div className='text-sm font-semibold'>
+                <div className='text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent'>
                   Personal Information
                 </div>
 
-                <div className='grid gap-4 sm:grid-cols-2'>
-                  <FormTextInput
-                    control={form.control}
-                    name='name'
-                    label='Full Name'
-                    required
-                    placeholder='Enter full name'
-                  />
-                  <FormSelectField
-                    control={form.control}
-                    name='status'
-                    label='Status'
-                    placeholder='Select status'
-                    options={[
-                      { label: 'Active', value: 'ACTIVE' },
-                      { label: 'Inactive', value: 'INACTIVE' },
-                      { label: 'Checked Out', value: 'CHECKED_OUT' },
-                    ]}
-                    parse={(v) => v as FormValues['status']}
-                  />
-                </div>
+                <FormTextInput
+                  control={form.control}
+                  name='name'
+                  label='Full Name'
+                  required
+                  placeholder='Enter full name'
+                />
 
                 <div className='grid gap-4 sm:grid-cols-2'>
                   <PhoneInput
@@ -464,9 +470,9 @@ export function TenantFormScreen() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className='shadow-none border p-0'>
               <CardContent className='grid gap-4 p-4'>
-                <div className='text-sm font-semibold'>Accommodation</div>
+                <div className='text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent'>Accommodation</div>
 
                 <div className='grid gap-4 sm:grid-cols-2'>
                   {isEditMode ? (
@@ -519,7 +525,7 @@ export function TenantFormScreen() {
                         options={roomOptions}
                         parse={(v) => Number(v)}
                         searchable
-                        disabled={isPreSelected}
+                        disabled
                       />
 
                       <FormSelectField
@@ -551,16 +557,14 @@ export function TenantFormScreen() {
 
                 <div className='grid gap-2'>
                   <div className='text-sm font-medium'>Check-in Date</div>
-                  <Controller
-                    control={form.control}
-                    name='check_in_date'
-                    render={({ field }) => (
-                      <Input
-                        type='date'
-                        value={field.value || ''}
-                        onChange={(e) => field.onChange(e.target.value)}
-                      />
-                    )}
+                  <DatePicker
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      setSelectedDate(date)
+                      form.setValue('check_in_date', date ? date.toISOString().split('T')[0] : '')
+                    }}
+                    placeholder='Pick a date'
+                    disabled={!!tenantId}
                   />
                   {form.formState.errors.check_in_date?.message ? (
                     <div className='text-xs text-destructive'>
@@ -571,9 +575,9 @@ export function TenantFormScreen() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className='shadow-none border p-0'>
               <CardContent className='grid gap-4 p-4'>
-                <div className='text-sm font-semibold'>Location</div>
+                <div className='text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent'>Location</div>
 
                 <div className='grid gap-4 sm:grid-cols-2'>
                   <FormSelectField
@@ -600,9 +604,9 @@ export function TenantFormScreen() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className='shadow-none border p-0'>
               <CardContent className='grid gap-4 p-4'>
-                <div className='text-sm font-semibold'>Uploads</div>
+                <div className='text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent'>Uploads</div>
 
                 <ImageUploadS3
                   images={Array.isArray(watchedImages) ? watchedImages : []}

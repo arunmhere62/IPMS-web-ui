@@ -37,7 +37,6 @@ export interface CreateBedDto {
 export interface GetBedsParams {
   page?: number
   limit?: number
-  pg_id?: number
   room_id?: number
   search?: string
   only_unoccupied?: boolean
@@ -95,9 +94,10 @@ export interface CreateRoomDto {
 export interface GetRoomsParams {
   page?: number
   limit?: number
-  pg_id?: number
   search?: string
-  sort?: string
+  occupancy?: 'all' | 'occupied' | 'available'
+  sortBy?: 'room_no' | 'created_at' | 'updated_at' | 'total_beds' | 'occupied_beds' | 'available_beds'
+  sortOrder?: 'asc' | 'desc'
 }
 
 export interface GetRoomsResponse {
@@ -194,8 +194,21 @@ export const roomsApi = baseApi.injectEndpoints({
         params: params || undefined,
       }),
       keepUnusedDataFor: 300,
-      transformResponse: (response: ApiEnvelope<GetRoomsResponse> | any) =>
-        (response as any)?.data ?? response,
+      transformResponse: (response: ApiEnvelope<GetRoomsResponse> | any) => {
+        const extracted = (response as any)?.data ?? response
+        // Handle nested data structure: { data: { data: [...] } }
+        if (extracted?.data && Array.isArray(extracted.data)) {
+          return extracted
+        }
+        if (extracted?.data?.data && Array.isArray(extracted.data.data)) {
+          return {
+            ...extracted,
+            data: extracted.data.data,
+            pagination: extracted.data.pagination
+          }
+        }
+        return extracted
+      },
       providesTags: (result) => {
         const rooms = (result as any)?.data || []
         return [

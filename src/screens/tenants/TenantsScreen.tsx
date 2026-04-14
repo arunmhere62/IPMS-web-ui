@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react'
-import { useGetAllRoomsQuery, type Room } from '@/services/roomsApi'
+import { useEffect, useMemo, useState, useRef } from 'react'
+import {
+  useGetAllRoomsQuery,
+  type Room,
+} from '@/services/roomsApi'
 import {
   useDeleteTenantMutation,
-  useGetTenantsQuery,
+  useLazyGetTenantsQuery,
   type Tenant,
 } from '@/services/tenantsApi'
 import { useAppSelector } from '@/store/hooks'
@@ -16,6 +19,7 @@ import {
 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -32,15 +36,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { AppDialog } from '@/components/form/app-dialog'
 import { PageHeader } from '@/components/form/page-header'
+import { motion, AnimatePresence } from 'framer-motion'
+import { RoomSkeleton } from '@/components/ui/room-skeleton'
+import { TenantFilterModal } from '@/components/tenants/TenantFilterModal'
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'CHECKED_OUT'
 
@@ -89,6 +88,9 @@ export function TenantsScreen() {
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const limit = 20
+  const [allTenants, setAllTenants] = useState<Tenant[]>([])
+  const [hasMore, setHasMore] = useState(true)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
 
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -98,62 +100,88 @@ export function TenantsScreen() {
   const [pendingAdvance, setPendingAdvance] = useState(false)
   const [partialRent, setPartialRent] = useState(false)
 
-  const [draftStatus, setDraftStatus] = useState<StatusFilter>('ALL')
-  const [draftRoomId, setDraftRoomId] = useState<number | null>(null)
-  const [draftPendingRent, setDraftPendingRent] = useState(false)
-  const [draftPendingAdvance, setDraftPendingAdvance] = useState(false)
-  const [draftPartialRent, setDraftPartialRent] = useState(false)
-
   const { data: roomsResponse } = useGetAllRoomsQuery(
     selectedPGLocationId
-      ? { pg_id: selectedPGLocationId, limit: 200 }
+      ? { limit: 200 }
       : undefined,
     { skip: !selectedPGLocationId }
   )
 
-  const rooms = useMemo(
-    () =>
-      asArray<Room>((roomsResponse as { data?: unknown } | undefined)?.data),
-    [roomsResponse]
-  )
+  const rooms: Room[] = asArray<Room>((roomsResponse as { data?: unknown } | undefined)?.data)
 
   const roomOptions = useMemo(
-    () => [
-      { label: 'All Rooms', value: '' },
-      ...rooms.map((r) => ({
-        label: String(r.room_no),
-        value: String(r.s_no),
-      })),
-    ],
+    () => rooms.map((r) => ({
+      label: String(r.room_no),
+      value: String(r.s_no),
+    })),
     [rooms]
   )
 
-  const {
-    data: tenantsResponse,
-    isLoading,
-    error,
-    refetch,
-  } = useGetTenantsQuery(
-    selectedPGLocationId
-      ? {
-          page,
-          limit,
-          search: query.trim() ? query.trim() : undefined,
-          status: statusFilter === 'ALL' ? undefined : statusFilter,
-          room_id: selectedRoomId ?? undefined,
-          pending_rent: pendingRent ? true : undefined,
-          pending_advance: pendingAdvance ? true : undefined,
-          partial_rent: partialRent ? true : undefined,
-        }
-      : undefined,
-    { skip: !selectedPGLocationId }
+  const queryOptions = useMemo(
+    () => ({
+      page,
+      limit,
+      search: query.trim() ? query.trim() : undefined,
+      status: statusFilter === 'ALL' ? undefined : statusFilter,
+      room_id: selectedRoomId ?? undefined,
+      pending_rent: pendingRent ? true : undefined,
+      pending_advance: pendingAdvance ? true : undefined,
+      partial_rent: partialRent ? true : undefined,
+    }),
+    [page, limit, query, statusFilter, selectedRoomId, pendingRent, pendingAdvance, partialRent],
   )
+
+  const [trigger, { data: tenantsResponse, isFetching, error }] = useLazyGetTenantsQuery()
+
+  useEffect(() => {
+    if (selectedPGLocationId && queryOptions) {
+      void trigger(queryOptions)
+    }
+  }, [trigger, queryOptions, selectedPGLocationId])
+
+  const { isFetching: isInfiniteFetching, checkScroll } = useInfiniteScroll({
+    hasMore,
+    isLoading: isFetching,
+  })
+
+  // Accumulate tenants data when response changes
+  useEffect(() => {
+    if (tenantsResponse?.data) {
+      if (page === 1) {
+        setAllTenants(tenantsResponse.data)
+      } else {
+        setAllTenants((prev) => {
+          const existingIds = new Set(prev.map((tenant) => tenant.s_no))
+          const newTenants = tenantsResponse.data.filter((tenant) => !existingIds.has(tenant.s_no))
+          return [...prev, ...newTenants]
+        })
+      }
+      setHasMore(tenantsResponse.pagination?.hasMore ?? false)
+      setHasLoadedOnce(true)
+
+      // Check if we need to load more immediately after data loads
+      setTimeout(() => {
+        checkScroll()
+      }, 100)
+    }
+  }, [tenantsResponse, page, checkScroll])
+
+  // Load more data when infinite scroll triggers
+  useEffect(() => {
+    if (isInfiniteFetching && hasMore && !isFetching && selectedPGLocationId) {
+      const nextPage = page + 1
+      setPage(nextPage)
+      void trigger({
+        ...queryOptions,
+        page: nextPage,
+      })
+    }
+  }, [isInfiniteFetching, hasMore, isFetching, page, trigger, queryOptions, selectedPGLocationId])
+
+  const tenants = allTenants
+  const isLoading = isFetching && !hasLoadedOnce
 
   const [deleteTenant, { isLoading: deleting }] = useDeleteTenantMutation()
-
-  const tenants: Tenant[] = asArray<Tenant>(
-    (tenantsResponse as { data?: unknown } | undefined)?.data
-  )
 
   const pagination = (tenantsResponse as { pagination?: unknown } | undefined)
     ?.pagination as
@@ -167,9 +195,6 @@ export function TenantsScreen() {
     | undefined
 
   const total = Number(pagination?.total ?? tenants.length)
-  const totalPages = Number(
-    pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1)
-  )
 
   const fetchErrorMessage =
     (error as ErrorLike | undefined)?.data?.message ||
@@ -190,22 +215,11 @@ export function TenantsScreen() {
       showSuccessAlert('Tenant deleted successfully')
       setDeleteDialogOpen(false)
       setDeleteTarget(null)
-      void refetch()
+      void trigger(queryOptions)
     } catch (e: unknown) {
       showErrorAlert(e, 'Delete Error')
     }
   }
-
-  const canPrev = page > 1
-  const canNext =
-    Boolean(pagination?.hasMore) ||
-    (Number.isFinite(totalPages) && page < totalPages)
-
-  const countLabel = useMemo(() => {
-    if (!selectedPGLocationId) return 'Select PG'
-    if (Number.isFinite(total) && total > 0) return `${total} Tenants`
-    return `${tenants.length} Tenants`
-  }, [selectedPGLocationId, tenants.length, total])
 
   const filterCount =
     Number(statusFilter !== 'ALL') +
@@ -220,7 +234,7 @@ export function TenantsScreen() {
     return room?.room_no ? String(room.room_no) : `Room #${selectedRoomId}`
   }, [rooms, selectedRoomId])
 
-  const statusLabel = statusFilter === 'ALL' ? 'All' : statusFilter
+  const statusLabel = statusFilter === 'ALL' ? 'All' : statusFilter === 'ACTIVE' ? 'Occupied' : statusFilter
 
   const getInitial = (name?: string) => {
     const n = String(name ?? '').trim()
@@ -266,7 +280,7 @@ export function TenantsScreen() {
         </div>
       ) : (
         <>
-          <div className='mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+          <div className='mt-4 flex flex-row gap-2 items-start sm:flex-col sm:items-start'>
             <div className='relative w-full sm:max-w-xs'>
               <Search className='pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground' />
               <Input
@@ -281,21 +295,10 @@ export function TenantsScreen() {
             </div>
 
             <div className='flex flex-wrap items-center gap-2'>
-              <Badge variant='secondary' className='h-7 px-2 text-xs'>
-                {countLabel}
-              </Badge>
-
               <Button
                 variant={filterCount > 0 ? 'default' : 'outline'}
                 size='sm'
-                onClick={() => {
-                  setDraftStatus(statusFilter)
-                  setDraftRoomId(selectedRoomId)
-                  setDraftPendingRent(pendingRent)
-                  setDraftPendingAdvance(pendingAdvance)
-                  setDraftPartialRent(partialRent)
-                  setFiltersOpen(true)
-                }}
+                onClick={() => setFiltersOpen(true)}
               >
                 <Filter className='me-2 size-4' />
                 Filters
@@ -307,10 +310,24 @@ export function TenantsScreen() {
               </Button>
 
               <Badge variant='outline' className='h-7 px-2 text-xs'>
-                {activeRoomLabel} • {statusLabel}
+                {activeRoomLabel} · {statusLabel}
               </Badge>
             </div>
           </div>
+
+          {/* Floating Count Display */}
+          {selectedPGLocationId && (Number.isFinite(total) && total > 0) && (
+            <div className='fixed bottom-6 right-6 z-50'>
+              <div className='bg-primary text-primary-foreground rounded-full px-4 py-2 shadow-lg border-2 border-background'>
+                <div className='text-sm font-bold'>
+                  {tenants.length}/{total}
+                </div>
+                <div className='text-xs opacity-90'>
+                  Tenants
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className='mt-4'>
             {isLoading ? (
@@ -325,7 +342,8 @@ export function TenantsScreen() {
               />
             ) : (
               <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
-                {tenants.map((t) => {
+                <AnimatePresence>
+                  {tenants.map((t, index) => {
                   const tenantImage =
                     Array.isArray(t.images) && t.images.length > 0
                       ? (t.images[0] as string)
@@ -347,8 +365,6 @@ export function TenantsScreen() {
                   const hasOutstandingAmount = rentDueAmount > 0
                   const hasBothPartialAndPending =
                     partialDueAmount > 0 && pendingDueAmount > 0
-                  const hasPendingRent =
-                    pendingDueAmount > 0 || unpaidMonths.length > 0
                   const showPaymentDetails = expandedPaymentCards.has(t.s_no)
 
                   const leftBorderClass = hasOutstandingAmount
@@ -362,10 +378,20 @@ export function TenantsScreen() {
                     : 'border-l-0'
 
                   return (
-                    <Card
-                      key={t.s_no}
-                      className={`h-full py-0 ${leftBorderWidthClass} ${leftBorderClass}`}
+                    <motion.div
+                      key={`tenant-${t.s_no}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{
+                        duration: 0.3,
+                        delay: index * 0.05,
+                        ease: "easeOut"
+                      }}
                     >
+                      <Card
+                        className={`h-full py-0 ${leftBorderWidthClass} ${leftBorderClass}`}
+                      >
                       <CardContent className='flex h-full flex-col gap-3 p-4'>
                         <div className='flex items-start gap-3'>
                           <div className='h-14 w-14 shrink-0 overflow-hidden rounded-full bg-primary text-primary-foreground'>
@@ -443,7 +469,7 @@ export function TenantsScreen() {
                                 ⏳ PARTIAL
                               </span>
                             ) : null}
-                            {hasPendingRent ? (
+                            {!isRentPaid ? (
                               <span className='rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white'>
                                 📅 PENDING RENT
                               </span>
@@ -580,60 +606,78 @@ export function TenantsScreen() {
                           >
                             <Link to={`/tenants/${t.s_no}`}>View Details</Link>
                           </Button>
-                          <div className='flex items-center justify-between'>
-                            <Button
-                              type='button'
-                              variant='outline'
-                              size='sm'
-                              onClick={() =>
-                                navigate(`/tenants/${t.s_no}/edit`)
-                              }
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              type='button'
-                              variant='outline'
-                              size='sm'
-                              onClick={() => askDelete(t)}
-                              disabled={deleting}
-                              className='border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive'
-                            >
-                              Delete
-                            </Button>
-                          </div>
                         </div>
                       </CardContent>
                     </Card>
+                    </motion.div>
                   )
                 })}
+                </AnimatePresence>
               </div>
             )}
 
-            <div className='mt-5 flex items-center justify-between gap-2'>
-              <Button
-                variant='outline'
-                size='sm'
-                disabled={!canPrev}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Prev
-              </Button>
-              <div className='text-xs text-muted-foreground'>
-                Page {page}
-                {Number.isFinite(totalPages) && totalPages > 0
-                  ? ` / ${totalPages}`
-                  : ''}
-              </div>
-              <Button
-                variant='outline'
-                size='sm'
-                disabled={!canNext}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
+            {allTenants.length > 0 && (
+              <>
+                {/* Skeleton loading at the bottom */}
+                <AnimatePresence>
+                  {(isFetching || (isInfiniteFetching && hasMore)) && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className='space-y-2 mb-8'
+                    >
+                      {Array.from({ length: 2 }).map((_, index) => (
+                        <motion.div
+                          key={`skeleton-${index}`}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1, duration: 0.3 }}
+                        >
+                          <RoomSkeleton />
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* End of data indicator */}
+                <AnimatePresence>
+                  {!hasMore && allTenants.length > 0 && !isFetching && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      className='mt-8 mb-12 text-center py-4 border-t'
+                    >
+                      <div className='flex items-center justify-center gap-2 text-sm text-muted-foreground'>
+                        <motion.div
+                          className='h-px bg-border flex-1 max-w-16'
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          transition={{ duration: 0.5, delay: 0.2 }}
+                        ></motion.div>
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.3, delay: 0.3 }}
+                        >
+                          Showing all {allTenants.length} tenants
+                        </motion.span>
+                        <motion.div
+                          className='h-px bg-border flex-1 max-w-16'
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          transition={{ duration: 0.5, delay: 0.2 }}
+                        ></motion.div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
+            )}
           </div>
         </>
       )}
@@ -664,123 +708,36 @@ export function TenantsScreen() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AppDialog
+      <TenantFilterModal
         open={filtersOpen}
         onOpenChange={setFiltersOpen}
-        title='Filters'
-        description='Filter tenants by status, room and dues.'
-        size='sm'
-        footer={
-          <div className='flex w-full justify-end gap-2 px-3 pb-3'>
-            {filterCount > 0 ? (
-              <Button
-                type='button'
-                variant='outline'
-                onClick={() => {
-                  setStatusFilter('ALL')
-                  setSelectedRoomId(null)
-                  setPendingRent(false)
-                  setPendingAdvance(false)
-                  setPartialRent(false)
-                  setFiltersOpen(false)
-                  setPage(1)
-                  void refetch()
-                }}
-              >
-                Clear
-              </Button>
-            ) : null}
-
-            <Button
-              type='button'
-              onClick={() => {
-                setStatusFilter(draftStatus)
-                setSelectedRoomId(draftRoomId)
-                setPendingRent(draftPendingRent)
-                setPendingAdvance(draftPendingAdvance)
-                setPartialRent(draftPartialRent)
-                setFiltersOpen(false)
-                setPage(1)
-                void refetch()
-              }}
-            >
-              Apply
-            </Button>
-          </div>
-        }
-      >
-        <div className='grid gap-4'>
-          <div className='grid gap-2'>
-            <div className='text-sm font-medium'>Status</div>
-            <Select
-              value={draftStatus}
-              onValueChange={(v) => setDraftStatus(v as StatusFilter)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder='All' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='ALL'>All</SelectItem>
-                <SelectItem value='ACTIVE'>Active</SelectItem>
-                <SelectItem value='INACTIVE'>Inactive</SelectItem>
-                <SelectItem value='CHECKED_OUT'>Checked Out</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className='grid gap-2'>
-            <div className='text-sm font-medium'>Room</div>
-            <Select
-              value={draftRoomId ? String(draftRoomId) : ''}
-              onValueChange={(v) => {
-                const id = v ? Number(v) : NaN
-                setDraftRoomId(Number.isFinite(id) && id > 0 ? id : null)
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder='All Rooms' />
-              </SelectTrigger>
-              <SelectContent>
-                {roomOptions.map((o) => (
-                  <SelectItem key={String(o.value)} value={String(o.value)}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className='grid gap-2'>
-            <div className='text-sm font-medium'>Dues</div>
-            <div className='flex flex-wrap gap-2'>
-              <Button
-                type='button'
-                variant={draftPendingRent ? 'default' : 'outline'}
-                size='sm'
-                onClick={() => setDraftPendingRent((v) => !v)}
-              >
-                Pending Rent
-              </Button>
-              <Button
-                type='button'
-                variant={draftPartialRent ? 'default' : 'outline'}
-                size='sm'
-                onClick={() => setDraftPartialRent((v) => !v)}
-              >
-                Partial Rent
-              </Button>
-              <Button
-                type='button'
-                variant={draftPendingAdvance ? 'default' : 'outline'}
-                size='sm'
-                onClick={() => setDraftPendingAdvance((v) => !v)}
-              >
-                Pending Advance
-              </Button>
-            </div>
-          </div>
-        </div>
-      </AppDialog>
+        statusFilter={statusFilter}
+        selectedRoomId={selectedRoomId}
+        pendingRent={pendingRent}
+        pendingAdvance={pendingAdvance}
+        partialRent={partialRent}
+        roomOptions={roomOptions}
+        onStatusFilterChange={setStatusFilter}
+        onRoomChange={setSelectedRoomId}
+        onPendingRentChange={setPendingRent}
+        onPendingAdvanceChange={setPendingAdvance}
+        onPartialRentChange={setPartialRent}
+        onClear={() => {
+          setStatusFilter('ALL')
+          setSelectedRoomId(null)
+          setPendingRent(false)
+          setPendingAdvance(false)
+          setPartialRent(false)
+          setPage(1)
+          setAllTenants([])
+          void trigger(queryOptions)
+        }}
+        onApply={() => {
+          setPage(1)
+          setAllTenants([])
+          void trigger(queryOptions)
+        }}
+      />
     </div>
   )
 }

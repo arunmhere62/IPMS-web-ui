@@ -16,11 +16,10 @@ import { FormDialog } from '@/components/form/form-dialog'
 import { FormTextarea } from '@/components/form/form-fields'
 import { FormNumberInput } from '@/components/form/form-number-input'
 import { FormSelectField } from '@/components/form/form-select-field'
-import { FormTextInput } from '@/components/form/form-text-input'
+import { DatePicker } from '@/components/form/date-picker'
 
 const schema = z.object({
   amount_paid: z.number().min(1, 'Amount paid is required'),
-  actual_rent_amount: z.number().min(1, 'Actual rent amount is required'),
   payment_date: z.string().min(1, 'Payment date is required'),
   payment_method: z.enum(['GPAY', 'PHONEPE', 'CASH', 'BANK_TRANSFER']),
   cycle_id: z.number().min(1, 'Cycle is required'),
@@ -39,6 +38,9 @@ type RentPaymentDialogProps = {
     room_id: number
     bed_id: number
     rooms?: { rent_price?: number }
+    beds?: { bed_price?: string | number }
+    check_in_date?: string
+    last_payment_date?: string
   }
   onSaved: () => void
 }
@@ -60,12 +62,13 @@ export function RentPaymentDialog({
   )
   const [loadingGaps, setLoadingGaps] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  const [actualRentAmount, setActualRentAmount] = useState<number>(Number(tenant.beds?.bed_price || tenant.rooms?.rent_price || 0))
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       amount_paid: 0,
-      actual_rent_amount: tenant.rooms?.rent_price || 0,
       payment_date: new Date().toISOString().split('T')[0],
       payment_method: 'CASH',
       cycle_id: 0,
@@ -74,14 +77,13 @@ export function RentPaymentDialog({
   })
 
   const watchedAmountPaid = form.watch('amount_paid')
-  const watchedActualAmount = form.watch('actual_rent_amount')
 
   const paymentStatus = useMemo(() => {
-    if (!watchedAmountPaid || !watchedActualAmount) return 'PENDING'
-    if (watchedAmountPaid >= watchedActualAmount) return 'PAID'
+    if (!watchedAmountPaid || !actualRentAmount) return 'PENDING'
+    if (watchedAmountPaid >= actualRentAmount) return 'PAID'
     if (watchedAmountPaid > 0) return 'PARTIAL'
     return 'PENDING'
-  }, [watchedAmountPaid, watchedActualAmount])
+  }, [watchedAmountPaid, actualRentAmount])
 
   const loadPaymentGaps = useCallback(async () => {
     if (!tenant) return
@@ -112,13 +114,14 @@ export function RentPaymentDialog({
     if (selectedGapId === id) {
       setSelectedGapId(null)
       form.setValue('cycle_id', 0)
+      setActualRentAmount(Number(tenant.beds?.bed_price || tenant.rooms?.rent_price || 0))
       return
     }
 
     const remaining = gap.remainingDue ?? gap.rentDue ?? 0
     setSelectedGapId(id)
     form.setValue('cycle_id', gap.cycle_id || 0)
-    if (remaining > 0) form.setValue('actual_rent_amount', remaining)
+    if (remaining > 0) setActualRentAmount(remaining)
   }
 
   const skipGapsAndUseNextPeriod = async () => {
@@ -132,7 +135,7 @@ export function RentPaymentDialog({
       }).unwrap()
       setSelectedGapId(null)
       form.setValue('cycle_id', next.suggestedCycleId || 0)
-      form.setValue('actual_rent_amount', tenant.rooms?.rent_price || 0)
+      setActualRentAmount(Number(tenant.beds?.bed_price || tenant.rooms?.rent_price || 0))
     } catch (_e) {
       setFormError('Failed to calculate next rent period')
     } finally {
@@ -168,7 +171,7 @@ export function RentPaymentDialog({
         room_id: tenant.room_id,
         bed_id: tenant.bed_id,
         amount_paid: values.amount_paid,
-        actual_rent_amount: values.actual_rent_amount,
+        actual_rent_amount: actualRentAmount,
         payment_date: values.payment_date,
         payment_method: values.payment_method,
         status: paymentStatus,
@@ -188,12 +191,13 @@ export function RentPaymentDialog({
     if (open && tenant) {
       form.reset({
         amount_paid: 0,
-        actual_rent_amount: tenant.rooms?.rent_price || 0,
         payment_date: new Date().toISOString().split('T')[0],
         payment_method: 'CASH',
         cycle_id: 0,
         remarks: '',
       })
+      setSelectedDate(new Date())
+      setActualRentAmount(Number(tenant.beds?.bed_price || tenant.rooms?.rent_price || 0))
       loadPaymentGaps()
     }
   }, [open, tenant, form, loadPaymentGaps])
@@ -244,6 +248,36 @@ export function RentPaymentDialog({
             </div>
           )}
 
+          {/* Tenant Info */}
+          <div className='rounded-md border bg-muted/30 p-3'>
+            <div className='grid grid-cols-2 gap-3'>
+              <div>
+                <div className='text-[10px] text-muted-foreground'>Joining Date</div>
+                <div className='text-xs font-semibold'>
+                  {tenant.check_in_date
+                    ? new Date(tenant.check_in_date).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })
+                    : '—'}
+                </div>
+              </div>
+              <div>
+                <div className='text-[10px] text-muted-foreground'>Last Payment Date</div>
+                <div className='text-xs font-semibold'>
+                  {tenant.last_payment_date
+                    ? new Date(tenant.last_payment_date).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })
+                    : '—'}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Rent Period Selection */}
           <div className='rounded-md border bg-card p-4'>
             <div className='flex items-center justify-between gap-2'>
@@ -281,7 +315,7 @@ export function RentPaymentDialog({
                         {formatGapLabel(g.gapStart, g.gapEnd)}
                         {g.rentDue && (
                           <Badge variant='secondary' className='ml-2 text-xs'>
-                            ₹${g.rentDue}
+                            ₹{g.rentDue}
                           </Badge>
                         )}
                       </Button>
@@ -299,7 +333,11 @@ export function RentPaymentDialog({
           </div>
 
           {/* Payment Amounts */}
-          <div className='grid gap-4 sm:grid-cols-2'>
+          <div className='grid gap-4'>
+             <div className='rounded-md border bg-muted/30 p-3'>
+              <div className='text-[10px] text-muted-foreground'>Actual Rent Amount</div>
+              <div className='text-lg font-semibold'>₹{actualRentAmount}</div>
+            </div>
             <FormNumberInput
               control={form.control}
               name='amount_paid'
@@ -307,13 +345,7 @@ export function RentPaymentDialog({
               placeholder='0.00'
               required
             />
-            <FormNumberInput
-              control={form.control}
-              name='actual_rent_amount'
-              label='Actual Rent Amount'
-              placeholder='0.00'
-              required
-            />
+           
           </div>
 
           {/* Payment Status */}
@@ -340,13 +372,19 @@ export function RentPaymentDialog({
 
           {/* Payment Details */}
           <div className='grid gap-4 sm:grid-cols-2'>
-            <FormTextInput
-              control={form.control}
-              name='payment_date'
-              label='Payment Date'
-              placeholder='YYYY-MM-DD'
-              required
-            />
+            <div className='flex flex-col'>
+              <label className='text-sm font-medium'>Payment Date</label>
+              <div className='mt-1'>
+                <DatePicker
+                  selected={selectedDate}
+                  onSelect={(date) => {
+                    setSelectedDate(date)
+                    form.setValue('payment_date', date ? date.toISOString().split('T')[0] : '')
+                  }}
+                  placeholder='Pick a date'
+                />
+              </div>
+            </div>
             <FormSelectField
               control={form.control}
               name='payment_method'

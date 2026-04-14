@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   useGetAllRoomsQuery,
   type Room,
@@ -17,7 +17,7 @@ import {
   Search,
   Users,
 } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -67,7 +67,6 @@ type ErrorLike = {
 }
 
 export function TenantsScreen() {
-  const navigate = useNavigate()
   const selectedPGLocationId = useAppSelector(
     (s) => s.pgLocations.selectedPGLocationId
   )
@@ -203,10 +202,6 @@ export function TenantsScreen() {
   const [deleteTarget, setDeleteTarget] = useState<Tenant | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
-  const askDelete = (t: Tenant) => {
-    setDeleteTarget(t)
-    setDeleteDialogOpen(true)
-  }
 
   const confirmDelete = async () => {
     if (!deleteTarget) return

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   useDeleteRoomMutation,
@@ -46,7 +46,6 @@ export function RoomsScreen() {
   const [allRooms, setAllRooms] = useState<Room[]>([])
   const [hasMore, setHasMore] = useState(true)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
-  const listContainerRef = useRef<HTMLDivElement>(null)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Room | null>(null)

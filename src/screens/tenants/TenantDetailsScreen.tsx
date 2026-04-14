@@ -26,14 +26,11 @@ import {
   Calendar,
   MapPin,
   Phone,
-  Mail,
   Home,
   Bed as BedIcon,
-  Building,
   FileText,
   Image as ImageIcon,
   CreditCard,
-  DollarSign,
 } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'

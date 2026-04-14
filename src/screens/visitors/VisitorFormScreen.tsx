@@ -76,7 +76,7 @@ export function VisitorFormScreen() {
   const [updateVisitor, { isLoading: updating }] = useUpdateVisitorMutation()
 
   const { data: roomsResponse } = useGetAllRoomsQuery(
-    selectedPGLocationId ? { pg_id: selectedPGLocationId, limit: 200 } : undefined,
+    selectedPGLocationId ? { limit: 200 } : undefined,
     { skip: !selectedPGLocationId }
   )
   const rooms: Room[] = useMemo(() => asArray<Room>((roomsResponse as { data?: unknown } | undefined)?.data), [roomsResponse])

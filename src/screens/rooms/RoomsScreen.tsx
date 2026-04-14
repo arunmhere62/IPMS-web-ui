@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   useDeleteRoomMutation,
   useGetAllRoomsQuery,
@@ -38,6 +38,8 @@ export function RoomsScreen() {
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const limit = 20
+  const [allRooms, setAllRooms] = useState<Room[]>([])
+  const [hasMore, setHasMore] = useState(true)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Room | null>(null)
@@ -48,6 +50,7 @@ export function RoomsScreen() {
   const {
     data: roomsResponse,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useGetAllRoomsQuery(
@@ -64,24 +67,48 @@ export function RoomsScreen() {
 
   const [deleteRoom, { isLoading: deleting }] = useDeleteRoomMutation()
 
-  const rooms: Room[] = Array.isArray(roomsResponse?.data)
-    ? roomsResponse!.data
-    : []
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
-  const pagination = roomsResponse?.pagination as
-    | {
-        total?: number
-        page?: number
-        limit?: number
-        totalPages?: number
-        hasMore?: boolean
+  // Update all rooms when new data is fetched
+  useEffect(() => {
+    if (roomsResponse?.data) {
+      const newRooms = roomsResponse.data as Room[]
+      if (page === 1) {
+        setAllRooms(newRooms)
+      } else {
+        setAllRooms((prev) => [...prev, ...newRooms])
       }
-    | undefined
+      const totalPages = roomsResponse.pagination?.totalPages ?? 1
+      setHasMore(page < totalPages)
+    }
+  }, [roomsResponse, page])
 
-  const total = Number(pagination?.total ?? rooms.length)
-  const totalPages = Number(
-    pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1)
-  )
+  // Reset when query or location changes
+  useEffect(() => {
+    setAllRooms([])
+    setPage(1)
+    setHasMore(true)
+  }, [query, selectedPGLocationId])
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isFetching && !isLoading) {
+          setPage((prev) => prev + 1)
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, isFetching, isLoading])
+
+  const rooms = allRooms
 
   const fetchErrorMessage =
     (error as ErrorLike | undefined)?.data?.message ||
@@ -109,22 +136,18 @@ export function RoomsScreen() {
       showSuccessAlert('Room deleted successfully')
       setDeleteDialogOpen(false)
       setDeleteTarget(null)
+      setAllRooms([])
+      setPage(1)
       void refetch()
     } catch (e) {
       showErrorAlert(e, 'Delete Error')
     }
   }
 
-  const canPrev = page > 1
-  const canNext =
-    Boolean(pagination?.hasMore) ||
-    (Number.isFinite(totalPages) && page < totalPages)
-
   const countLabel = useMemo(() => {
     if (!selectedPGLocationId) return 'Select PG'
-    if (Number.isFinite(total) && total > 0) return `${total} Rooms`
     return `${rooms.length} Rooms`
-  }, [rooms.length, selectedPGLocationId, total])
+  }, [rooms.length, selectedPGLocationId])
 
   return (
     <div className='container mx-auto max-w-7xl px-4 py-4'>
@@ -367,32 +390,27 @@ export function RoomsScreen() {
             )}
 
             {rooms.length > 0 && (
-              <div className='mt-3 flex items-center justify-between border-t pt-3'>
-                <div className='text-xs text-muted-foreground'>
-                  Page {page}
-                  {Number.isFinite(totalPages) && totalPages > 0
-                    ? ` of ${totalPages}`
-                    : ''}
-                </div>
-                <div className='flex gap-2'>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    disabled={!canPrev}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    disabled={!canNext}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
+              <>
+                {/* Sentinel element for infinite scroll */}
+                <div ref={sentinelRef} className='h-4' />
+
+                {/* Loading indicator at the bottom */}
+                {isFetching && hasMore && (
+                  <div className='mt-3 flex items-center justify-center py-4'>
+                    <div className='size-5 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
+                    <span className='ml-2 text-xs text-muted-foreground'>
+                      Loading more...
+                    </span>
+                  </div>
+                )}
+
+                {/* End of list indicator */}
+                {!hasMore && rooms.length > 0 && (
+                  <div className='mt-3 py-4 text-center text-xs text-muted-foreground'>
+                    No more rooms to load
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -407,6 +425,8 @@ export function RoomsScreen() {
             onSaved={() => {
               setDialogOpen(false)
               setEditTarget(null)
+              setAllRooms([])
+              setPage(1)
               void refetch()
             }}
           />

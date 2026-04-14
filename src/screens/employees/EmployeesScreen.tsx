@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   useDeleteEmployeeMutation,
   useGetEmployeesQuery,
@@ -45,6 +45,8 @@ export function EmployeesScreen() {
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const limit = 20
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([])
+  const [hasMore, setHasMore] = useState(true)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Employee | null>(null)
@@ -55,6 +57,7 @@ export function EmployeesScreen() {
   const {
     data: employeesResponse,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useGetEmployeesQuery(
@@ -69,24 +72,47 @@ export function EmployeesScreen() {
 
   const [deleteEmployee, { isLoading: deleting }] = useDeleteEmployeeMutation()
 
-  const employees: Employee[] = Array.isArray(employeesResponse?.data)
-    ? employeesResponse!.data
-    : []
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
-  const pagination = employeesResponse?.pagination as
-    | {
-        total?: number
-        page?: number
-        limit?: number
-        totalPages?: number
-        hasMore?: boolean
+  // Update all employees when new data is fetched
+  useEffect(() => {
+    if (employeesResponse?.data) {
+      const newEmployees = employeesResponse.data as Employee[]
+      if (page === 1) {
+        setAllEmployees(newEmployees)
+      } else {
+        setAllEmployees((prev) => [...prev, ...newEmployees])
       }
-    | undefined
+      setHasMore(Boolean(employeesResponse.pagination?.hasMore))
+    }
+  }, [employeesResponse, page])
 
-  const total = Number(pagination?.total ?? employees.length)
-  const totalPages = Number(
-    pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1)
-  )
+  // Reset when query or location changes
+  useEffect(() => {
+    setAllEmployees([])
+    setPage(1)
+    setHasMore(true)
+  }, [query, selectedPGLocationId])
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isFetching && !isLoading) {
+          setPage((prev) => prev + 1)
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, isFetching, isLoading])
+
+  const employees = allEmployees
 
   const fetchErrorMessage =
     (error as ErrorLike | undefined)?.data?.message ||
@@ -114,22 +140,18 @@ export function EmployeesScreen() {
       showSuccessAlert('Employee deleted successfully')
       setDeleteDialogOpen(false)
       setDeleteTarget(null)
+      setAllEmployees([])
+      setPage(1)
       void refetch()
     } catch (e: unknown) {
       showErrorAlert(e, 'Delete Error')
     }
   }
 
-  const canPrev = page > 1
-  const canNext =
-    Boolean(pagination?.hasMore) ||
-    (Number.isFinite(totalPages) && page < totalPages)
-
   const countLabel = useMemo(() => {
     if (!selectedPGLocationId) return 'Select PG'
-    if (Number.isFinite(total) && total > 0) return `${total} Employees`
     return `${employees.length} Employees`
-  }, [employees.length, selectedPGLocationId, total])
+  }, [employees.length, selectedPGLocationId])
 
   return (
     <div className='container mx-auto max-w-7xl px-4 py-4'>
@@ -267,32 +289,27 @@ export function EmployeesScreen() {
           )}
 
           {employees.length > 0 && (
-            <div className='mt-3 flex items-center justify-between border-t pt-3'>
-              <div className='text-xs text-muted-foreground'>
-                Page {page}
-                {Number.isFinite(totalPages) && totalPages > 0
-                  ? ` of ${totalPages}`
-                  : ''}
-              </div>
-              <div className='flex gap-2'>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  disabled={!canPrev}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  disabled={!canNext}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
+            <>
+              {/* Sentinel element for infinite scroll */}
+              <div ref={sentinelRef} className='h-4' />
+
+              {/* Loading indicator at the bottom */}
+              {isFetching && hasMore && (
+                <div className='mt-3 flex items-center justify-center py-4'>
+                  <div className='size-5 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
+                  <span className='ml-2 text-xs text-muted-foreground'>
+                    Loading more...
+                  </span>
+                </div>
+              )}
+
+              {/* End of list indicator */}
+              {!hasMore && employees.length > 0 && (
+                <div className='mt-3 py-4 text-center text-xs text-muted-foreground'>
+                  No more employees to load
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -307,6 +324,8 @@ export function EmployeesScreen() {
         onSaved={() => {
           setDialogOpen(false)
           setEditTarget(null)
+          setAllEmployees([])
+          setPage(1)
           void refetch()
         }}
       />

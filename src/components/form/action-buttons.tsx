@@ -51,7 +51,7 @@ export function ActionButtons({
   viewLabel = 'View',
   editLabel = 'Edit',
   deleteLabel = 'Delete',
-  viewVariant = 'secondary',
+  viewVariant = 'outline',
   editVariant = 'outline',
   deleteVariant = 'outline',
   size,
@@ -68,13 +68,12 @@ export function ActionButtons({
           type='button'
           size={effectiveSize}
           variant={viewVariant}
-          className={cn(
+           className={cn(
             mode === 'icon'
               ? 'flex h-8 w-8 items-center justify-center rounded-md p-0'
               : undefined,
-            viewVariant === 'secondary'
-              ? 'hover:bg-muted hover:text-foreground'
-              : undefined
+            // Neutral grayscale hover
+            'text-foreground hover:bg-muted'
           )}
           aria-label={viewLabel}
           title={viewLabel}

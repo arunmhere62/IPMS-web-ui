@@ -97,6 +97,7 @@ export interface GetRoomsParams {
   limit?: number
   pg_id?: number
   search?: string
+  sort?: string
 }
 
 export interface GetRoomsResponse {
@@ -122,13 +123,20 @@ type ApiEnvelope<T> = {
 }
 
 const unwrapCentralData = <T>(response: any): T => {
-  if (response && typeof response === 'object' && 'success' in response && 'statusCode' in response) {
+  if (
+    response &&
+    typeof response === 'object' &&
+    'success' in response &&
+    'statusCode' in response
+  ) {
     return (response as any).data as T
   }
   return response as T
 }
 
-const normalizeEntityResponse = <T>(response: any): { success: boolean; data: T; message?: string } => {
+const normalizeEntityResponse = <T>(
+  response: any
+): { success: boolean; data: T; message?: string } => {
   if (
     response &&
     typeof response === 'object' &&
@@ -147,7 +155,9 @@ const normalizeEntityResponse = <T>(response: any): { success: boolean; data: T;
   }
 }
 
-const normalizeListResponse = <T>(response: any): { success: boolean; data: T[]; pagination?: any; message?: string } => {
+const normalizeListResponse = <T>(
+  response: any
+): { success: boolean; data: T[]; pagination?: any; message?: string } => {
   const unwrapped = unwrapCentralData<any>(response)
 
   if (Array.isArray(unwrapped)) {
@@ -184,7 +194,8 @@ export const roomsApi = baseApi.injectEndpoints({
         params: params || undefined,
       }),
       keepUnusedDataFor: 300,
-      transformResponse: (response: ApiEnvelope<GetRoomsResponse> | any) => (response as any)?.data ?? response,
+      transformResponse: (response: ApiEnvelope<GetRoomsResponse> | any) =>
+        (response as any)?.data ?? response,
       providesTags: (result) => {
         const rooms = (result as any)?.data || []
         return [
@@ -196,22 +207,32 @@ export const roomsApi = baseApi.injectEndpoints({
 
     getRoomById: build.query<RoomResponse, number>({
       query: (id) => ({ url: `/rooms/${id}`, method: 'GET' }),
-      transformResponse: (response: ApiEnvelope<RoomResponse> | any) => normalizeEntityResponse<Room>(response),
+      transformResponse: (response: ApiEnvelope<RoomResponse> | any) =>
+        normalizeEntityResponse<Room>(response),
       providesTags: (_res, _err, id) => [{ type: 'Room' as const, id }],
     }),
 
     createRoom: build.mutation<RoomResponse, CreateRoomDto>({
       query: (body) => ({ url: '/rooms', method: 'POST', body }),
-      transformResponse: (response: ApiEnvelope<RoomResponse> | any) => normalizeEntityResponse<Room>(response),
+      transformResponse: (response: ApiEnvelope<RoomResponse> | any) =>
+        normalizeEntityResponse<Room>(response),
       invalidatesTags: [
         { type: 'Rooms' as const, id: 'LIST' },
         { type: 'Dashboard' as const, id: 'SUMMARY' },
       ],
     }),
 
-    updateRoom: build.mutation<RoomResponse, { id: number; data: Partial<CreateRoomDto> }>({
-      query: ({ id, data }) => ({ url: `/rooms/${id}`, method: 'PATCH', body: data }),
-      transformResponse: (response: ApiEnvelope<RoomResponse> | any) => normalizeEntityResponse<Room>(response),
+    updateRoom: build.mutation<
+      RoomResponse,
+      { id: number; data: Partial<CreateRoomDto> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/rooms/${id}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      transformResponse: (response: ApiEnvelope<RoomResponse> | any) =>
+        normalizeEntityResponse<Room>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'Rooms' as const, id: 'LIST' },
         { type: 'Room' as const, id: arg.id },
@@ -221,7 +242,8 @@ export const roomsApi = baseApi.injectEndpoints({
 
     deleteRoom: build.mutation<{ success: boolean; message: string }, number>({
       query: (id) => ({ url: `/rooms/${id}`, method: 'DELETE' }),
-      transformResponse: (response: ApiEnvelope<any> | any) => (response as any)?.data ?? response,
+      transformResponse: (response: ApiEnvelope<any> | any) =>
+        (response as any)?.data ?? response,
       invalidatesTags: (res, _err, id) =>
         (res as any)?.success
           ? [
@@ -239,7 +261,8 @@ export const roomsApi = baseApi.injectEndpoints({
         params: params || undefined,
       }),
       keepUnusedDataFor: 300,
-      transformResponse: (response: ApiEnvelope<GetBedsResponse> | any) => normalizeListResponse<Bed>(response),
+      transformResponse: (response: ApiEnvelope<GetBedsResponse> | any) =>
+        normalizeListResponse<Bed>(response),
       providesTags: (result) => {
         const beds = (result as any)?.data || []
         return [
@@ -251,19 +274,24 @@ export const roomsApi = baseApi.injectEndpoints({
 
     getBedsByRoomId: build.query<GetBedsResponse, number>({
       query: (roomId) => ({ url: `/beds/room/${roomId}`, method: 'GET' }),
-      transformResponse: (response: ApiEnvelope<GetBedsResponse> | any) => normalizeListResponse<Bed>(response),
-      providesTags: (_res, _err, roomId) => [{ type: 'Beds' as const, id: roomId }],
+      transformResponse: (response: ApiEnvelope<GetBedsResponse> | any) =>
+        normalizeListResponse<Bed>(response),
+      providesTags: (_res, _err, roomId) => [
+        { type: 'Beds' as const, id: roomId },
+      ],
     }),
 
     getBedById: build.query<BedResponse, number>({
       query: (id) => ({ url: `/beds/${id}`, method: 'GET' }),
-      transformResponse: (response: ApiEnvelope<BedResponse> | any) => normalizeEntityResponse<Bed>(response),
+      transformResponse: (response: ApiEnvelope<BedResponse> | any) =>
+        normalizeEntityResponse<Bed>(response),
       providesTags: (_res, _err, id) => [{ type: 'Bed' as const, id }],
     }),
 
     createBed: build.mutation<BedResponse, CreateBedDto>({
       query: (body) => ({ url: '/beds', method: 'POST', body }),
-      transformResponse: (response: ApiEnvelope<BedResponse> | any) => normalizeEntityResponse<Bed>(response),
+      transformResponse: (response: ApiEnvelope<BedResponse> | any) =>
+        normalizeEntityResponse<Bed>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'Beds' as const, id: 'LIST' },
         { type: 'Beds' as const, id: arg.room_id },
@@ -273,22 +301,35 @@ export const roomsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    updateBed: build.mutation<BedResponse, { id: number; data: Partial<CreateBedDto> }>({
-      query: ({ id, data }) => ({ url: `/beds/${id}`, method: 'PATCH', body: data }),
-      transformResponse: (response: ApiEnvelope<BedResponse> | any) => normalizeEntityResponse<Bed>(response),
+    updateBed: build.mutation<
+      BedResponse,
+      { id: number; data: Partial<CreateBedDto> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/beds/${id}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      transformResponse: (response: ApiEnvelope<BedResponse> | any) =>
+        normalizeEntityResponse<Bed>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'Beds' as const, id: 'LIST' },
-        ...(typeof arg.data.room_id === 'number' ? [{ type: 'Beds' as const, id: arg.data.room_id }] : []),
+        ...(typeof arg.data.room_id === 'number'
+          ? [{ type: 'Beds' as const, id: arg.data.room_id }]
+          : []),
         { type: 'Bed' as const, id: arg.id },
         { type: 'Rooms' as const, id: 'LIST' },
-        ...(typeof arg.data.room_id === 'number' ? [{ type: 'Room' as const, id: arg.data.room_id }] : []),
+        ...(typeof arg.data.room_id === 'number'
+          ? [{ type: 'Room' as const, id: arg.data.room_id }]
+          : []),
         { type: 'Dashboard' as const, id: 'SUMMARY' },
       ],
     }),
 
     deleteBed: build.mutation<{ success: boolean; message: string }, number>({
       query: (id) => ({ url: `/beds/${id}`, method: 'DELETE' }),
-      transformResponse: (response: ApiEnvelope<any> | any) => (response as any)?.data ?? response,
+      transformResponse: (response: ApiEnvelope<any> | any) =>
+        (response as any)?.data ?? response,
       invalidatesTags: (_res, _err, id) => [
         { type: 'Beds' as const, id: 'LIST' },
         { type: 'Bed' as const, id },

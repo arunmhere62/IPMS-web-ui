@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  useGetAllRoomsQuery,
-  type Room,
-} from '@/services/roomsApi'
+import { useGetAllRoomsQuery, type Room } from '@/services/roomsApi'
 import {
   useDeleteTenantMutation,
   useLazyGetTenantsQuery,
+  type GetTenantsParams,
   type Tenant,
 } from '@/services/tenantsApi'
 import { useAppSelector } from '@/store/hooks'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronDown,
   ChevronUp,
@@ -17,7 +16,7 @@ import {
   Search,
   Users,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -36,12 +35,19 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import { PageHeader } from '@/components/form/page-header'
-import { motion, AnimatePresence } from 'framer-motion'
 import { RoomSkeleton } from '@/components/ui/room-skeleton'
+import { PageHeader } from '@/components/form/page-header'
 import { TenantFilterModal } from '@/components/tenants/TenantFilterModal'
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'CHECKED_OUT'
+
+interface Pagination {
+  total?: number
+  page?: number
+  limit?: number
+  totalPages?: number
+  hasMore?: boolean
+}
 
 const asArray = <T,>(value: unknown): T[] => {
   return Array.isArray(value) ? (value as T[]) : []
@@ -67,6 +73,7 @@ type ErrorLike = {
 }
 
 export function TenantsScreen() {
+  const navigate = useNavigate()
   const selectedPGLocationId = useAppSelector(
     (s) => s.pgLocations.selectedPGLocationId
   )
@@ -86,7 +93,7 @@ export function TenantsScreen() {
 
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
-  const limit = 20
+  const limit: number = 20
   const [allTenants, setAllTenants] = useState<Tenant[]>([])
   const [hasMore, setHasMore] = useState(true)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
@@ -100,23 +107,22 @@ export function TenantsScreen() {
   const [partialRent, setPartialRent] = useState(false)
 
   const { data: roomsResponse } = useGetAllRoomsQuery(
-    selectedPGLocationId
-      ? { limit: 200 }
-      : undefined,
+    selectedPGLocationId ? { limit: 200 } : undefined,
     { skip: !selectedPGLocationId }
   )
 
-  const rooms: Room[] = asArray<Room>((roomsResponse as { data?: unknown } | undefined)?.data)
+  const rooms: Room[] = asArray<Room>(roomsResponse?.data)
 
-  const roomOptions = useMemo(
-    () => rooms.map((r) => ({
-      label: String(r.room_no),
-      value: String(r.s_no),
-    })),
+  const roomOptions: Array<{ label: string; value: string }> = useMemo(
+    () =>
+      rooms.map((r) => ({
+        label: String(r.room_no),
+        value: String(r.s_no),
+      })),
     [rooms]
   )
 
-  const queryOptions = useMemo(
+  const queryOptions: GetTenantsParams = useMemo(
     () => ({
       page,
       limit,
@@ -127,10 +133,20 @@ export function TenantsScreen() {
       pending_advance: pendingAdvance ? true : undefined,
       partial_rent: partialRent ? true : undefined,
     }),
-    [page, limit, query, statusFilter, selectedRoomId, pendingRent, pendingAdvance, partialRent],
+    [
+      page,
+      limit,
+      query,
+      statusFilter,
+      selectedRoomId,
+      pendingRent,
+      pendingAdvance,
+      partialRent,
+    ]
   )
 
-  const [trigger, { data: tenantsResponse, isFetching, error }] = useLazyGetTenantsQuery()
+  const [trigger, { data: tenantsResponse, isFetching, error }] =
+    useLazyGetTenantsQuery()
 
   useEffect(() => {
     if (selectedPGLocationId && queryOptions) {
@@ -146,17 +162,22 @@ export function TenantsScreen() {
   // Accumulate tenants data when response changes
   useEffect(() => {
     if (tenantsResponse?.data) {
-      if (page === 1) {
-        setAllTenants(tenantsResponse.data)
-      } else {
-        setAllTenants((prev) => {
-          const existingIds = new Set(prev.map((tenant) => tenant.s_no))
-          const newTenants = tenantsResponse.data.filter((tenant) => !existingIds.has(tenant.s_no))
-          return [...prev, ...newTenants]
-        })
-      }
-      setHasMore(tenantsResponse.pagination?.hasMore ?? false)
-      setHasLoadedOnce(true)
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        if (page === 1) {
+          setAllTenants(tenantsResponse.data)
+        } else {
+          setAllTenants((prev) => {
+            const existingIds = new Set(prev.map((tenant) => tenant.s_no))
+            const newTenants = tenantsResponse.data.filter(
+              (tenant) => !existingIds.has(tenant.s_no)
+            )
+            return [...prev, ...newTenants]
+          })
+        }
+        setHasMore(tenantsResponse.pagination?.hasMore ?? false)
+        setHasLoadedOnce(true)
+      }, 0)
 
       // Check if we need to load more immediately after data loads
       setTimeout(() => {
@@ -169,39 +190,40 @@ export function TenantsScreen() {
   useEffect(() => {
     if (isInfiniteFetching && hasMore && !isFetching && selectedPGLocationId) {
       const nextPage = page + 1
-      setPage(nextPage)
+      setTimeout(() => setPage(nextPage), 0)
       void trigger({
         ...queryOptions,
         page: nextPage,
       })
     }
-  }, [isInfiniteFetching, hasMore, isFetching, page, trigger, queryOptions, selectedPGLocationId])
+  }, [
+    isInfiniteFetching,
+    hasMore,
+    isFetching,
+    page,
+    trigger,
+    queryOptions,
+    selectedPGLocationId,
+  ])
 
-  const tenants = allTenants
-  const isLoading = isFetching && !hasLoadedOnce
+  const tenants: Tenant[] = allTenants
+  const isLoading: boolean = isFetching && !hasLoadedOnce
 
   const [deleteTenant, { isLoading: deleting }] = useDeleteTenantMutation()
 
-  const pagination = (tenantsResponse as { pagination?: unknown } | undefined)
-    ?.pagination as
-    | {
-        total?: number
-        page?: number
-        limit?: number
-        totalPages?: number
-        hasMore?: boolean
-      }
-    | undefined
+  const pagination = tenantsResponse?.pagination as Pagination | undefined
 
-  const total = Number(pagination?.total ?? tenants.length)
+  const total: number = Number(pagination?.total ?? tenants.length)
 
-  const fetchErrorMessage =
-    (error as ErrorLike | undefined)?.data?.message ||
-    (error as ErrorLike | undefined)?.message
+  const fetchErrorMessage: string | undefined =
+    error && typeof error === 'object' && 'data' in error
+      ? (error as ErrorLike).data?.message || (error as ErrorLike).message
+      : error && typeof error === 'object' && 'message' in error
+        ? (error as ErrorLike).message
+        : undefined
 
   const [deleteTarget, setDeleteTarget] = useState<Tenant | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-
 
   const confirmDelete = async () => {
     if (!deleteTarget) return
@@ -216,27 +238,32 @@ export function TenantsScreen() {
     }
   }
 
-  const filterCount =
+  const filterCount: number =
     Number(statusFilter !== 'ALL') +
     Number(Boolean(selectedRoomId)) +
     Number(pendingRent) +
     Number(pendingAdvance) +
     Number(partialRent)
 
-  const activeRoomLabel = useMemo(() => {
+  const activeRoomLabel: string = useMemo(() => {
     if (!selectedRoomId) return 'All Rooms'
     const room = rooms.find((r) => Number(r.s_no) === Number(selectedRoomId))
     return room?.room_no ? String(room.room_no) : `Room #${selectedRoomId}`
   }, [rooms, selectedRoomId])
 
-  const statusLabel = statusFilter === 'ALL' ? 'All' : statusFilter === 'ACTIVE' ? 'Occupied' : statusFilter
+  const statusLabel: string =
+    statusFilter === 'ALL'
+      ? 'All'
+      : statusFilter === 'ACTIVE'
+        ? 'Occupied'
+        : statusFilter
 
-  const getInitial = (name?: string) => {
+  const getInitial = (name?: string): string => {
     const n = String(name ?? '').trim()
     return n ? n.charAt(0).toUpperCase() : 'T'
   }
 
-  const formatDate = (raw?: string) => {
+  const formatDate = (raw?: string): string => {
     if (!raw) return ''
     const d = new Date(raw)
     if (Number.isNaN(d.getTime())) return String(raw).split('T')[0]
@@ -249,11 +276,7 @@ export function TenantsScreen() {
 
   return (
     <div className='container mx-auto max-w-6xl px-3 py-6'>
-      <PageHeader
-        title='Tenants'
-        subtitle='Manage tenants in your PG'
-        right={null}
-      />
+      <PageHeader title='Tenants' showBack={true} right={null} />
 
       {fetchErrorMessage ? (
         <div className='mt-6'>
@@ -275,7 +298,7 @@ export function TenantsScreen() {
         </div>
       ) : (
         <>
-          <div className='mt-4 flex flex-row gap-2 items-start sm:flex-col sm:items-start'>
+          <div className='mt-4 flex flex-row items-start gap-2 sm:flex-col sm:items-start'>
             <div className='relative w-full sm:max-w-xs'>
               <Search className='pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground' />
               <Input
@@ -311,15 +334,13 @@ export function TenantsScreen() {
           </div>
 
           {/* Floating Count Display */}
-          {selectedPGLocationId && (Number.isFinite(total) && total > 0) && (
-            <div className='fixed bottom-6 right-6 z-50'>
-              <div className='bg-primary text-primary-foreground rounded-full px-4 py-2 shadow-lg border-2 border-background'>
+          {selectedPGLocationId && Number.isFinite(total) && total > 0 && (
+            <div className='fixed right-6 bottom-6 z-50'>
+              <div className='rounded-full border-2 border-background bg-primary px-4 py-2 text-primary-foreground shadow-lg'>
                 <div className='text-sm font-bold'>
                   {tenants.length}/{total}
                 </div>
-                <div className='text-xs opacity-90'>
-                  Tenants
-                </div>
+                <div className='text-xs opacity-90'>Tenants</div>
               </div>
             </div>
           )}
@@ -339,274 +360,283 @@ export function TenantsScreen() {
               <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
                 <AnimatePresence>
                   {tenants.map((t, index) => {
-                  const tenantImage =
-                    Array.isArray(t.images) && t.images.length > 0
-                      ? (t.images[0] as string)
-                      : ''
+                    const tenantImage: string =
+                      Array.isArray(t.images) && t.images.length > 0
+                        ? t.images[0]
+                        : ''
 
-                  const roomNo = t.rooms?.room_no
-                  const bedNo = t.beds?.bed_no
-                  const rentPrice = t.rooms?.rent_price
-                  const occupation = t.occupation
+                    const roomNo: string | undefined = t.rooms?.room_no
+                    const bedNo: string | undefined = t.beds?.bed_no
+                    const rentPrice: number | undefined = t.rooms?.rent_price
+                    const occupation: string | undefined = t.occupation
 
-                  const isRentPaid = Boolean(t.is_rent_paid)
-                  const isRentPartial = Boolean(t.is_rent_partial)
-                  const rentDueAmount = Number(t.rent_due_amount ?? 0)
-                  const partialDueAmount = Number(t.partial_due_amount ?? 0)
-                  const pendingDueAmount = Number(t.pending_due_amount ?? 0)
-                  const isAdvancePaid = Boolean(t.is_advance_paid)
-                  const unpaidMonths = getUnpaidMonths(t)
+                    const isRentPaid: boolean = Boolean(t.is_rent_paid)
+                    const isRentPartial: boolean = Boolean(t.is_rent_partial)
+                    const rentDueAmount: number = Number(t.rent_due_amount ?? 0)
+                    const partialDueAmount: number = Number(
+                      t.partial_due_amount ?? 0
+                    )
+                    const pendingDueAmount: number = Number(
+                      t.pending_due_amount ?? 0
+                    )
+                    const isAdvancePaid: boolean = Boolean(t.is_advance_paid)
+                    const unpaidMonths: UnpaidMonth[] = getUnpaidMonths(t)
 
-                  const hasOutstandingAmount = rentDueAmount > 0
-                  const hasBothPartialAndPending =
-                    partialDueAmount > 0 && pendingDueAmount > 0
-                  const showPaymentDetails = expandedPaymentCards.has(t.s_no)
+                    const hasOutstandingAmount: boolean = rentDueAmount > 0
+                    const hasBothPartialAndPending: boolean =
+                      partialDueAmount > 0 && pendingDueAmount > 0
+                    const showPaymentDetails: boolean =
+                      expandedPaymentCards.has(t.s_no)
 
-                  const leftBorderClass = hasOutstandingAmount
-                    ? isRentPartial
-                      ? 'border-l-orange-500'
-                      : 'border-l-amber-500'
-                    : 'border-l-transparent'
+                    const leftBorderClass: string = hasOutstandingAmount
+                      ? isRentPartial
+                        ? 'border-l-orange-500'
+                        : 'border-l-amber-500'
+                      : 'border-l-transparent'
 
-                  const leftBorderWidthClass = hasOutstandingAmount
-                    ? 'border-l-4'
-                    : 'border-l-0'
+                    const leftBorderWidthClass: string = hasOutstandingAmount
+                      ? 'border-l-4'
+                      : 'border-l-0'
 
-                  return (
-                    <motion.div
-                      key={`tenant-${t.s_no}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{
-                        duration: 0.3,
-                        delay: index * 0.05,
-                        ease: "easeOut"
-                      }}
-                    >
-                      <Card
-                        className={`h-full py-0 ${leftBorderWidthClass} ${leftBorderClass}`}
+                    return (
+                      <motion.div
+                        key={`tenant-${t.s_no}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{
+                          duration: 0.3,
+                          delay: index * 0.05,
+                          ease: 'easeOut',
+                        }}
                       >
-                      <CardContent className='flex h-full flex-col gap-3 p-4'>
-                        <div className='flex items-start gap-3'>
-                          <div className='h-14 w-14 shrink-0 overflow-hidden rounded-full bg-primary text-primary-foreground'>
-                            {tenantImage ? (
-                              <img
-                                src={tenantImage}
-                                alt=''
-                                className='h-full w-full object-cover'
-                              />
-                            ) : (
-                              <div className='grid h-full w-full place-items-center text-lg font-bold'>
-                                {getInitial(t.name)}
+                        <Card
+                          className={`h-full py-0 ${leftBorderWidthClass} ${leftBorderClass}`}
+                        >
+                          <CardContent className='flex h-full flex-col gap-3 p-4'>
+                            <div className='flex items-start gap-3'>
+                              <div className='h-14 w-14 shrink-0 overflow-hidden rounded-full bg-primary text-primary-foreground'>
+                                {tenantImage ? (
+                                  <img
+                                    src={tenantImage}
+                                    alt=''
+                                    className='h-full w-full object-cover'
+                                  />
+                                ) : (
+                                  <div className='grid h-full w-full place-items-center text-lg font-bold'>
+                                    {getInitial(t.name)}
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
 
-                          <div className='min-w-0 flex-1'>
-                            <div className='flex items-start justify-between gap-2'>
-                              <div className='min-w-0'>
-                                <div className='truncate text-base font-bold'>
-                                  {t.name || 'Tenant'}
-                                </div>
-                                <div className='mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground'>
-                                  {roomNo ? <span>🏠 {roomNo}</span> : null}
-                                  {bedNo ? <span>🛏️ {bedNo}</span> : null}
-                                  {typeof rentPrice === 'number' ? (
-                                    <span className='font-semibold text-primary'>
-                                      💰 ₹{rentPrice}/mo
+                              <div className='min-w-0 flex-1'>
+                                <div className='flex items-start justify-between gap-2'>
+                                  <div className='min-w-0'>
+                                    <div className='truncate text-base font-bold'>
+                                      {t.name || 'Tenant'}
+                                    </div>
+                                    <div className='mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground'>
+                                      {roomNo ? <span>🏠 {roomNo}</span> : null}
+                                      {bedNo ? <span>🛏️ {bedNo}</span> : null}
+                                      {typeof rentPrice === 'number' ? (
+                                        <span className='font-semibold text-primary'>
+                                          💰 ₹{rentPrice}/mo
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </div>
+
+                                  <div className='shrink-0'>
+                                    <span
+                                      className={
+                                        'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ' +
+                                        (t.status === 'ACTIVE'
+                                          ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                                          : t.status === 'CHECKED_OUT'
+                                            ? 'border border-amber-200 bg-amber-50 text-amber-700'
+                                            : 'border border-red-200 bg-red-50 text-red-700')
+                                      }
+                                    >
+                                      {t.status}
                                     </span>
-                                  ) : null}
+                                  </div>
                                 </div>
-                              </div>
 
-                              <div className='shrink-0'>
-                                <span
-                                  className={
-                                    'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ' +
-                                    (t.status === 'ACTIVE'
-                                      ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-                                      : t.status === 'CHECKED_OUT'
-                                        ? 'border border-amber-200 bg-amber-50 text-amber-700'
-                                        : 'border border-red-200 bg-red-50 text-red-700')
-                                  }
-                                >
-                                  {t.status}
-                                </span>
+                                {occupation ? (
+                                  <div className='mt-2 text-sm text-muted-foreground'>
+                                    💼 {occupation}
+                                  </div>
+                                ) : null}
                               </div>
                             </div>
 
-                            {occupation ? (
-                              <div className='mt-2 text-sm text-muted-foreground'>
-                                💼 {occupation}
+                            <div>
+                              <div className='text-[11px] font-semibold text-muted-foreground'>
+                                Payment Status
                               </div>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className='text-[11px] font-semibold text-muted-foreground'>
-                            Payment Status
-                          </div>
-                          <div className='mt-2 flex flex-wrap items-center gap-2'>
-                            {isRentPaid ? (
-                              <span className='rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white'>
-                                ✅ Rent PAID
-                              </span>
-                            ) : null}
-                            {isAdvancePaid ? (
-                              <span className='rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white'>
-                                ✅ Advance Paid
-                              </span>
-                            ) : null}
-                            {isRentPartial ? (
-                              <span className='rounded-full bg-orange-500 px-3 py-1 text-[11px] font-bold text-white'>
-                                ⏳ PARTIAL
-                              </span>
-                            ) : null}
-                            {!isRentPaid ? (
-                              <span className='rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white'>
-                                📅 PENDING RENT
-                              </span>
-                            ) : null}
-                            {hasOutstandingAmount ? (
-                              <span className='rounded-full bg-red-500 px-3 py-1 text-[11px] font-bold text-white'>
-                                ₹{rentDueAmount} DUE
-                              </span>
-                            ) : null}
-                            {!isAdvancePaid ? (
-                              <span className='rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white'>
-                                💰 NO ADVANCE
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        {hasOutstandingAmount ? (
-                          <div
-                            className={
-                              'overflow-hidden rounded-lg border ' +
-                              (isRentPartial
-                                ? 'border-orange-200 bg-orange-50'
-                                : 'border-amber-200 bg-amber-50')
-                            }
-                          >
-                            <button
-                              type='button'
-                              className='flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left'
-                              onClick={() => togglePaymentDetails(t.s_no)}
-                            >
-                              <div className='min-w-0 flex-1'>
-                                <div
-                                  className={
-                                    'truncate text-xs font-bold ' +
-                                    (isRentPartial
-                                      ? 'text-orange-600'
-                                      : 'text-amber-700')
-                                  }
-                                >
-                                  {hasBothPartialAndPending
-                                    ? 'Partial + Pending'
-                                    : isRentPartial
-                                      ? 'Partial Payment'
-                                      : 'Pending Payment'}
-                                </div>
-                                <div className='mt-0.5 truncate text-[11px] text-muted-foreground'>
-                                  Due ₹{rentDueAmount}
-                                  {unpaidMonths.length > 0
-                                    ? ` · ${unpaidMonths.length} month(s)`
-                                    : ''}
-                                  {!isAdvancePaid ? ' · No advance' : ''}
-                                </div>
-                              </div>
-                              {showPaymentDetails ? (
-                                <ChevronUp
-                                  className={
-                                    isRentPartial
-                                      ? 'size-4 text-orange-600'
-                                      : 'size-4 text-amber-700'
-                                  }
-                                />
-                              ) : (
-                                <ChevronDown
-                                  className={
-                                    isRentPartial
-                                      ? 'size-4 text-orange-600'
-                                      : 'size-4 text-amber-700'
-                                  }
-                                />
-                              )}
-                            </button>
-
-                            {showPaymentDetails ? (
-                              <div className='px-3 pb-3'>
-                                {partialDueAmount > 0 &&
-                                pendingDueAmount > 0 ? (
-                                  <div className='mt-1 text-[11px] text-muted-foreground'>
-                                    Partial: ₹{partialDueAmount} • Pending: ₹
-                                    {pendingDueAmount}
-                                  </div>
+                              <div className='mt-2 flex flex-wrap items-center gap-2'>
+                                {isRentPaid ? (
+                                  <span className='rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white'>
+                                    ✅ Rent PAID
+                                  </span>
                                 ) : null}
+                                {isAdvancePaid ? (
+                                  <span className='rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white'>
+                                    ✅ Advance Paid
+                                  </span>
+                                ) : null}
+                                {isRentPartial ? (
+                                  <span className='rounded-full bg-orange-500 px-3 py-1 text-[11px] font-bold text-white'>
+                                    ⏳ PARTIAL
+                                  </span>
+                                ) : null}
+                                {!isRentPaid ? (
+                                  <span className='rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white'>
+                                    📅 PENDING RENT
+                                  </span>
+                                ) : null}
+                                {hasOutstandingAmount ? (
+                                  <span className='rounded-full bg-red-500 px-3 py-1 text-[11px] font-bold text-white'>
+                                    ₹{rentDueAmount} DUE
+                                  </span>
+                                ) : null}
+                                {!isAdvancePaid ? (
+                                  <span className='rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white'>
+                                    💰 NO ADVANCE
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
 
-                                {unpaidMonths.length > 0 ? (
-                                  <div className='mt-3'>
+                            {hasOutstandingAmount ? (
+                              <div
+                                className={
+                                  'overflow-hidden rounded-lg border ' +
+                                  (isRentPartial
+                                    ? 'border-orange-200 bg-orange-50'
+                                    : 'border-amber-200 bg-amber-50')
+                                }
+                              >
+                                <button
+                                  type='button'
+                                  className='flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left'
+                                  onClick={() => togglePaymentDetails(t.s_no)}
+                                >
+                                  <div className='min-w-0 flex-1'>
                                     <div
                                       className={
-                                        'text-[11px] font-bold ' +
+                                        'truncate text-xs font-bold ' +
                                         (isRentPartial
                                           ? 'text-orange-600'
                                           : 'text-amber-700')
                                       }
                                     >
-                                      Unpaid months
+                                      {hasBothPartialAndPending
+                                        ? 'Partial + Pending'
+                                        : isRentPartial
+                                          ? 'Partial Payment'
+                                          : 'Pending Payment'}
                                     </div>
-                                    {unpaidMonths.slice(0, 2).map((m, idx) => (
-                                      <div
-                                        key={String(idx)}
-                                        className='mt-1 text-[10px] text-muted-foreground'
-                                      >
-                                        {m.month_name ? m.month_name : 'Month'}
-                                        {m.cycle_start && m.cycle_end
-                                          ? ` (${m.cycle_start} to ${m.cycle_end})`
-                                          : ''}
+                                    <div className='mt-0.5 truncate text-[11px] text-muted-foreground'>
+                                      Due ₹{rentDueAmount}
+                                      {unpaidMonths.length > 0
+                                        ? ` · ${unpaidMonths.length} month(s)`
+                                        : ''}
+                                      {!isAdvancePaid ? ' · No advance' : ''}
+                                    </div>
+                                  </div>
+                                  {showPaymentDetails ? (
+                                    <ChevronUp
+                                      className={
+                                        isRentPartial
+                                          ? 'size-4 text-orange-600'
+                                          : 'size-4 text-amber-700'
+                                      }
+                                    />
+                                  ) : (
+                                    <ChevronDown
+                                      className={
+                                        isRentPartial
+                                          ? 'size-4 text-orange-600'
+                                          : 'size-4 text-amber-700'
+                                      }
+                                    />
+                                  )}
+                                </button>
+
+                                {showPaymentDetails ? (
+                                  <div className='px-3 pb-3'>
+                                    {partialDueAmount > 0 &&
+                                    pendingDueAmount > 0 ? (
+                                      <div className='mt-1 text-[11px] text-muted-foreground'>
+                                        Partial: ₹{partialDueAmount} • Pending:
+                                        ₹{pendingDueAmount}
                                       </div>
-                                    ))}
-                                    {unpaidMonths.length > 2 ? (
-                                      <div className='mt-1 text-[10px] text-muted-foreground'>
-                                        +{unpaidMonths.length - 2} more
+                                    ) : null}
+
+                                    {unpaidMonths.length > 0 ? (
+                                      <div className='mt-3'>
+                                        <div
+                                          className={
+                                            'text-[11px] font-bold ' +
+                                            (isRentPartial
+                                              ? 'text-orange-600'
+                                              : 'text-amber-700')
+                                          }
+                                        >
+                                          Unpaid months
+                                        </div>
+                                        {unpaidMonths
+                                          .slice(0, 2)
+                                          .map((m, idx) => (
+                                            <div
+                                              key={String(idx)}
+                                              className='mt-1 text-[10px] text-muted-foreground'
+                                            >
+                                              {m.month_name
+                                                ? m.month_name
+                                                : 'Month'}
+                                              {m.cycle_start && m.cycle_end
+                                                ? ` (${m.cycle_start} to ${m.cycle_end})`
+                                                : ''}
+                                            </div>
+                                          ))}
+                                        {unpaidMonths.length > 2 ? (
+                                          <div className='mt-1 text-[10px] text-muted-foreground'>
+                                            +{unpaidMonths.length - 2} more
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
+
+                                    {!isAdvancePaid ? (
+                                      <div className='mt-3 text-[11px] text-muted-foreground'>
+                                        No advance payment
                                       </div>
                                     ) : null}
                                   </div>
                                 ) : null}
-
-                                {!isAdvancePaid ? (
-                                  <div className='mt-3 text-[11px] text-muted-foreground'>
-                                    No advance payment
-                                  </div>
-                                ) : null}
                               </div>
                             ) : null}
-                          </div>
-                        ) : null}
 
-                        <div className='text-[11px] text-muted-foreground'>
-                          Check-in: {formatDate(t.check_in_date)}
-                        </div>
+                            <div className='text-[11px] text-muted-foreground'>
+                              Check-in: {formatDate(t.check_in_date)}
+                            </div>
 
-                        <div className='mt-auto flex flex-col gap-2 pt-1'>
-                          <Button
-                            asChild
-                            className='w-full'
-                            disabled={!selectedPGLocationId}
-                          >
-                            <Link to={`/tenants/${t.s_no}`}>View Details</Link>
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    </motion.div>
-                  )
-                })}
+                            <div className='mt-auto flex flex-col gap-2 pt-1'>
+                              <Button
+                                className='w-full'
+                                disabled={!selectedPGLocationId}
+                                onClick={() => navigate(`/tenants/${t.s_no}`)}
+                              >
+                                View Details
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )
+                  })}
                 </AnimatePresence>
               </div>
             )}
@@ -620,8 +650,8 @@ export function TenantsScreen() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className='space-y-2 mb-8'
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      className='mb-8 space-y-2'
                     >
                       {Array.from({ length: 2 }).map((_, index) => (
                         <motion.div
@@ -644,12 +674,12 @@ export function TenantsScreen() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
-                      className='mt-8 mb-12 text-center py-4 border-t'
+                      transition={{ duration: 0.4, ease: 'easeOut' }}
+                      className='mt-8 mb-12 border-t py-4 text-center'
                     >
                       <div className='flex items-center justify-center gap-2 text-sm text-muted-foreground'>
                         <motion.div
-                          className='h-px bg-border flex-1 max-w-16'
+                          className='h-px max-w-16 flex-1 bg-border'
                           initial={{ scaleX: 0 }}
                           animate={{ scaleX: 1 }}
                           transition={{ duration: 0.5, delay: 0.2 }}
@@ -662,7 +692,7 @@ export function TenantsScreen() {
                           Showing all {allTenants.length} tenants
                         </motion.span>
                         <motion.div
-                          className='h-px bg-border flex-1 max-w-16'
+                          className='h-px max-w-16 flex-1 bg-border'
                           initial={{ scaleX: 0 }}
                           animate={{ scaleX: 1 }}
                           transition={{ duration: 0.5, delay: 0.2 }}

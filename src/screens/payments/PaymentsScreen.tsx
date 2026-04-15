@@ -1,21 +1,9 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { ArrowDown, ArrowLeft, ArrowUp, ChevronRight, CreditCard } from 'lucide-react'
-
-import { Button } from '@/components/ui/button'
+import { ArrowDown, ArrowUp, ChevronRight, CreditCard } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { PageHeader } from '@/components/form/page-header'
 
 export function PaymentsScreen() {
-  const navigate = useNavigate()
-
-  const goBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1)
-      return
-    }
-    navigate('/dashboard')
-  }
-
   const items = [
     {
       title: 'Rent Payments',
@@ -39,13 +27,7 @@ export function PaymentsScreen() {
 
   return (
     <div className='container mx-auto max-w-5xl px-3 py-6'>
-      <div className='mb-3'>
-        <Button type='button' variant='outline' size='sm' onClick={goBack}>
-          <ArrowLeft className='me-2 size-4' />
-          Back
-        </Button>
-      </div>
-      <PageHeader title='Payments' subtitle='Rent, advance and refund payments' />
+      <PageHeader title='Payments' showBack={true} />
 
       <div className='mt-4 grid gap-3'>
         {items.map((it) => {
@@ -61,8 +43,12 @@ export function PaymentsScreen() {
                     <Icon className='size-5' />
                   </div>
                   <div className='min-w-0 flex-1'>
-                    <div className='truncate text-sm font-semibold'>{it.title}</div>
-                    <div className='mt-1 line-clamp-2 text-xs text-muted-foreground'>{it.subtitle}</div>
+                    <div className='truncate text-sm font-semibold'>
+                      {it.title}
+                    </div>
+                    <div className='mt-1 line-clamp-2 text-xs text-muted-foreground'>
+                      {it.subtitle}
+                    </div>
                   </div>
                   <ChevronRight className='size-4 text-muted-foreground' />
                 </Link>

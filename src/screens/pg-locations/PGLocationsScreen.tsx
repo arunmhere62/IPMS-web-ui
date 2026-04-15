@@ -92,7 +92,6 @@ export function PGLocationsScreen() {
     <div className='container mx-auto max-w-6xl px-3 py-6'>
       <PageHeader
         title='PG Locations'
-        subtitle='Manage your PG locations'
         right={
           <Button
             type='button'

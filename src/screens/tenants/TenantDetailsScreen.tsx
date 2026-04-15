@@ -12,17 +12,16 @@ import {
   useDeleteTenantMutation,
   useGetTenantByIdQuery,
   useUpdateTenantCheckoutDateMutation,
+  type PaymentCycleSummary,
   type Tenant,
-  type TenantResponse,
+  type TenantPayment,
 } from '@/services/tenantsApi'
-import { useAppSelector } from '@/store/hooks'
 import {
   CircleAlert,
   Edit,
   Plus,
   Trash2,
   User,
-  ArrowLeft,
   Calendar,
   MapPin,
   Phone,
@@ -58,6 +57,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AppDialog } from '@/components/form/app-dialog'
+import { PageHeader } from '@/components/form/page-header'
 import { AdvancePaymentDialog } from './AdvancePaymentDialog'
 import { RentPaymentDialog } from './RentPaymentDialog'
 
@@ -101,21 +101,17 @@ export function TenantDetailsScreen() {
   const params = useParams()
   const tenantId = Number(params.id)
 
-  const selectedPGLocationId = useAppSelector(
-    (s) => s.pgLocations.selectedPGLocationId
-  )
-
   const {
     data: tenantResponse,
     isLoading,
     error,
     refetch,
-  } = useGetTenantByIdQuery(Number.isFinite(tenantId) ? tenantId : 0, {
-    skip: !Number.isFinite(tenantId) || tenantId <= 0,
+  } = useGetTenantByIdQuery(tenantId, {
+    skip: !tenantId || tenantId <= 0,
   })
 
   const tenant: Tenant | null =
-    (tenantResponse as TenantResponse | undefined)?.data ?? null
+    (tenantResponse?.data as Tenant | undefined) ?? null
 
   const [deleteTenant, { isLoading: deleting }] = useDeleteTenantMutation()
   const [checkoutTenantWithDate, { isLoading: checkingOut }] =
@@ -123,8 +119,7 @@ export function TenantDetailsScreen() {
   const [updateTenantCheckoutDate, { isLoading: updatingCheckout }] =
     useUpdateTenantCheckoutDateMutation()
 
-  const [_createAdvancePayment] =
-    useCreateAdvancePaymentMutation()
+  const [_createAdvancePayment] = useCreateAdvancePaymentMutation()
   const [createRefundPayment, { isLoading: creatingRefund }] =
     useCreateRefundPaymentMutation()
   const [voidRentPayment, { isLoading: voidingRent }] =
@@ -171,17 +166,9 @@ export function TenantDetailsScreen() {
     (error as ErrorLike | undefined)?.data?.message ||
     (error as ErrorLike | undefined)?.message
 
-  const roomLabel = useMemo(() => {
-    const roomNo = tenant?.rooms?.room_no
-    const bedNo = tenant?.beds?.bed_no
-    if (roomNo && bedNo) return `Room ${roomNo} • Bed ${bedNo}`
-    if (roomNo) return `Room ${roomNo}`
-    return tenant?.room_id ? `Room #${tenant.room_id}` : ''
-  }, [tenant])
-
   const unpaidMonths = useMemo(() => {
     return asArray<UnpaidMonth>(
-      (tenant as unknown as { unpaid_months?: unknown } | null)?.unpaid_months
+      (tenant as (Tenant & { unpaid_months?: unknown }) | null)?.unpaid_months
     )
   }, [tenant])
 
@@ -252,10 +239,7 @@ export function TenantDetailsScreen() {
     { skip: !tenant?.s_no }
   )
   const refundPayments = useMemo(
-    () =>
-      asArray<RefundPayment>(
-        (refundPaymentsResponse as { data?: unknown } | undefined)?.data
-      ),
+    () => asArray<RefundPayment>(refundPaymentsResponse?.data),
     [refundPaymentsResponse]
   )
 
@@ -300,14 +284,10 @@ export function TenantDetailsScreen() {
     }
   }
 
-  const handleDeleteRentPayment = (payment: {
-    s_no: number
-    amount_paid: string
-    payment_date: string
-  }) => {
+  const handleDeleteRentPayment = (payment: TenantPayment) => {
     setRentToDelete({
       id: payment.s_no,
-      amount: payment.amount_paid,
+      amount: String(payment.amount_paid),
       date: toDateOnly(payment.payment_date),
     })
     setDeleteRentDialogOpen(true)
@@ -414,55 +394,40 @@ export function TenantDetailsScreen() {
   return (
     <div className='min-h-screen'>
       <div className='px-3 py-2'>
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center gap-2'>
-            <Button
-              variant='ghost'
-              size='icon'
-              onClick={() => navigate('/tenants')}
-              className='h-7 w-7'
-            >
-              <ArrowLeft className='size-4' />
-            </Button>
-            <div>
-              <h1 className='text-sm font-semibold'>
-                {tenant?.name || 'Tenant Details'}
-              </h1>
-              <p className='text-[10px] text-muted-foreground'>
-                {tenant?.tenant_id || ''} • {roomLabel || 'Loading...'}
-              </p>
-            </div>
-          </div>
-          <div className='flex items-center gap-1'>
-            {tenant?.s_no ? (
-              <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
-                #{tenant.s_no}
-              </Badge>
-            ) : null}
-            {tenant && (
-              <>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  className='h-7 w-7'
-                  asChild
-                >
-                  <Link to={`/tenants/${tenant.s_no}/edit`}>
-                    <Edit className='size-3.5' />
-                  </Link>
-                </Button>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  onClick={() => setDeleteOpen(true)}
-                  className='h-7 w-7 text-destructive'
-                >
-                  <Trash2 className='size-3.5' />
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
+        <PageHeader
+          title={tenant?.name || 'Tenant Details'}
+          right={
+            <>
+              {tenant?.s_no ? (
+                <Badge variant='outline' className='px-1.5 py-0 text-[10px]'>
+                  #{tenant.s_no}
+                </Badge>
+              ) : null}
+              {tenant && (
+                <>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    className='h-7 w-7'
+                    asChild
+                  >
+                    <Link to={`/tenants/${tenant.s_no}/edit`}>
+                      <Edit className='size-3.5' />
+                    </Link>
+                  </Button>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={() => setDeleteOpen(true)}
+                    className='h-7 w-7 text-destructive'
+                  >
+                    <Trash2 className='size-3.5' />
+                  </Button>
+                </>
+              )}
+            </>
+          }
+        />
       </div>
 
       {fetchErrorMessage ? (
@@ -470,7 +435,9 @@ export function TenantDetailsScreen() {
           <Alert variant='destructive' className='py-2'>
             <CircleAlert className='size-3' />
             <AlertTitle className='text-xs'>Error</AlertTitle>
-            <AlertDescription className='text-[10px]'>{fetchErrorMessage}</AlertDescription>
+            <AlertDescription className='text-[10px]'>
+              {fetchErrorMessage}
+            </AlertDescription>
           </Alert>
         </div>
       ) : null}
@@ -486,24 +453,19 @@ export function TenantDetailsScreen() {
             Please check the tenant ID.
           </div>
         </div>
-      ) : !selectedPGLocationId ? (
-        <div className='px-3 py-8 text-center'>
-          <div className='text-xs font-medium'>Select a PG Location</div>
-          <div className='text-[10px] text-muted-foreground'>
-            Choose a PG from the top bar.
-          </div>
-        </div>
       ) : (
         <div className='space-y-3 px-3 py-3'>
-          <Card className='border border-gray-300 bg-gradient-to-br from-blue-50 to-white '>
+          <Card className='border border-gray-300 bg-gradient-to-br from-blue-50 to-white'>
             <CardContent className='p-4'>
               <div className='flex items-start justify-between gap-3'>
                 <div className='flex items-center gap-3'>
-                  <div className='flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white '>
+                  <div className='flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white'>
                     <User className='size-5' />
                   </div>
                   <div>
-                    <h2 className='text-base font-bold text-slate-900'>{tenant.name}</h2>
+                    <h2 className='text-base font-bold text-slate-900'>
+                      {tenant.name}
+                    </h2>
                     <p className='text-xs text-slate-600'>
                       {tenant.phone_no || 'No phone'}
                       {dueLabel ? ` • ${dueLabel}` : ''}
@@ -512,21 +474,25 @@ export function TenantDetailsScreen() {
                 </div>
                 <Badge
                   variant={tenant.status === 'ACTIVE' ? 'default' : 'outline'}
-                  className={`text-[10px] h-6 px-2 ${tenant.status === 'ACTIVE' ? 'bg-emerald-600' : ''}`}
+                  className={`h-6 px-2 text-[10px] ${tenant.status === 'ACTIVE' ? 'bg-emerald-600' : ''}`}
                 >
                   {tenant.status}
                 </Badge>
               </div>
 
               <div className='mt-4 grid grid-cols-2 gap-3'>
-                <div className='rounded-xl bg-white/50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>Check-in</div>
+                <div className='rounded-xl border border-slate-200 bg-white/50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    Check-in
+                  </div>
                   <div className='text-sm font-bold text-slate-900'>
                     {toDateOnly(tenant.check_in_date)}
                   </div>
                 </div>
-                <div className='rounded-xl bg-white/50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>Check-out</div>
+                <div className='rounded-xl border border-slate-200 bg-white/50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    Check-out
+                  </div>
                   <div className='text-sm font-bold text-slate-900'>
                     {toDateOnly(tenant.check_out_date) || '—'}
                   </div>
@@ -538,7 +504,7 @@ export function TenantDetailsScreen() {
                   size='sm'
                   onClick={() => setCheckoutOpen(true)}
                   disabled={tenant.status === 'CHECKED_OUT' || checkingOut}
-                  className='h-8 text-xs bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 '
+                  className='h-8 bg-gradient-to-r from-blue-600 to-blue-700 text-xs hover:from-blue-700 hover:to-blue-800'
                 >
                   {tenant.status === 'CHECKED_OUT'
                     ? 'Checked Out'
@@ -566,7 +532,7 @@ export function TenantDetailsScreen() {
                   {paymentStatusBadges.map((b) => (
                     <span
                       key={b.key}
-                      className={`rounded-full px-3 py-1 text-[10px] font-bold  ${b.className}`}
+                      className={`rounded-full px-3 py-1 text-[10px] font-bold ${b.className}`}
                     >
                       {b.label}
                     </span>
@@ -576,18 +542,22 @@ export function TenantDetailsScreen() {
 
               {hasOutstandingAmount && (
                 <div
-                  className={`mt-4 rounded-xl border p-4  ${isRentPartial ? 'border-orange-300 bg-gradient-to-br from-orange-50 to-white' : 'border-amber-300 bg-gradient-to-br from-amber-50 to-white'}`}
+                  className={`mt-4 rounded-xl border p-4 ${isRentPartial ? 'border-orange-300 bg-gradient-to-br from-orange-50 to-white' : 'border-amber-300 bg-gradient-to-br from-amber-50 to-white'}`}
                 >
-                  <div className={`text-sm font-bold ${isRentPartial ? 'text-orange-700' : 'text-amber-700'}`}>
+                  <div
+                    className={`text-sm font-bold ${isRentPartial ? 'text-orange-700' : 'text-amber-700'}`}
+                  >
                     {hasBothPartialAndPending
                       ? 'Partial + Pending'
                       : isRentPartial
                         ? 'Partial Payment'
                         : 'Pending Payment'}
                   </div>
-                  <div className='text-xs text-slate-600 mt-1'>
+                  <div className='mt-1 text-xs text-slate-600'>
                     Due ₹{rentDueAmount}
-                    {unpaidMonths.length > 0 ? ` • ${unpaidMonths.length} month(s)` : ''}
+                    {unpaidMonths.length > 0
+                      ? ` • ${unpaidMonths.length} month(s)`
+                      : ''}
                   </div>
                   {unpaidMonths.length > 0 && (
                     <div className='mt-2'>
@@ -603,138 +573,199 @@ export function TenantDetailsScreen() {
             </CardContent>
           </Card>
 
-          <Card className='border-slate-200 '>
+          <Card className='border-slate-200'>
             <CardContent className='p-4'>
-              <h3 className='text-sm font-bold text-slate-900 mb-3 flex items-center gap-2'>
+              <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-slate-900'>
                 <Phone className='size-4 text-blue-600' />
                 Personal Info
               </h3>
               <div className='grid grid-cols-2 gap-3'>
-                <div className='rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>Phone</div>
-                  <div className='text-xs font-bold text-slate-900'>{tenant.phone_no || '—'}</div>
+                <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    Phone
+                  </div>
+                  <div className='text-xs font-bold text-slate-900'>
+                    {tenant.phone_no || '—'}
+                  </div>
                 </div>
-                <div className='rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>WhatsApp</div>
-                  <div className='text-xs font-bold text-slate-900'>{tenant.whatsapp_number || '—'}</div>
+                <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    WhatsApp
+                  </div>
+                  <div className='text-xs font-bold text-slate-900'>
+                    {tenant.whatsapp_number || '—'}
+                  </div>
                 </div>
-                <div className='rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>Email</div>
-                  <div className='text-xs font-bold text-slate-900 truncate'>{tenant.email || '—'}</div>
+                <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    Email
+                  </div>
+                  <div className='truncate text-xs font-bold text-slate-900'>
+                    {tenant.email || '—'}
+                  </div>
                 </div>
-                <div className='rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>Occupation</div>
-                  <div className='text-xs font-bold text-slate-900'>{tenant.occupation || '—'}</div>
+                <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    Occupation
+                  </div>
+                  <div className='text-xs font-bold text-slate-900'>
+                    {tenant.occupation || '—'}
+                  </div>
                 </div>
-                <div className='col-span-2 rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>Address</div>
-                  <div className='text-xs font-bold text-slate-900'>{tenant.tenant_address || '—'}</div>
+                <div className='col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    Address
+                  </div>
+                  <div className='text-xs font-bold text-slate-900'>
+                    {tenant.tenant_address || '—'}
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className='border-slate-200 '>
+          <Card className='border-slate-200'>
             <CardContent className='p-4'>
-              <h3 className='text-sm font-bold text-slate-900 mb-3 flex items-center gap-2'>
+              <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-slate-900'>
                 <MapPin className='size-4 text-green-600' />
                 Location Info
               </h3>
               <div className='grid grid-cols-2 gap-3'>
-                <div className='rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>City</div>
-                  <div className='text-xs font-bold text-slate-900'>{(tenant as any).city?.name || '—'}</div>
+                <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    City
+                  </div>
+                  <div className='text-xs font-bold text-slate-900'>
+                    {tenant.city?.name || '—'}
+                  </div>
                 </div>
-                <div className='rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>State</div>
-                  <div className='text-xs font-bold text-slate-900'>{(tenant as any).state?.name || '—'}</div>
+                <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    State
+                  </div>
+                  <div className='text-xs font-bold text-slate-900'>
+                    {tenant.state?.name || '—'}
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className='border-slate-200 '>
+          <Card className='border-slate-200'>
             <CardContent className='p-4'>
-              <h3 className='text-sm font-bold text-slate-900 mb-3 flex items-center gap-2'>
+              <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-slate-900'>
                 <Home className='size-4 text-purple-600' />
                 PG Location
               </h3>
               <div className='space-y-3'>
-                <div className='rounded-xl bg-gradient-to-br from-purple-50 to-white p-3 border border-purple-200'>
-                  <div className='text-xs font-bold text-slate-900'>{tenant.pg_locations?.location_name || `#${tenant.pg_id}`}</div>
-                  <div className='text-[10px] text-slate-500'>{(tenant.pg_locations as any)?.address || '—'}</div>
-                  <div className='text-[10px] text-slate-500'>{(tenant.pg_locations as any)?.city?.name}, {(tenant.pg_locations as any)?.state?.name}</div>
+                <div className='rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-white p-3'>
+                  <div className='text-xs font-bold text-slate-900'>
+                    {tenant.pg_locations?.location_name || `#${tenant.pg_id}`}
+                  </div>
+                  <div className='text-[10px] text-slate-500'>
+                    {tenant.pg_locations?.address || '—'}
+                  </div>
+                  <div className='text-[10px] text-slate-500'>
+                    {tenant.pg_locations?.city?.name},{' '}
+                    {tenant.pg_locations?.state?.name}
+                  </div>
                 </div>
-                <div className='rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>Rent Cycle Type</div>
-                  <div className='text-xs font-bold text-slate-900'>{(tenant.pg_locations as any)?.rent_cycle_type || '—'}</div>
+                <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    Rent Cycle Type
+                  </div>
+                  <div className='text-xs font-bold text-slate-900'>
+                    {tenant.pg_locations?.rent_cycle_type || '—'}
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className='border-slate-200 '>
+          <Card className='border-slate-200'>
             <CardContent className='p-4'>
-              <h3 className='text-sm font-bold text-slate-900 mb-3 flex items-center gap-2'>
+              <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-slate-900'>
                 <BedIcon className='size-4 text-orange-600' />
                 Accommodation
               </h3>
               <div className='grid grid-cols-2 gap-3'>
-                <div className='rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>Room</div>
+                <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    Room
+                  </div>
                   <div className='text-xs font-bold text-slate-900'>
-                    Room {tenant.rooms?.room_no || (tenant.room_id ? `#${tenant.room_id}` : '—')}
+                    Room{' '}
+                    {tenant.rooms?.room_no ||
+                      (tenant.room_id ? `#${tenant.room_id}` : '—')}
                   </div>
                 </div>
-                <div className='rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>Bed</div>
+                <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    Bed
+                  </div>
                   <div className='text-xs font-bold text-slate-900'>
-                    Bed {tenant.beds?.bed_no || (tenant.bed_id ? `#${tenant.bed_id}` : '—')}
+                    Bed{' '}
+                    {tenant.beds?.bed_no ||
+                      (tenant.bed_id ? `#${tenant.bed_id}` : '—')}
                   </div>
                 </div>
-                <div className='col-span-2 rounded-xl bg-gradient-to-br from-orange-50 to-white p-3 border border-orange-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>Bed Price</div>
-                  <div className='text-lg font-bold text-orange-700'>₹{(tenant.beds as any)?.bed_price || '—'}</div>
+                <div className='col-span-2 rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 to-white p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    Bed Price
+                  </div>
+                  <div className='text-lg font-bold text-orange-700'>
+                    ₹{tenant.beds?.bed_price || '—'}
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className='border-slate-200 '>
+          <Card className='border-slate-200'>
             <CardContent className='p-4'>
-              <h3 className='text-sm font-bold text-slate-900 mb-3 flex items-center gap-2'>
+              <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-slate-900'>
                 <FileText className='size-4 text-slate-600' />
                 Tenant ID
               </h3>
-              <div className='rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                <div className='text-sm font-mono font-bold text-slate-900'>{tenant.tenant_id || '—'}</div>
+              <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                <div className='font-mono text-sm font-bold text-slate-900'>
+                  {tenant.tenant_id || '—'}
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className='border-slate-200 '>
+          <Card className='border-slate-200'>
             <CardContent className='p-4'>
-              <h3 className='text-sm font-bold text-slate-900 mb-3 flex items-center gap-2'>
+              <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-slate-900'>
                 <Calendar className='size-4 text-blue-600' />
                 Important Dates
               </h3>
               <div className='grid grid-cols-2 gap-3'>
-                <div className='rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>Created</div>
-                  <div className='text-xs font-bold text-slate-900'>{toDateOnly(tenant.created_at)}</div>
+                <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    Created
+                  </div>
+                  <div className='text-xs font-bold text-slate-900'>
+                    {toDateOnly(tenant.created_at)}
+                  </div>
                 </div>
-                <div className='rounded-xl bg-slate-50 p-3 border border-slate-200'>
-                  <div className='text-[10px] text-slate-500 font-medium'>Updated</div>
-                  <div className='text-xs font-bold text-slate-900'>{toDateOnly(tenant.updated_at)}</div>
+                <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
+                  <div className='text-[10px] font-medium text-slate-500'>
+                    Updated
+                  </div>
+                  <div className='text-xs font-bold text-slate-900'>
+                    {toDateOnly(tenant.updated_at)}
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {Array.isArray(tenant.images) && (
-            <Card className='border-slate-200 '>
+            <Card className='border-slate-200'>
               <CardContent className='p-4'>
-                <h3 className='text-sm font-bold text-slate-900 mb-3 flex items-center gap-2'>
+                <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-slate-900'>
                   <ImageIcon className='size-4 text-indigo-600' />
                   Images ({tenant.images.length})
                 </h3>
@@ -745,13 +776,19 @@ export function TenantDetailsScreen() {
                         key={url}
                         className='aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-50'
                       >
-                        <img src={url} alt='' className='h-full w-full object-cover' />
+                        <img
+                          src={url}
+                          alt=''
+                          className='h-full w-full object-cover'
+                        />
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className='rounded-xl bg-slate-50 p-3 border border-slate-200 text-center'>
-                    <div className='text-xs text-slate-500'>No images uploaded</div>
+                  <div className='rounded-xl border border-slate-200 bg-slate-50 p-3 text-center'>
+                    <div className='text-xs text-slate-500'>
+                      No images uploaded
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -759,114 +796,151 @@ export function TenantDetailsScreen() {
           )}
 
           {Array.isArray(tenant.proof_documents) && (
-            <Card className='border-slate-200 '>
+            <Card className='border-slate-200'>
               <CardContent className='p-4'>
-                <h3 className='text-sm font-bold text-slate-900 mb-3 flex items-center gap-2'>
+                <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-slate-900'>
                   <FileText className='size-4 text-red-600' />
                   Documents ({tenant.proof_documents.length})
                 </h3>
                 {tenant.proof_documents.length > 0 ? (
                   <div className='grid grid-cols-3 gap-2'>
-                    {(tenant.proof_documents as string[]).map((url) => (
+                    {tenant.proof_documents.map((doc) => (
                       <div
-                        key={url}
+                        key={doc.document_url}
                         className='aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-50'
                       >
-                        <img src={url} alt='' className='h-full w-full object-cover' />
+                        <img
+                          src={doc.document_url}
+                          alt={doc.document_type}
+                          className='h-full w-full object-cover'
+                        />
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className='rounded-xl bg-slate-50 p-3 border border-slate-200 text-center'>
-                    <div className='text-xs text-slate-500'>No documents uploaded</div>
+                  <div className='rounded-xl border border-slate-200 bg-slate-50 p-3 text-center'>
+                    <div className='text-xs text-slate-500'>
+                      No documents uploaded
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
           )}
 
-          {Array.isArray((tenant as any).tenant_rent_cycles) && (
-            <Card className='border-slate-200 '>
+          {Array.isArray(tenant.tenant_rent_cycles) && (
+            <Card className='border-slate-200'>
               <CardContent className='p-4'>
-                <h3 className='text-sm font-bold text-slate-900 mb-3 flex items-center gap-2'>
+                <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-slate-900'>
                   <Calendar className='size-4 text-teal-600' />
-                  Rent Cycles ({(tenant as any).tenant_rent_cycles.length})
+                  Rent Cycles ({tenant.tenant_rent_cycles.length})
                 </h3>
-                {(tenant as any).tenant_rent_cycles.length > 0 ? (
+                {tenant.tenant_rent_cycles.length > 0 ? (
                   <div className='space-y-2'>
-                    {(tenant as any).tenant_rent_cycles.map((cycle: any) => (
-                      <div key={cycle.s_no} className='rounded-xl bg-gradient-to-br from-teal-50 to-white p-3 border border-teal-200'>
-                        <div className='flex justify-between items-center'>
-                          <div className='text-xs font-bold text-slate-900'>{cycle.cycle_type}</div>
-                          <div className='text-[10px] text-slate-500'>Day {cycle.anchor_day}</div>
+                    {tenant.tenant_rent_cycles.map((cycle) => (
+                      <div
+                        key={cycle.s_no}
+                        className='rounded-xl border border-teal-200 bg-gradient-to-br from-teal-50 to-white p-3'
+                      >
+                        <div className='flex items-center justify-between'>
+                          <div className='text-xs font-bold text-slate-900'>
+                            {cycle.cycle_type}
+                          </div>
+                          <div className='text-[10px] text-slate-500'>
+                            Day {cycle.anchor_day}
+                          </div>
                         </div>
-                        <div className='text-[10px] text-slate-500 mt-1'>
-                          {toDateOnly(cycle.cycle_start)} - {toDateOnly(cycle.cycle_end)}
+                        <div className='mt-1 text-[10px] text-slate-500'>
+                          {toDateOnly(cycle.cycle_start)} -{' '}
+                          {toDateOnly(cycle.cycle_end)}
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className='rounded-xl bg-slate-50 p-3 border border-slate-200 text-center'>
-                    <div className='text-xs text-slate-500'>No rent cycles configured</div>
+                  <div className='rounded-xl border border-slate-200 bg-slate-50 p-3 text-center'>
+                    <div className='text-xs text-slate-500'>
+                      No rent cycles configured
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
           )}
 
-          {Array.isArray((tenant as any).tenant_allocations) && (
-            <Card className='border-slate-200 '>
+          {Array.isArray(tenant.tenant_allocations) && (
+            <Card className='border-slate-200'>
               <CardContent className='p-4'>
-                <h3 className='text-sm font-bold text-slate-900 mb-3 flex items-center gap-2'>
+                <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-slate-900'>
                   <Home className='size-4 text-cyan-600' />
-                  Allocation History ({(tenant as any).tenant_allocations.length})
+                  Allocation History ({tenant.tenant_allocations.length})
                 </h3>
-                {(tenant as any).tenant_allocations.length > 0 ? (
+                {tenant.tenant_allocations.length > 0 ? (
                   <div className='space-y-2'>
-                    {(tenant as any).tenant_allocations.map((alloc: any) => (
-                      <div key={alloc.s_no} className='rounded-xl bg-gradient-to-br from-cyan-50 to-white p-3 border border-cyan-200'>
+                    {tenant.tenant_allocations.map((alloc) => (
+                      <div
+                        key={alloc.s_no}
+                        className='rounded-xl border border-cyan-200 bg-gradient-to-br from-cyan-50 to-white p-3'
+                      >
                         <div className='text-xs font-bold text-slate-900'>
-                          {alloc.pg_locations?.location_name} • Room {alloc.rooms?.room_no} • Bed {alloc.beds?.bed_no}
+                          {alloc.pg_locations?.location_name} • Room{' '}
+                          {alloc.rooms?.room_no} • Bed {alloc.beds?.bed_no}
                         </div>
-                        <div className='text-[10px] text-slate-500 mt-1'>
-                          {toDateOnly(alloc.effective_from)} - {toDateOnly(alloc.effective_to) || 'Present'}
+                        <div className='mt-1 text-[10px] text-slate-500'>
+                          {toDateOnly(alloc.effective_from)} -{' '}
+                          {toDateOnly(alloc.effective_to || undefined) ||
+                            'Present'}
                         </div>
-                        <div className='text-[10px] text-slate-500'>Price: ₹{alloc.bed_price_snapshot}</div>
+                        <div className='text-[10px] text-slate-500'>
+                          Price: ₹{alloc.bed_price_snapshot}
+                        </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className='rounded-xl bg-slate-50 p-3 border border-slate-200 text-center'>
-                    <div className='text-xs text-slate-500'>No allocation history</div>
+                  <div className='rounded-xl border border-slate-200 bg-slate-50 p-3 text-center'>
+                    <div className='text-xs text-slate-500'>
+                      No allocation history
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
           )}
 
-          {Array.isArray((tenant as any).current_bills) && (
-            <Card className='border-slate-200 '>
+          {Array.isArray(tenant.current_bills) && (
+            <Card className='border-slate-200'>
               <CardContent className='p-4'>
-                <h3 className='text-sm font-bold text-slate-900 mb-3 flex items-center gap-2'>
+                <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-slate-900'>
                   <CreditCard className='size-4 text-pink-600' />
-                  Current Bills ({(tenant as any).current_bills.length})
+                  Current Bills ({tenant.current_bills.length})
                 </h3>
-                {(tenant as any).current_bills.length > 0 ? (
+                {tenant.current_bills.length > 0 ? (
                   <div className='space-y-2'>
-                    {(tenant as any).current_bills.map((bill: any) => (
-                      <div key={bill.s_no} className='rounded-xl bg-gradient-to-br from-pink-50 to-white p-3 border border-pink-200'>
-                        <div className='flex justify-between items-center'>
-                          <div className='text-xs font-bold text-slate-900'>₹{bill.amount}</div>
-                          <Badge variant='outline' className='text-[10px] h-5'>{bill.status}</Badge>
+                    {tenant.current_bills.map((bill) => (
+                      <div
+                        key={bill.s_no}
+                        className='rounded-xl border border-pink-200 bg-gradient-to-br from-pink-50 to-white p-3'
+                      >
+                        <div className='flex items-center justify-between'>
+                          <div className='text-xs font-bold text-slate-900'>
+                            ₹{bill.amount}
+                          </div>
+                          <Badge variant='outline' className='h-5 text-[10px]'>
+                            {bill.status}
+                          </Badge>
                         </div>
-                        <div className='text-[10px] text-slate-500 mt-1'>{toDateOnly(bill.due_date)}</div>
+                        <div className='mt-1 text-[10px] text-slate-500'>
+                          {toDateOnly(bill.due_date)}
+                        </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className='rounded-xl bg-slate-50 p-3 border border-slate-200 text-center'>
-                    <div className='text-xs text-slate-500'>No current bills</div>
+                  <div className='rounded-xl border border-slate-200 bg-slate-50 p-3 text-center'>
+                    <div className='text-xs text-slate-500'>
+                      No current bills
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -874,106 +948,158 @@ export function TenantDetailsScreen() {
           )}
 
           <Tabs defaultValue='rent'>
-            <TabsList className='w-full grid grid-cols-3 h-9 bg-slate-100/50'>
-              <TabsTrigger value='rent' className='text-xs font-medium'>Rent</TabsTrigger>
-              <TabsTrigger value='advance' className='text-xs font-medium'>Advance</TabsTrigger>
-              <TabsTrigger value='refund' className='text-xs font-medium'>Refund</TabsTrigger>
+            <TabsList className='grid h-9 w-full grid-cols-3 bg-slate-100/50'>
+              <TabsTrigger value='rent' className='text-xs font-medium'>
+                Rent
+              </TabsTrigger>
+              <TabsTrigger value='advance' className='text-xs font-medium'>
+                Advance
+              </TabsTrigger>
+              <TabsTrigger value='refund' className='text-xs font-medium'>
+                Refund
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value='rent'>
               <div className='mt-3 space-y-3'>
-                <Card className='border-slate-200 '>
+                <Card className='border-slate-200'>
                   <CardContent className='p-4'>
-                    <div className='flex items-center justify-between mb-3'>
-                      <h3 className='text-sm font-bold text-slate-900'>Rent Payments</h3>
+                    <div className='mb-3 flex items-center justify-between'>
+                      <h3 className='text-sm font-bold text-slate-900'>
+                        Rent Payments
+                      </h3>
                       <Button
                         size='sm'
                         onClick={() => setRentDialogOpen(true)}
-                        className='h-7 text-xs bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 '
+                        className='h-7 bg-gradient-to-r from-emerald-600 to-emerald-700 text-xs hover:from-emerald-700 hover:to-emerald-800'
                       >
                         <Plus className='mr-1 size-3' />
                         Add
                       </Button>
                     </div>
 
-                    <div className='grid grid-cols-2 gap-3 mb-4'>
-                      <div className='rounded-xl bg-gradient-to-br from-red-50 to-white p-3 border border-red-200'>
-                        <div className='text-[10px] text-red-600 font-medium'>Due</div>
-                        <div className='text-lg font-bold text-red-700'>₹{rentDueAmount}</div>
+                    <div className='mb-4 grid grid-cols-2 gap-3'>
+                      <div className='rounded-xl border border-red-200 bg-gradient-to-br from-red-50 to-white p-3'>
+                        <div className='text-[10px] font-medium text-red-600'>
+                          Due
+                        </div>
+                        <div className='text-lg font-bold text-red-700'>
+                          ₹{rentDueAmount}
+                        </div>
                       </div>
-                      <div className='rounded-xl bg-gradient-to-br from-amber-50 to-white p-3 border border-amber-200'>
-                        <div className='text-[10px] text-amber-600 font-medium'>Partial</div>
-                        <div className='text-lg font-bold text-amber-700'>₹{partialDueAmount}</div>
+                      <div className='rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-3'>
+                        <div className='text-[10px] font-medium text-amber-600'>
+                          Partial
+                        </div>
+                        <div className='text-lg font-bold text-amber-700'>
+                          ₹{partialDueAmount}
+                        </div>
                       </div>
-                      <div className='rounded-xl bg-gradient-to-br from-orange-50 to-white p-3 border border-orange-200'>
-                        <div className='text-[10px] text-orange-600 font-medium'>Pending</div>
-                        <div className='text-lg font-bold text-orange-700'>₹{pendingDueAmount}</div>
+                      <div className='rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 to-white p-3'>
+                        <div className='text-[10px] font-medium text-orange-600'>
+                          Pending
+                        </div>
+                        <div className='text-lg font-bold text-orange-700'>
+                          ₹{pendingDueAmount}
+                        </div>
                       </div>
-                      <div className='rounded-xl bg-gradient-to-br from-slate-50 to-white p-3 border border-slate-200'>
-                        <div className='text-[10px] text-slate-600 font-medium'>Status</div>
-                        <div className='text-sm font-bold text-slate-900'>{(tenant as any).payment_status || '—'}</div>
+                      <div className='rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-3'>
+                        <div className='text-[10px] font-medium text-slate-600'>
+                          Status
+                        </div>
+                        <div className='text-sm font-bold text-slate-900'>
+                          {tenant.payment_status || '—'}
+                        </div>
                       </div>
                     </div>
 
-                    {tenant?.payment_cycle_summaries && tenant.payment_cycle_summaries.length > 0 ? (
+                    {tenant?.payment_cycle_summaries &&
+                    tenant.payment_cycle_summaries.length > 0 ? (
                       <div className='space-y-3'>
-                        {tenant.payment_cycle_summaries.map((cycle: any) => (
-                          <Card key={cycle.cycle_id || cycle.start_date} className='border-slate-200'>
-                            <CardContent className='p-3'>
-                              <div className='flex items-center justify-between mb-2'>
-                                <div>
-                                  <div className='text-xs font-bold text-slate-900'>
-                                    {toDateOnly(cycle.start_date)} - {toDateOnly(cycle.end_date)}
-                                  </div>
-                                  <div className='text-[10px] text-slate-500'>
-                                    Cycle #{cycle.cycle_id}
-                                  </div>
-                                </div>
-                                <Badge variant='outline' className='text-[10px] h-5'>
-                                  {cycle.status || 'Active'}
-                                </Badge>
-                              </div>
-                              <div className='grid grid-cols-2 gap-2 text-[10px]'>
-                                <div>
-                                  <span className='text-slate-500'>Paid: </span>
-                                  <span className='font-bold text-slate-900'>₹{cycle.totalPaid || 0}</span>
-                                </div>
-                                <div>
-                                  <span className='text-slate-500'>Due: </span>
-                                  <span className='font-bold text-slate-900'>₹{cycle.due || 0}</span>
-                                </div>
-                              </div>
-                              {cycle.payments && cycle.payments.length > 0 && (
-                                <div className='mt-2 space-y-2'>
-                                  {cycle.payments.map((payment: any) => (
-                                    <div
-                                      key={payment.s_no}
-                                      className='flex items-center justify-between rounded-xl bg-slate-50 p-2 border border-slate-200'
-                                    >
-                                      <div className='flex-1 min-w-0'>
-                                        <div className='text-xs font-bold text-slate-900'>₹{payment.amount_paid}</div>
-                                        <div className='text-[10px] text-slate-500'>
-                                          {toDateOnly(payment.payment_date)} • {payment.payment_method}
-                                        </div>
-                                      </div>
-                                      <Button
-                                        variant='ghost'
-                                        size='icon'
-                                        onClick={() => handleDeleteRentPayment(payment)}
-                                        className='h-7 w-7 text-destructive'
-                                      >
-                                        <Trash2 className='size-3' />
-                                      </Button>
+                        {tenant.payment_cycle_summaries.map(
+                          (cycle: PaymentCycleSummary) => (
+                            <Card
+                              key={cycle.cycle_id || cycle.start_date}
+                              className='border-slate-200'
+                            >
+                              <CardContent className='p-3'>
+                                <div className='mb-2 flex items-center justify-between'>
+                                  <div>
+                                    <div className='text-xs font-bold text-slate-900'>
+                                      {toDateOnly(cycle.start_date)} -{' '}
+                                      {toDateOnly(cycle.end_date)}
                                     </div>
-                                  ))}
+                                    <div className='text-[10px] text-slate-500'>
+                                      Cycle #{cycle.cycle_id}
+                                    </div>
+                                  </div>
+                                  <Badge
+                                    variant='outline'
+                                    className='h-5 text-[10px]'
+                                  >
+                                    {cycle.status || 'Active'}
+                                  </Badge>
                                 </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
+                                <div className='grid grid-cols-2 gap-2 text-[10px]'>
+                                  <div>
+                                    <span className='text-slate-500'>
+                                      Paid:{' '}
+                                    </span>
+                                    <span className='font-bold text-slate-900'>
+                                      ₹{cycle.totalPaid || 0}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className='text-slate-500'>
+                                      Due:{' '}
+                                    </span>
+                                    <span className='font-bold text-slate-900'>
+                                      ₹{cycle.due || 0}
+                                    </span>
+                                  </div>
+                                </div>
+                                {cycle.payments &&
+                                  cycle.payments.length > 0 && (
+                                    <div className='mt-2 space-y-2'>
+                                      {cycle.payments.map(
+                                        (payment: TenantPayment) => (
+                                          <div
+                                            key={payment.s_no}
+                                            className='flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-2'
+                                          >
+                                            <div className='min-w-0 flex-1'>
+                                              <div className='text-xs font-bold text-slate-900'>
+                                                ₹{String(payment.amount_paid)}
+                                              </div>
+                                              <div className='text-[10px] text-slate-500'>
+                                                {toDateOnly(
+                                                  payment.payment_date
+                                                )}{' '}
+                                                • {payment.payment_method}
+                                              </div>
+                                            </div>
+                                            <Button
+                                              variant='ghost'
+                                              size='icon'
+                                              onClick={() =>
+                                                handleDeleteRentPayment(payment)
+                                              }
+                                              className='h-7 w-7 text-destructive'
+                                            >
+                                              <Trash2 className='size-3' />
+                                            </Button>
+                                          </div>
+                                        )
+                                      )}
+                                    </div>
+                                  )}
+                              </CardContent>
+                            </Card>
+                          )
+                        )}
                       </div>
                     ) : (
-                      <div className='text-center py-6 text-xs text-slate-500'>
+                      <div className='py-6 text-center text-xs text-slate-500'>
                         No rent payments found
                       </div>
                     )}
@@ -984,14 +1110,16 @@ export function TenantDetailsScreen() {
 
             <TabsContent value='advance'>
               <div className='mt-3 space-y-3'>
-                <Card className='border-slate-200 '>
+                <Card className='border-slate-200'>
                   <CardContent className='p-4'>
-                    <div className='flex items-center justify-between mb-3'>
-                      <h3 className='text-sm font-bold text-slate-900'>Advance Payments</h3>
+                    <div className='mb-3 flex items-center justify-between'>
+                      <h3 className='text-sm font-bold text-slate-900'>
+                        Advance Payments
+                      </h3>
                       <Button
                         size='sm'
                         onClick={() => setAdvanceDialogOpen(true)}
-                        className='h-7 text-xs bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 '
+                        className='h-7 bg-gradient-to-r from-blue-600 to-blue-700 text-xs hover:from-blue-700 hover:to-blue-800'
                       >
                         <Plus className='mr-1 size-3' />
                         Add
@@ -1005,15 +1133,20 @@ export function TenantDetailsScreen() {
                             <CardContent className='p-3'>
                               <div className='flex items-center justify-between'>
                                 <div>
-                                  <div className='text-xs font-bold text-slate-900'>₹{payment.amount_paid}</div>
+                                  <div className='text-xs font-bold text-slate-900'>
+                                    ₹{payment.amount_paid}
+                                  </div>
                                   <div className='text-[10px] text-slate-500'>
-                                    {toDateOnly(payment.payment_date)} • {payment.payment_method}
+                                    {toDateOnly(payment.payment_date)} •{' '}
+                                    {payment.payment_method}
                                   </div>
                                 </div>
                                 <Button
                                   variant='ghost'
                                   size='icon'
-                                  onClick={() => handleDeleteAdvancePayment(payment)}
+                                  onClick={() =>
+                                    handleDeleteAdvancePayment(payment)
+                                  }
                                   className='h-7 w-7 text-destructive'
                                 >
                                   <Trash2 className='size-3' />
@@ -1024,7 +1157,7 @@ export function TenantDetailsScreen() {
                         ))}
                       </div>
                     ) : (
-                      <div className='text-center py-6 text-xs text-slate-500'>
+                      <div className='py-6 text-center text-xs text-slate-500'>
                         No advance payments found
                       </div>
                     )}
@@ -1035,14 +1168,16 @@ export function TenantDetailsScreen() {
 
             <TabsContent value='refund'>
               <div className='mt-3 space-y-3'>
-                <Card className='border-slate-200 '>
+                <Card className='border-slate-200'>
                   <CardContent className='p-4'>
-                    <div className='flex items-center justify-between mb-3'>
-                      <h3 className='text-sm font-bold text-slate-900'>Refund Payments</h3>
+                    <div className='mb-3 flex items-center justify-between'>
+                      <h3 className='text-sm font-bold text-slate-900'>
+                        Refund Payments
+                      </h3>
                       <Button
                         size='sm'
                         onClick={() => setRefundDialogOpen(true)}
-                        className='h-7 text-xs bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 '
+                        className='h-7 bg-gradient-to-r from-purple-600 to-purple-700 text-xs hover:from-purple-700 hover:to-purple-800'
                       >
                         <Plus className='mr-1 size-3' />
                         Add
@@ -1054,16 +1189,19 @@ export function TenantDetailsScreen() {
                         {refundPayments.map((payment) => (
                           <Card key={payment.s_no} className='border-slate-200'>
                             <CardContent className='p-3'>
-                              <div className='text-xs font-bold text-slate-900'>₹{payment.amount_paid}</div>
+                              <div className='text-xs font-bold text-slate-900'>
+                                ₹{payment.amount_paid}
+                              </div>
                               <div className='text-[10px] text-slate-500'>
-                                {toDateOnly(payment.payment_date)} • {payment.payment_method}
+                                {toDateOnly(payment.payment_date)} •{' '}
+                                {payment.payment_method}
                               </div>
                             </CardContent>
                           </Card>
                         ))}
                       </div>
                     ) : (
-                      <div className='text-center py-6 text-xs text-slate-500'>
+                      <div className='py-6 text-center text-xs text-slate-500'>
                         No refund payments found
                       </div>
                     )}
@@ -1075,45 +1213,72 @@ export function TenantDetailsScreen() {
         </div>
       )}
 
-      <AdvancePaymentDialog
-        open={advanceDialogOpen}
-        onOpenChange={setAdvanceDialogOpen}
-        tenant={tenant as any}
-        onSaved={() => {
-          setAdvanceDialogOpen(false)
-          void refetch()
-        }}
-      />
+      {tenant && (
+        <AdvancePaymentDialog
+          open={advanceDialogOpen}
+          onOpenChange={setAdvanceDialogOpen}
+          tenant={{
+            s_no: tenant.s_no,
+            name: tenant.name,
+            pg_id: tenant.pg_id,
+            room_id: tenant.room_id || 0,
+            bed_id: tenant.bed_id || 0,
+            rooms: tenant.rooms,
+            check_in_date: tenant.check_in_date,
+          }}
+          onSaved={() => {
+            setAdvanceDialogOpen(false)
+            void refetch()
+          }}
+        />
+      )}
 
-      <RentPaymentDialog
-        open={rentDialogOpen}
-        onOpenChange={setRentDialogOpen}
-        tenant={{
-          ...(tenant as any),
-          check_in_date: tenant?.check_in_date,
-          last_payment_date: (tenant as any)?.last_payment_date,
-        }}
-        onSaved={() => {
-          setRentDialogOpen(false)
-          void refetch()
-        }}
-      />
+      {tenant && (
+        <RentPaymentDialog
+          open={rentDialogOpen}
+          onOpenChange={setRentDialogOpen}
+          tenant={{
+            s_no: tenant.s_no,
+            name: tenant.name,
+            pg_id: tenant.pg_id,
+            room_id: tenant.room_id || 0,
+            bed_id: tenant.bed_id || 0,
+            rooms: tenant.rooms,
+            beds: tenant.beds,
+            check_in_date: tenant.check_in_date,
+            last_payment_date: tenant.last_payment_date,
+          }}
+          onSaved={() => {
+            setRentDialogOpen(false)
+            void refetch()
+          }}
+        />
+      )}
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent className='max-w-sm'>
           <AlertDialogHeader>
-            <AlertDialogTitle className='text-sm'>Delete Tenant</AlertDialogTitle>
+            <AlertDialogTitle className='text-sm'>
+              Delete Tenant
+            </AlertDialogTitle>
             <AlertDialogDescription className='text-xs'>
               Are you sure you want to delete{' '}
-              <span className='font-semibold'>{tenant?.name}</span>? This
-              action cannot be undone.
+              <span className='font-semibold'>{tenant?.name}</span>? This action
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteOpen(false)} className='text-xs'>
+            <AlertDialogCancel
+              onClick={() => setDeleteOpen(false)}
+              className='text-xs'
+            >
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} disabled={deleting} className='text-xs'>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleting}
+              className='text-xs'
+            >
               {deleting ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1123,7 +1288,9 @@ export function TenantDetailsScreen() {
       <AlertDialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
         <AlertDialogContent className='max-w-sm'>
           <AlertDialogHeader>
-            <AlertDialogTitle className='text-sm'>Checkout Tenant</AlertDialogTitle>
+            <AlertDialogTitle className='text-sm'>
+              Checkout Tenant
+            </AlertDialogTitle>
             <AlertDialogDescription className='text-xs'>
               Select checkout date for {tenant?.name}
             </AlertDialogDescription>
@@ -1137,25 +1304,38 @@ export function TenantDetailsScreen() {
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setCheckoutOpen(false)} className='text-xs'>
+            <AlertDialogCancel
+              onClick={() => setCheckoutOpen(false)}
+              className='text-xs'
+            >
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmCheckout} disabled={checkingOut} className='text-xs'>
+            <AlertDialogAction
+              onClick={confirmCheckout}
+              disabled={checkingOut}
+              className='text-xs'
+            >
               {checkingOut ? 'Checking out...' : 'Checkout'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AppDialog open={checkoutEditOpen} onOpenChange={setCheckoutEditOpen} title='Edit Checkout Date'>
+      <AppDialog
+        open={checkoutEditOpen}
+        onOpenChange={setCheckoutEditOpen}
+        title='Edit Checkout Date'
+      >
         <div className='space-y-3 py-2'>
           <div>
-            <label className='text-[10px] text-muted-foreground'>Checkout Date</label>
+            <label className='text-[10px] text-muted-foreground'>
+              Checkout Date
+            </label>
             <Input
               type='date'
               value={checkoutEditDate}
               onChange={(e) => setCheckoutEditDate(e.target.value)}
-              className='text-xs mt-1'
+              className='mt-1 text-xs'
             />
           </div>
           <div className='flex items-center gap-2'>
@@ -1183,52 +1363,81 @@ export function TenantDetailsScreen() {
           <Button
             onClick={confirmUpdateCheckout}
             disabled={updatingCheckout}
-            className='h-6 text-[10px] bg-black text-white hover:bg-black/90'
+            className='h-6 bg-black text-[10px] text-white hover:bg-black/90'
           >
             {updatingCheckout ? 'Updating...' : 'Update'}
           </Button>
         </div>
       </AppDialog>
 
-      <AlertDialog open={deleteRentDialogOpen} onOpenChange={setDeleteRentDialogOpen}>
+      <AlertDialog
+        open={deleteRentDialogOpen}
+        onOpenChange={setDeleteRentDialogOpen}
+      >
         <AlertDialogContent className='max-w-sm'>
           <AlertDialogHeader>
-            <AlertDialogTitle className='text-sm'>Cancel Payment</AlertDialogTitle>
+            <AlertDialogTitle className='text-sm'>
+              Cancel Payment
+            </AlertDialogTitle>
             <AlertDialogDescription className='text-xs'>
-              Are you sure you want to cancel rent payment of ₹{rentToDelete?.amount}?
+              Are you sure you want to cancel rent payment of ₹
+              {rentToDelete?.amount}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteRentDialogOpen(false)} className='text-xs'>
+            <AlertDialogCancel
+              onClick={() => setDeleteRentDialogOpen(false)}
+              className='text-xs'
+            >
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteRentPayment} disabled={voidingRent} className='text-xs'>
+            <AlertDialogAction
+              onClick={confirmDeleteRentPayment}
+              disabled={voidingRent}
+              className='text-xs'
+            >
               {voidingRent ? 'Cancelling...' : 'Cancel Payment'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={deleteAdvanceDialogOpen} onOpenChange={setDeleteAdvanceDialogOpen}>
+      <AlertDialog
+        open={deleteAdvanceDialogOpen}
+        onOpenChange={setDeleteAdvanceDialogOpen}
+      >
         <AlertDialogContent className='max-w-sm'>
           <AlertDialogHeader>
-            <AlertDialogTitle className='text-sm'>Delete Advance Payment</AlertDialogTitle>
+            <AlertDialogTitle className='text-sm'>
+              Delete Advance Payment
+            </AlertDialogTitle>
             <AlertDialogDescription className='text-xs'>
-              Are you sure you want to delete advance payment of ₹{advanceToDelete?.amount}?
+              Are you sure you want to delete advance payment of ₹
+              {advanceToDelete?.amount}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteAdvanceDialogOpen(false)} className='text-xs'>
+            <AlertDialogCancel
+              onClick={() => setDeleteAdvanceDialogOpen(false)}
+              className='text-xs'
+            >
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteAdvancePayment} className='text-xs'>
+            <AlertDialogAction
+              onClick={confirmDeleteAdvancePayment}
+              className='text-xs'
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AppDialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen} title='Add Refund Payment'>
+      <AppDialog
+        open={refundDialogOpen}
+        onOpenChange={setRefundDialogOpen}
+        title='Add Refund Payment'
+      >
         <div className='space-y-3 py-2'>
           <div>
             <label className='text-[10px] text-muted-foreground'>Amount</label>
@@ -1237,7 +1446,7 @@ export function TenantDetailsScreen() {
               value={refundAmount}
               onChange={(e) => setRefundAmount(e.target.value)}
               placeholder='Enter amount'
-              className='text-xs mt-1'
+              className='mt-1 text-xs'
             />
           </div>
           <div>
@@ -1246,13 +1455,20 @@ export function TenantDetailsScreen() {
               type='date'
               value={refundPaymentDate}
               onChange={(e) => setRefundPaymentDate(e.target.value)}
-              className='text-xs mt-1'
+              className='mt-1 text-xs'
             />
           </div>
           <div>
-            <label className='text-[10px] text-muted-foreground'>Payment Method</label>
-            <Select value={refundPaymentMethod} onValueChange={(v) => isPaymentMethod(v) && setRefundPaymentMethod(v)}>
-              <SelectTrigger className='text-xs mt-1 h-7'>
+            <label className='text-[10px] text-muted-foreground'>
+              Payment Method
+            </label>
+            <Select
+              value={refundPaymentMethod}
+              onValueChange={(v) =>
+                isPaymentMethod(v) && setRefundPaymentMethod(v)
+              }
+            >
+              <SelectTrigger className='mt-1 h-7 text-xs'>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1269,7 +1485,7 @@ export function TenantDetailsScreen() {
               value={refundRemarks}
               onChange={(e) => setRefundRemarks(e.target.value)}
               placeholder='Optional remarks'
-              className='text-xs mt-1'
+              className='mt-1 text-xs'
             />
           </div>
         </div>
@@ -1285,7 +1501,7 @@ export function TenantDetailsScreen() {
           <Button
             onClick={submitRefund}
             disabled={creatingRefund}
-            className='h-6 text-[10px] bg-black text-white hover:bg-black/90'
+            className='h-6 bg-black text-[10px] text-white hover:bg-black/90'
           >
             {creatingRefund ? 'Adding...' : 'Add Refund'}
           </Button>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { z } from 'zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -20,8 +20,8 @@ import {
   useGetTenantByIdQuery,
   useUpdateTenantMutation,
   type CreateTenantDto,
+  type ProofDocument,
   type Tenant,
-  type TenantResponse,
 } from '@/services/tenantsApi'
 import { useAppSelector } from '@/store/hooks'
 import { ChevronLeft, CircleAlert, Save } from 'lucide-react'
@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Form } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/form/date-picker'
 import {
   FormSelectField,
   FormTextInput,
@@ -41,7 +42,6 @@ import {
 import { ImageUploadS3 } from '@/components/form/image-upload-s3'
 import { PageHeader } from '@/components/form/page-header'
 import { PhoneInput } from '@/components/form/phone-input'
-import { DatePicker } from '@/components/form/date-picker'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -56,7 +56,14 @@ const schema = z.object({
   state_id: z.number().optional().nullable(),
   city_id: z.number().optional().nullable(),
   images: z.array(z.string()).optional(),
-  proof_documents: z.array(z.string()).optional(),
+  proof_documents: z
+    .array(
+      z.object({
+        document_type: z.string(),
+        document_url: z.string(),
+      })
+    )
+    .optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -73,6 +80,23 @@ const coerceDateString = (value: unknown) => {
 const coerceStringArray = (value: unknown): string[] => {
   if (Array.isArray(value))
     return value.filter((v) => typeof v === 'string') as string[]
+  return []
+}
+
+const coerceProofDocuments = (value: unknown): ProofDocument[] => {
+  if (Array.isArray(value)) {
+    // Handle both string[] (old format) and ProofDocument[] (new format)
+    return value.map((v) => {
+      if (typeof v === 'string') {
+        // Legacy format: just a URL string
+        return { document_type: 'document', document_url: v }
+      }
+      if (v && typeof v === 'object' && 'document_url' in v) {
+        return v as ProofDocument
+      }
+      return { document_type: 'document', document_url: String(v) }
+    })
+  }
   return []
 }
 
@@ -103,9 +127,11 @@ export function TenantFormScreen() {
     preSelectedBedId && !preSelectedRoomId ? preSelectedBedId : 0,
     { skip: !preSelectedBedId || !!preSelectedRoomId || isEditMode }
   )
-  const bedDetails = (bedResponse as any)?.data ?? null
+  const bedDetails = bedResponse?.data ?? null
   const bedRoomId = bedDetails?.room_id ?? null
-  const isPreSelected = Boolean((preSelectedRoomId || bedRoomId) && preSelectedBedId)
+  const isPreSelected = Boolean(
+    (preSelectedRoomId || bedRoomId) && preSelectedBedId
+  )
 
   const selectedPGLocationId = useAppSelector(
     (s) => s.pgLocations.selectedPGLocationId
@@ -117,22 +143,18 @@ export function TenantFormScreen() {
     error: tenantError,
   } = useGetTenantByIdQuery(tenantId ?? 0, { skip: !isEditMode })
 
-  const tenant: Tenant | null =
-    (tenantResponse as TenantResponse | undefined)?.data ?? null
+  const tenant: Tenant | null = tenantResponse?.data ?? null
 
   const [createTenant, { isLoading: creating }] = useCreateTenantMutation()
   const [updateTenant, { isLoading: updating }] = useUpdateTenantMutation()
 
   const { data: roomsResponse } = useGetAllRoomsQuery(
-    selectedPGLocationId
-      ? { limit: 200 }
-      : undefined,
+    selectedPGLocationId ? { limit: 200 } : undefined,
     { skip: !selectedPGLocationId }
   )
 
   const rooms: Room[] = useMemo(
-    () =>
-      asArray<Room>((roomsResponse as { data?: unknown } | undefined)?.data),
+    () => asArray<Room>(roomsResponse?.data),
     [roomsResponse]
   )
 
@@ -162,8 +184,17 @@ export function TenantFormScreen() {
     control: form.control,
     name: 'proof_documents',
   })
+  const watchedCheckInDate = useWatch({
+    control: form.control,
+    name: 'check_in_date',
+  })
 
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+  const selectedDate = useMemo(() => {
+    if (watchedCheckInDate) {
+      return new Date(watchedCheckInDate)
+    }
+    return undefined
+  }, [watchedCheckInDate])
 
   const { data: bedsResponse, isLoading: bedsLoading } = useGetAllBedsQuery(
     watchedRoomId
@@ -177,14 +208,13 @@ export function TenantFormScreen() {
   )
 
   const beds: Bed[] = useMemo(
-    () => asArray<Bed>((bedsResponse as { data?: unknown } | undefined)?.data),
+    () => asArray<Bed>(bedsResponse?.data),
     [bedsResponse]
   )
 
   const { data: statesResponse } = useGetStatesQuery({ countryCode: 'IN' })
   const states = useMemo(
-    () =>
-      asArray<State>((statesResponse as { data?: unknown } | undefined)?.data),
+    () => asArray<State>(statesResponse?.data),
     [statesResponse]
   )
 
@@ -199,8 +229,7 @@ export function TenantFormScreen() {
     { skip: !stateCode }
   )
   const cities = useMemo(
-    () =>
-      asArray<City>((citiesResponse as { data?: unknown } | undefined)?.data),
+    () => asArray<City>(citiesResponse?.data),
     [citiesResponse]
   )
 
@@ -222,11 +251,8 @@ export function TenantFormScreen() {
       state_id: tenant.state_id ?? null,
       city_id: tenant.city_id ?? null,
       images: coerceStringArray(tenant.images),
-      proof_documents: coerceStringArray(tenant.proof_documents),
+      proof_documents: coerceProofDocuments(tenant.proof_documents),
     })
-    if (checkInDate) {
-      setSelectedDate(new Date(checkInDate))
-    }
   }, [form, isEditMode, tenant])
 
   useEffect(() => {
@@ -401,7 +427,8 @@ export function TenantFormScreen() {
         <div className='mt-4 rounded-md border bg-card px-3 py-8 text-center'>
           <div className='text-base font-semibold'>Room and Bed Required</div>
           <div className='mt-1 text-xs text-muted-foreground'>
-            Please select a room and bed from the bed details page to add a tenant.
+            Please select a room and bed from the bed details page to add a
+            tenant.
           </div>
         </div>
       ) : isEditMode && tenantLoading ? (
@@ -414,9 +441,9 @@ export function TenantFormScreen() {
             onSubmit={form.handleSubmit(onSubmit)}
             className='mt-4 grid gap-4'
           >
-            <Card className='shadow-none border p-0'>
+            <Card className='border p-0 shadow-none'>
               <CardContent className='grid gap-4 p-4'>
-                <div className='text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent'>
+                <div className='bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-sm font-semibold text-transparent'>
                   Personal Information
                 </div>
 
@@ -470,9 +497,11 @@ export function TenantFormScreen() {
               </CardContent>
             </Card>
 
-            <Card className='shadow-none border p-0'>
+            <Card className='border p-0 shadow-none'>
               <CardContent className='grid gap-4 p-4'>
-                <div className='text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent'>Accommodation</div>
+                <div className='bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-sm font-semibold text-transparent'>
+                  Accommodation
+                </div>
 
                 <div className='grid gap-4 sm:grid-cols-2'>
                   {isEditMode ? (
@@ -560,8 +589,10 @@ export function TenantFormScreen() {
                   <DatePicker
                     selected={selectedDate}
                     onSelect={(date) => {
-                      setSelectedDate(date)
-                      form.setValue('check_in_date', date ? date.toISOString().split('T')[0] : '')
+                      form.setValue(
+                        'check_in_date',
+                        date ? date.toISOString().split('T')[0] : ''
+                      )
                     }}
                     placeholder='Pick a date'
                     disabled={!!tenantId}
@@ -575,9 +606,11 @@ export function TenantFormScreen() {
               </CardContent>
             </Card>
 
-            <Card className='shadow-none border p-0'>
+            <Card className='border p-0 shadow-none'>
               <CardContent className='grid gap-4 p-4'>
-                <div className='text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent'>Location</div>
+                <div className='bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-sm font-semibold text-transparent'>
+                  Location
+                </div>
 
                 <div className='grid gap-4 sm:grid-cols-2'>
                   <FormSelectField
@@ -604,9 +637,11 @@ export function TenantFormScreen() {
               </CardContent>
             </Card>
 
-            <Card className='shadow-none border p-0'>
+            <Card className='border p-0 shadow-none'>
               <CardContent className='grid gap-4 p-4'>
-                <div className='text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent'>Uploads</div>
+                <div className='bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-sm font-semibold text-transparent'>
+                  Uploads
+                </div>
 
                 <ImageUploadS3
                   images={Array.isArray(watchedImages) ? watchedImages : []}
@@ -624,11 +659,17 @@ export function TenantFormScreen() {
                 <ImageUploadS3
                   images={
                     Array.isArray(watchedProofDocuments)
-                      ? watchedProofDocuments
+                      ? watchedProofDocuments.map((doc) => doc.document_url)
                       : []
                   }
                   onImagesChange={(imgs) =>
-                    form.setValue('proof_documents', imgs)
+                    form.setValue(
+                      'proof_documents',
+                      imgs.map((url) => ({
+                        document_type: 'document',
+                        document_url: url,
+                      }))
+                    )
                   }
                   maxImages={3}
                   label='Proof Documents'

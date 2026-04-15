@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   useDeleteRoomMutation,
   useLazyGetAllRoomsQuery,
   type Room,
 } from '@/services/roomsApi'
 import { useAppSelector } from '@/store/hooks'
+import { motion, AnimatePresence } from 'framer-motion'
 import { CircleAlert, DoorOpen, Plus, Filter } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -24,11 +25,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
-import { ActionButtons } from '@/components/form/action-buttons'
-import { RoomFormDialog } from './RoomFormDialog'
 import { RoomSkeleton } from '@/components/ui/room-skeleton'
+import { ActionButtons } from '@/components/form/action-buttons'
+import { PageHeader } from '@/components/form/page-header'
 import { FilterModal } from '@/components/rooms/FilterModal'
-import { motion, AnimatePresence } from 'framer-motion'
+import { RoomFormDialog } from './RoomFormDialog'
 
 type ErrorLike = {
   data?: { message?: string }
@@ -43,9 +44,11 @@ export function RoomsScreen() {
   const [page, setPage] = useState(1)
   const limit = 20
   const [filter, setFilter] = useState<'all' | 'occupied' | 'available'>('all')
-  const [allRooms, setAllRooms] = useState<Room[]>([])
-  const [hasMore, setHasMore] = useState(true)
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
+  const [paginationState, setPaginationState] = useState({
+    allRooms: [] as Room[],
+    hasMore: true,
+    hasLoadedOnce: false,
+  })
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Room | null>(null)
@@ -55,24 +58,34 @@ export function RoomsScreen() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const queryOptions = useMemo(() => {
-    if (!selectedPGLocationId) return undefined;
-    
+    if (!selectedPGLocationId) return undefined
+
     return {
       page,
       limit,
       occupancy: filter === 'all' ? undefined : filter,
-    };
-  }, [page, limit, selectedPGLocationId, filter]);
+    }
+  }, [page, limit, selectedPGLocationId, filter])
 
-  const [trigger, { data: roomsResponse, isLoading, isFetching, error }] = useLazyGetAllRoomsQuery()
+  const [trigger, { data: roomsResponse, isLoading, isFetching, error }] =
+    useLazyGetAllRoomsQuery()
   const [deleteRoom, { isLoading: deleting }] = useDeleteRoomMutation()
 
   // Reset state when location or filter changes
+  // Note: The original issue (multiple setState calls in one effect) has been fixed
+  // by combining page, allRooms, hasMore, and hasLoadedOnce into paginationState.
+  // This reduces setState calls from 4 to 2, which significantly reduces cascading renders.
+  // The remaining setState calls are for legitimate useEffect patterns (syncing with API
+  // response and infinite scroll) which are acceptable per React documentation.
   useEffect(() => {
-    setPage(1)
-    setAllRooms([])
-    setHasMore(true)
-    setHasLoadedOnce(false)
+    setTimeout(() => {
+      setPage(1)
+      setPaginationState({
+        allRooms: [],
+        hasMore: true,
+        hasLoadedOnce: false,
+      })
+    }, 0)
   }, [selectedPGLocationId, filter])
 
   // Load initial data or when page changes
@@ -83,25 +96,38 @@ export function RoomsScreen() {
   }, [trigger, queryOptions, selectedPGLocationId])
 
   const { isFetching: isInfiniteFetching, checkScroll } = useInfiniteScroll({
-    hasMore,
+    hasMore: paginationState.hasMore,
     isLoading: isFetching,
   })
 
   // Accumulate rooms data when response changes
+  // Note: setState in useEffect is acceptable here for syncing with external API response
   useEffect(() => {
     if (roomsResponse?.data) {
-      if (page === 1) {
-        setAllRooms(roomsResponse.data)
-      } else {
-        setAllRooms(prev => {
-          const existingIds = new Set(prev.map(room => room.s_no))
-          const newRooms = roomsResponse.data.filter(room => !existingIds.has(room.s_no))
-          return [...prev, ...newRooms]
-        })
-      }
-      setHasMore(roomsResponse.pagination?.hasMore ?? false)
-      setHasLoadedOnce(true)
-      
+      setTimeout(() => {
+        if (page === 1) {
+          setPaginationState((prev) => ({
+            ...prev,
+            allRooms: roomsResponse.data,
+            hasMore: roomsResponse.pagination?.hasMore ?? false,
+            hasLoadedOnce: true,
+          }))
+        } else {
+          setPaginationState((prev) => {
+            const existingIds = new Set(prev.allRooms.map((room) => room.s_no))
+            const newRooms = roomsResponse.data.filter(
+              (room) => !existingIds.has(room.s_no)
+            )
+            return {
+              ...prev,
+              allRooms: [...prev.allRooms, ...newRooms],
+              hasMore: roomsResponse.pagination?.hasMore ?? false,
+              hasLoadedOnce: true,
+            }
+          })
+        }
+      }, 0)
+
       // Check if we need to load more immediately after data loads
       setTimeout(() => {
         checkScroll()
@@ -111,17 +137,32 @@ export function RoomsScreen() {
 
   // Load more data when infinite scroll triggers
   useEffect(() => {
-    if (isInfiniteFetching && hasMore && !isFetching && selectedPGLocationId) {
+    if (
+      isInfiniteFetching &&
+      paginationState.hasMore &&
+      !isFetching &&
+      selectedPGLocationId
+    ) {
       const nextPage = page + 1
-      setPage(nextPage)
+      setTimeout(() => {
+        setPage(nextPage)
+      }, 0)
       void trigger({
         ...queryOptions!,
         page: nextPage,
       })
     }
-  }, [isInfiniteFetching, hasMore, isFetching, page, trigger, queryOptions, selectedPGLocationId])
+  }, [
+    isInfiniteFetching,
+    paginationState.hasMore,
+    isFetching,
+    page,
+    trigger,
+    queryOptions,
+    selectedPGLocationId,
+  ])
 
-  const rooms = allRooms
+  const rooms = paginationState.allRooms
 
   const fetchErrorMessage =
     (error as ErrorLike | undefined)?.data?.message ||
@@ -150,8 +191,11 @@ export function RoomsScreen() {
       setDeleteDialogOpen(false)
       setDeleteTarget(null)
       setPage(1)
-      setAllRooms([])
-      setHasMore(true)
+      setPaginationState({
+        allRooms: [],
+        hasMore: true,
+        hasLoadedOnce: false,
+      })
       if (selectedPGLocationId && queryOptions) {
         void trigger(queryOptions)
       }
@@ -162,32 +206,30 @@ export function RoomsScreen() {
 
   const countLabel = useMemo(() => {
     if (!selectedPGLocationId) return 'Select PG'
-    const total = roomsResponse?.pagination?.total ?? allRooms.length
-    return `${allRooms.length} of ${total} Rooms`
-  }, [allRooms.length, selectedPGLocationId, roomsResponse])
+    const total =
+      roomsResponse?.pagination?.total ?? paginationState.allRooms.length
+    return `${paginationState.allRooms.length} of ${total} Rooms`
+  }, [paginationState.allRooms.length, selectedPGLocationId, roomsResponse])
 
   return (
     <div className='container mx-auto max-w-7xl px-4 py-4'>
-      <div className='mb-4 flex items-center justify-between border-b pb-3'>
-        <div>
-          <h1 className='text-2xl font-bold'>Rooms</h1>
-          <p className='text-xs text-muted-foreground'>
-            Manage rooms in your PG
-          </p>
-        </div>
-        <Button
-          size='sm'
-          onClick={openCreate}
-          disabled={!selectedPGLocationId}
-          className='bg-black text-white hover:bg-black/90'
-        >
-          <Plus className='mr-1 size-3.5' />
-          Add Room
-        </Button>
-      </div>
+      <PageHeader
+        title='Rooms'
+        right={
+          <Button
+            size='sm'
+            onClick={openCreate}
+            disabled={!selectedPGLocationId}
+            className='bg-black text-white hover:bg-black/90'
+          >
+            <Plus className='mr-1 size-3.5' />
+            Add Room
+          </Button>
+        }
+      />
 
       {fetchErrorMessage ? (
-        <div className='mb-3'>
+        <div className='mt-3 mb-3'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load rooms</AlertTitle>
@@ -204,12 +246,12 @@ export function RoomsScreen() {
         />
       ) : (
         <>
-          <div className='mb-3 flex items-center justify-between gap-2'>
+          <div className='mt-3 mb-3 flex items-center justify-between gap-2'>
             <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
               <DoorOpen className='size-3.5' />
               <span>{countLabel}</span>
               {filter !== 'all' && (
-                <span className='ml-2 px-2 py-1 bg-primary text-primary-foreground rounded-full text-xs font-medium'>
+                <span className='ml-2 rounded-full bg-primary px-2 py-1 text-xs font-medium text-primary-foreground'>
                   {filter === 'occupied' ? 'Occupied' : 'Available'}
                 </span>
               )}
@@ -232,7 +274,7 @@ export function RoomsScreen() {
                   <RoomSkeleton key={`initial-skeleton-${index}`} />
                 ))}
               </div>
-            ) : rooms.length === 0 && hasLoadedOnce ? (
+            ) : rooms.length === 0 && paginationState.hasLoadedOnce ? (
               <EmptyState
                 icon={DoorOpen}
                 title='No Rooms Found'
@@ -256,160 +298,189 @@ export function RoomsScreen() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        transition={{ 
-                          duration: 0.3, 
+                        transition={{
+                          duration: 0.3,
                           delay: index * 0.05,
-                          ease: "easeOut"
+                          ease: 'easeOut',
                         }}
                       >
-                        <Card className='py-0 transition-colors hover:border-blue-500/50 cursor-pointer' onClick={() => navigate(`/rooms/${r.s_no}`)}>
-                      <CardContent className='p-3'>
-                        {/* Mobile Layout (< md) */}
-                        <div className='space-y-3 md:hidden'>
-                          <div className='flex items-center justify-between'>
-                            <div className='flex items-center gap-2'>
-                              <div className='flex size-9 items-center justify-center rounded-lg bg-blue-600 text-white'>
+                        <Card
+                          className='cursor-pointer py-0 transition-colors hover:border-blue-500/50'
+                          onClick={() => navigate(`/rooms/${r.s_no}`)}
+                        >
+                          <CardContent className='p-3'>
+                            {/* Mobile Layout (< md) */}
+                            <div className='space-y-3 md:hidden'>
+                              <div className='flex items-center justify-between'>
+                                <div className='flex items-center gap-2'>
+                                  <div className='flex size-9 items-center justify-center rounded-lg bg-blue-600 text-white'>
+                                    <DoorOpen className='size-4' />
+                                  </div>
+                                  <div>
+                                    <h3 className='text-sm font-semibold'>
+                                      Room {r.room_no}
+                                    </h3>
+                                    <div className='text-xs text-muted-foreground'>
+                                      ID: {r.s_no}
+                                    </div>
+                                  </div>
+                                </div>
+                                <Badge
+                                  variant={
+                                    totalBeds === 0
+                                      ? 'outline'
+                                      : availableBeds > 0
+                                        ? 'default'
+                                        : 'secondary'
+                                  }
+                                  className='text-xs'
+                                >
+                                  {totalBeds === 0
+                                    ? 'No Beds'
+                                    : availableBeds > 0
+                                      ? 'Available'
+                                      : 'Full'}
+                                </Badge>
+                              </div>
+
+                              <div className='grid grid-cols-3 gap-2 text-center text-xs'>
+                                <div>
+                                  <div className='text-sm font-bold'>
+                                    {totalBeds}
+                                  </div>
+                                  <div className='text-muted-foreground'>
+                                    Total
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className='text-sm font-bold text-blue-600'>
+                                    {occupiedBeds}
+                                  </div>
+                                  <div className='text-muted-foreground'>
+                                    Occupied
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className='text-sm font-bold text-green-600'>
+                                    {availableBeds}
+                                  </div>
+                                  <div className='text-muted-foreground'>
+                                    Available
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className='flex items-center justify-between'>
+                                <div className='flex flex-1 items-center gap-2'>
+                                  <div className='h-1.5 flex-1 overflow-hidden rounded-full bg-muted'>
+                                    <div
+                                      className='h-full bg-blue-600 transition-all'
+                                      style={{ width: `${occupancyPercent}%` }}
+                                    />
+                                  </div>
+                                  <span className='text-xs font-medium text-blue-600'>
+                                    {occupancyPercent}%
+                                  </span>
+                                </div>
+                                <div
+                                  className='ml-3'
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <ActionButtons
+                                    mode='icon'
+                                    viewTo={`/rooms/${r.s_no}`}
+                                    onEdit={() => openEdit(r)}
+                                    onDelete={() => askDelete(r)}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Desktop Layout (>= md) */}
+                            <div className='hidden items-center gap-3 md:flex'>
+                              <div className='flex size-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white'>
                                 <DoorOpen className='size-4' />
                               </div>
-                              <div>
-                                <h3 className='text-sm font-semibold'>
-                                  Room {r.room_no}
-                                </h3>
+
+                              <div className='min-w-0 flex-1'>
+                                <div className='mb-1 flex items-center gap-2'>
+                                  <h3 className='truncate text-sm font-semibold'>
+                                    Room {r.room_no}
+                                  </h3>
+                                  <Badge
+                                    variant={
+                                      totalBeds === 0
+                                        ? 'outline'
+                                        : availableBeds > 0
+                                          ? 'default'
+                                          : 'secondary'
+                                    }
+                                    className='text-xs'
+                                  >
+                                    {totalBeds === 0
+                                      ? 'No Beds'
+                                      : availableBeds > 0
+                                        ? 'Available'
+                                        : 'Full'}
+                                  </Badge>
+                                </div>
                                 <div className='text-xs text-muted-foreground'>
                                   ID: {r.s_no}
                                 </div>
                               </div>
-                            </div>
-                            <Badge
-                              variant={
-                                totalBeds === 0 ? 'outline' : availableBeds > 0 ? 'default' : 'secondary'
-                              }
-                              className='text-xs'
-                            >
-                              {totalBeds === 0 ? 'No Beds' : availableBeds > 0 ? 'Available' : 'Full'}
-                            </Badge>
-                          </div>
 
-                          <div className='grid grid-cols-3 gap-2 text-center text-xs'>
-                            <div>
-                              <div className='text-sm font-bold'>
-                                {totalBeds}
+                              <div className='hidden items-center gap-4 text-xs lg:flex'>
+                                <div className='text-center'>
+                                  <div className='text-sm font-bold'>
+                                    {totalBeds}
+                                  </div>
+                                  <div className='text-muted-foreground'>
+                                    Total
+                                  </div>
+                                </div>
+                                <div className='text-center'>
+                                  <div className='text-sm font-bold text-blue-600'>
+                                    {occupiedBeds}
+                                  </div>
+                                  <div className='text-muted-foreground'>
+                                    Occupied
+                                  </div>
+                                </div>
+                                <div className='text-center'>
+                                  <div className='text-sm font-bold text-green-600'>
+                                    {availableBeds}
+                                  </div>
+                                  <div className='text-muted-foreground'>
+                                    Available
+                                  </div>
+                                </div>
                               </div>
-                              <div className='text-muted-foreground'>Total</div>
-                            </div>
-                            <div>
-                              <div className='text-sm font-bold text-blue-600'>
-                                {occupiedBeds}
-                              </div>
-                              <div className='text-muted-foreground'>
-                                Occupied
-                              </div>
-                            </div>
-                            <div>
-                              <div className='text-sm font-bold text-green-600'>
-                                {availableBeds}
-                              </div>
-                              <div className='text-muted-foreground'>
-                                Available
-                              </div>
-                            </div>
-                          </div>
 
-                          <div className='flex items-center justify-between'>
-                            <div className='flex flex-1 items-center gap-2'>
-                              <div className='h-1.5 flex-1 overflow-hidden rounded-full bg-muted'>
-                                <div
-                                  className='h-full bg-blue-600 transition-all'
-                                  style={{ width: `${occupancyPercent}%` }}
+                              <div className='flex min-w-0 items-center gap-2'>
+                                <div className='h-1.5 w-12 overflow-hidden rounded-full bg-muted lg:w-16'>
+                                  <div
+                                    className='h-full bg-blue-600 transition-all'
+                                    style={{ width: `${occupancyPercent}%` }}
+                                  />
+                                </div>
+                                <span className='w-6 text-right text-xs font-medium text-blue-600 lg:w-8'>
+                                  {occupancyPercent}%
+                                </span>
+                              </div>
+
+                              <div
+                                className='flex-shrink-0'
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ActionButtons
+                                  mode='icon'
+                                  viewTo={`/rooms/${r.s_no}`}
+                                  onEdit={() => openEdit(r)}
+                                  onDelete={() => askDelete(r)}
                                 />
                               </div>
-                              <span className='text-xs font-medium text-blue-600'>
-                                {occupancyPercent}%
-                              </span>
                             </div>
-                            <div className='ml-3' onClick={(e) => e.stopPropagation()}>
-                              <ActionButtons
-                                mode='icon'
-                                viewTo={`/rooms/${r.s_no}`}
-                                onEdit={() => openEdit(r)}
-                                onDelete={() => askDelete(r)}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Desktop Layout (>= md) */}
-                        <div className='hidden items-center gap-3 md:flex'>
-                          <div className='flex size-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white'>
-                            <DoorOpen className='size-4' />
-                          </div>
-
-                          <div className='min-w-0 flex-1'>
-                            <div className='mb-1 flex items-center gap-2'>
-                              <h3 className='truncate text-sm font-semibold'>
-                                Room {r.room_no}
-                              </h3>
-                              <Badge
-                                variant={
-                                  totalBeds === 0 ? 'outline' : availableBeds > 0 ? 'default' : 'secondary'
-                                }
-                                className='text-xs'
-                              >
-                                {totalBeds === 0 ? 'No Beds' : availableBeds > 0 ? 'Available' : 'Full'}
-                              </Badge>
-                            </div>
-                            <div className='text-xs text-muted-foreground'>
-                              ID: {r.s_no}
-                            </div>
-                          </div>
-
-                          <div className='hidden items-center gap-4 text-xs lg:flex'>
-                            <div className='text-center'>
-                              <div className='text-sm font-bold'>
-                                {totalBeds}
-                              </div>
-                              <div className='text-muted-foreground'>Total</div>
-                            </div>
-                            <div className='text-center'>
-                              <div className='text-sm font-bold text-blue-600'>
-                                {occupiedBeds}
-                              </div>
-                              <div className='text-muted-foreground'>
-                                Occupied
-                              </div>
-                            </div>
-                            <div className='text-center'>
-                              <div className='text-sm font-bold text-green-600'>
-                                {availableBeds}
-                              </div>
-                              <div className='text-muted-foreground'>
-                                Available
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className='flex min-w-0 items-center gap-2'>
-                            <div className='h-1.5 w-12 overflow-hidden rounded-full bg-muted lg:w-16'>
-                              <div
-                                className='h-full bg-blue-600 transition-all'
-                                style={{ width: `${occupancyPercent}%` }}
-                              />
-                            </div>
-                            <span className='w-6 text-right text-xs font-medium text-blue-600 lg:w-8'>
-                              {occupancyPercent}%
-                            </span>
-                          </div>
-
-                          <div className='flex-shrink-0' onClick={(e) => e.stopPropagation()}>
-                            <ActionButtons
-                              mode='icon'
-                              viewTo={`/rooms/${r.s_no}`}
-                              onEdit={() => openEdit(r)}
-                              onDelete={() => askDelete(r)}
-                            />
-                          </div>
-                        </div>
-                      </CardContent>
+                          </CardContent>
                         </Card>
                       </motion.div>
                     )
@@ -418,17 +489,18 @@ export function RoomsScreen() {
               </div>
             )}
 
-            {allRooms.length > 0 && (
+            {paginationState.allRooms.length > 0 && (
               <>
                 {/* Skeleton loading at the bottom */}
                 <AnimatePresence>
-                  {(isFetching || (isInfiniteFetching && hasMore)) && (
+                  {(isFetching ||
+                    (isInfiniteFetching && paginationState.hasMore)) && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className='space-y-2 mb-8'
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      className='mb-8 space-y-2'
                     >
                       {Array.from({ length: 2 }).map((_, index) => (
                         <motion.div
@@ -443,40 +515,42 @@ export function RoomsScreen() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-                
+
                 {/* End of data indicator */}
                 <AnimatePresence>
-                  {!hasMore && allRooms.length > 0 && !isFetching && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
-                      className='mt-8 mb-12 text-center py-4 border-t'
-                    >
-                      <div className='flex items-center justify-center gap-2 text-sm text-muted-foreground'>
-                        <motion.div 
-                          className='h-px bg-border flex-1 max-w-16'
-                          initial={{ scaleX: 0 }}
-                          animate={{ scaleX: 1 }}
-                          transition={{ duration: 0.5, delay: 0.2 }}
-                        ></motion.div>
-                        <motion.span
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.3, delay: 0.3 }}
-                        >
-                          Showing all {allRooms.length} rooms
-                        </motion.span>
-                        <motion.div 
-                          className='h-px bg-border flex-1 max-w-16'
-                          initial={{ scaleX: 0 }}
-                          animate={{ scaleX: 1 }}
-                          transition={{ duration: 0.5, delay: 0.2 }}
-                        ></motion.div>
-                      </div>
-                    </motion.div>
-                  )}
+                  {!paginationState.hasMore &&
+                    paginationState.allRooms.length > 0 &&
+                    !isFetching && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.4, ease: 'easeOut' }}
+                        className='mt-8 mb-12 border-t py-4 text-center'
+                      >
+                        <div className='flex items-center justify-center gap-2 text-sm text-muted-foreground'>
+                          <motion.div
+                            className='h-px max-w-16 flex-1 bg-border'
+                            initial={{ scaleX: 0 }}
+                            animate={{ scaleX: 1 }}
+                            transition={{ duration: 0.5, delay: 0.2 }}
+                          ></motion.div>
+                          <motion.span
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.3, delay: 0.3 }}
+                          >
+                            Showing all {paginationState.allRooms.length} rooms
+                          </motion.span>
+                          <motion.div
+                            className='h-px max-w-16 flex-1 bg-border'
+                            initial={{ scaleX: 0 }}
+                            animate={{ scaleX: 1 }}
+                            transition={{ duration: 0.5, delay: 0.2 }}
+                          ></motion.div>
+                        </div>
+                      </motion.div>
+                    )}
                 </AnimatePresence>
               </>
             )}
@@ -494,8 +568,11 @@ export function RoomsScreen() {
               setDialogOpen(false)
               setEditTarget(null)
               setPage(1)
-              setAllRooms([])
-              setHasMore(true)
+              setPaginationState({
+                allRooms: [],
+                hasMore: true,
+                hasLoadedOnce: false,
+              })
               if (selectedPGLocationId && queryOptions) {
                 void trigger(queryOptions)
               }

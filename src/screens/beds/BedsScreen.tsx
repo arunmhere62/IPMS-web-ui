@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useReducer, useState } from 'react'
 import {
   type Bed,
   type Room,
@@ -8,7 +7,9 @@ import {
   useLazyGetAllRoomsQuery,
 } from '@/services/roomsApi'
 import { useAppSelector } from '@/store/hooks'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Bed as BedIcon, CircleAlert, Filter, User } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -26,15 +27,59 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
-import { ActionButtons } from '@/components/form/action-buttons'
-import { BedFormDialog } from './BedFormDialog'
 import { RoomSkeleton } from '@/components/ui/room-skeleton'
+import { ActionButtons } from '@/components/form/action-buttons'
+import { PageHeader } from '@/components/form/page-header'
 import { RoomFilterModal } from '@/components/rooms/RoomFilterModal'
-import { motion, AnimatePresence } from 'framer-motion'
+import { BedFormDialog } from './BedFormDialog'
 
 type ErrorLike = {
   data?: { message?: string }
   message?: string
+}
+
+type BedsState = {
+  page: number
+  allBeds: Bed[]
+  hasMore: boolean
+  hasLoadedOnce: boolean
+}
+
+type BedsAction =
+  | { type: 'RESET' }
+  | { type: 'SET_PAGE'; page: number }
+  | { type: 'ADD_BEDS'; page: number; data: Bed[]; hasMore: boolean }
+
+function bedsReducer(state: BedsState, action: BedsAction): BedsState {
+  switch (action.type) {
+    case 'RESET': {
+      return {
+        page: 1,
+        allBeds: [],
+        hasMore: true,
+        hasLoadedOnce: false,
+      }
+    }
+    case 'SET_PAGE': {
+      return {
+        ...state,
+        page: action.page,
+      }
+    }
+    case 'ADD_BEDS': {
+      const existingIds = new Set(state.allBeds.map((b) => b.s_no))
+      const newBeds = action.data.filter((b) => !existingIds.has(b.s_no))
+      return {
+        ...state,
+        allBeds:
+          action.page === 1 ? action.data : [...state.allBeds, ...newBeds],
+        hasMore: action.hasMore,
+        hasLoadedOnce: true,
+      }
+    }
+    default:
+      return state
+  }
 }
 
 export function BedsScreen() {
@@ -42,12 +87,14 @@ export function BedsScreen() {
   const selectedPGLocationId =
     useAppSelector((s) => s.pgLocations.selectedPGLocationId) ?? null
 
-  const [page, setPage] = useState(1)
   const limit = 20
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
-  const [allBeds, setAllBeds] = useState<Bed[]>([])
-  const [hasMore, setHasMore] = useState(true)
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
+  const [state, dispatch] = useReducer(bedsReducer, {
+    page: 1,
+    allBeds: [],
+    hasMore: true,
+    hasLoadedOnce: false,
+  })
 
   const [editTarget, setEditTarget] = useState<Bed | null>(null)
   const [filterModalOpen, setFilterModalOpen] = useState(false)
@@ -56,16 +103,17 @@ export function BedsScreen() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const queryOptions = useMemo(() => {
-    if (!selectedPGLocationId) return undefined;
-    
+    if (!selectedPGLocationId) return undefined
+
     return {
-      page,
+      page: state.page,
       limit,
       room_id: selectedRoomId ?? undefined,
-    };
-  }, [page, limit, selectedPGLocationId, selectedRoomId]);
+    }
+  }, [state.page, limit, selectedPGLocationId, selectedRoomId])
 
-  const [trigger, { data: bedsResponse, isLoading, isFetching, error }] = useLazyGetAllBedsQuery()
+  const [trigger, { data: bedsResponse, isLoading, isFetching, error }] =
+    useLazyGetAllBedsQuery()
   const [deleteBed, { isLoading: deleting }] = useDeleteBedMutation()
   const [triggerRooms, { data: roomsResponse }] = useLazyGetAllRoomsQuery()
 
@@ -82,10 +130,7 @@ export function BedsScreen() {
 
   // Reset state when location or room filter changes
   useEffect(() => {
-    setPage(1)
-    setAllBeds([])
-    setHasMore(true)
-    setHasLoadedOnce(false)
+    dispatch({ type: 'RESET' })
   }, [selectedPGLocationId, selectedRoomId])
 
   // Load initial data or when page changes
@@ -96,45 +141,53 @@ export function BedsScreen() {
   }, [trigger, queryOptions, selectedPGLocationId])
 
   const { isFetching: isInfiniteFetching, checkScroll } = useInfiniteScroll({
-    hasMore,
+    hasMore: state.hasMore,
     isLoading: isFetching,
   })
 
   // Accumulate beds data when response changes
   useEffect(() => {
     if (bedsResponse?.data) {
-      if (page === 1) {
-        setAllBeds(bedsResponse.data)
-      } else {
-        setAllBeds(prev => {
-          const existingIds = new Set(prev.map(bed => bed.s_no))
-          const newBeds = bedsResponse.data.filter(bed => !existingIds.has(bed.s_no))
-          return [...prev, ...newBeds]
-        })
-      }
-      setHasMore(bedsResponse.pagination?.hasMore ?? false)
-      setHasLoadedOnce(true)
-      
+      dispatch({
+        type: 'ADD_BEDS',
+        page: state.page,
+        data: bedsResponse.data,
+        hasMore: bedsResponse.pagination?.hasMore ?? false,
+      })
+
       // Check if we need to load more immediately after data loads
       setTimeout(() => {
         checkScroll()
       }, 100)
     }
-  }, [bedsResponse, page, checkScroll])
+  }, [bedsResponse, state.page, checkScroll])
 
   // Load more data when infinite scroll triggers
   useEffect(() => {
-    if (isInfiniteFetching && hasMore && !isFetching && selectedPGLocationId) {
-      const nextPage = page + 1
-      setPage(nextPage)
+    if (
+      isInfiniteFetching &&
+      state.hasMore &&
+      !isFetching &&
+      selectedPGLocationId
+    ) {
+      const nextPage = state.page + 1
+      dispatch({ type: 'SET_PAGE', page: nextPage })
       void trigger({
         ...queryOptions!,
         page: nextPage,
       })
     }
-  }, [isInfiniteFetching, hasMore, isFetching, page, trigger, queryOptions, selectedPGLocationId])
+  }, [
+    isInfiniteFetching,
+    state.hasMore,
+    isFetching,
+    state.page,
+    trigger,
+    queryOptions,
+    selectedPGLocationId,
+  ])
 
-  const beds = allBeds
+  const beds = state.allBeds
 
   const fetchErrorMessage =
     (error as ErrorLike | undefined)?.data?.message ||
@@ -165,9 +218,7 @@ export function BedsScreen() {
       showSuccessAlert('Bed deleted successfully')
       setDeleteDialogOpen(false)
       setDeleteTarget(null)
-      setPage(1)
-      setAllBeds([])
-      setHasMore(true)
+      dispatch({ type: 'RESET' })
       if (selectedPGLocationId && queryOptions) {
         void trigger(queryOptions)
       }
@@ -178,23 +229,22 @@ export function BedsScreen() {
 
   const countLabel = useMemo(() => {
     if (!selectedPGLocationId) return 'Select PG'
-    const total = bedsResponse?.pagination?.total ?? allBeds.length
-    const roomLabel = selectedRoomId 
-      ? ` • Room ${rooms.find(r => r.s_no === selectedRoomId)?.room_no}` 
+    const total = bedsResponse?.pagination?.total ?? state.allBeds.length
+    const roomLabel = selectedRoomId
+      ? ` • Room ${rooms.find((r) => r.s_no === selectedRoomId)?.room_no}`
       : ''
-    return `${allBeds.length} of ${total} Beds${roomLabel}`
-  }, [allBeds.length, selectedPGLocationId, bedsResponse, selectedRoomId, rooms])
+    return `${state.allBeds.length} of ${total} Beds${roomLabel}`
+  }, [
+    state.allBeds.length,
+    selectedPGLocationId,
+    bedsResponse,
+    selectedRoomId,
+    rooms,
+  ])
 
   return (
     <div className='container mx-auto max-w-7xl px-4 py-4'>
-      <div className='mb-4 flex items-center justify-between border-b pb-3'>
-        <div>
-          <h1 className='text-2xl font-bold'>Beds</h1>
-          <p className='text-xs text-muted-foreground'>
-            Manage beds in your PG
-          </p>
-        </div>
-      </div>
+      <PageHeader title='Beds' showBack={true} />
 
       {fetchErrorMessage ? (
         <div className='mb-3'>
@@ -219,8 +269,8 @@ export function BedsScreen() {
               <BedIcon className='size-3.5' />
               <span>{countLabel}</span>
               {selectedRoomId && (
-                <span className='ml-2 px-2 py-1 bg-primary text-primary-foreground rounded-full text-xs font-medium'>
-                  Room {rooms.find(r => r.s_no === selectedRoomId)?.room_no}
+                <span className='ml-2 rounded-full bg-primary px-2 py-1 text-xs font-medium text-primary-foreground'>
+                  Room {rooms.find((r) => r.s_no === selectedRoomId)?.room_no}
                 </span>
               )}
             </div>
@@ -242,7 +292,7 @@ export function BedsScreen() {
                   <RoomSkeleton key={`initial-skeleton-${index}`} />
                 ))}
               </div>
-            ) : beds.length === 0 && hasLoadedOnce ? (
+            ) : beds.length === 0 && state.hasLoadedOnce ? (
               <EmptyState
                 icon={BedIcon}
                 title='No Beds Found'
@@ -254,20 +304,20 @@ export function BedsScreen() {
                   {beds.map((b, index) => {
                     const isOccupied = Boolean(b.is_occupied)
                     const tenant = b.tenants?.[0]
-                    
+
                     return (
                       <motion.div
                         key={`bed-${b.s_no}-${b.bed_no}-${selectedRoomId}`}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        transition={{ 
-                          duration: 0.3, 
+                        transition={{
+                          duration: 0.3,
                           delay: index * 0.05,
-                          ease: "easeOut"
+                          ease: 'easeOut',
                         }}
                       >
-                        <Card 
+                        <Card
                           className='py-0 transition-colors hover:border-green-500/50'
                           onClick={() => handleBedClick(b)}
                         >
@@ -298,7 +348,9 @@ export function BedsScreen() {
 
                               <div className='grid grid-cols-2 gap-2 text-xs'>
                                 <div>
-                                  <div className='text-muted-foreground'>Price</div>
+                                  <div className='text-muted-foreground'>
+                                    Price
+                                  </div>
                                   <div className='font-medium'>
                                     {b.bed_price != null &&
                                     String(b.bed_price).length > 0
@@ -307,7 +359,9 @@ export function BedsScreen() {
                                   </div>
                                 </div>
                                 <div>
-                                  <div className='text-muted-foreground'>ID</div>
+                                  <div className='text-muted-foreground'>
+                                    ID
+                                  </div>
                                   <div className='font-medium'>{b.s_no}</div>
                                 </div>
                               </div>
@@ -317,7 +371,9 @@ export function BedsScreen() {
                                   <User className='size-3.5 text-muted-foreground' />
                                   <span className='truncate text-xs'>
                                     {tenant.name}
-                                    {tenant.phone_no ? ` • ${tenant.phone_no}` : ''}
+                                    {tenant.phone_no
+                                      ? ` • ${tenant.phone_no}`
+                                      : ''}
                                   </span>
                                 </div>
                               )}
@@ -333,7 +389,9 @@ export function BedsScreen() {
                                     size='sm'
                                     className='text-xs'
                                   >
-                                    <Link to={`/tenants/new?bedId=${b.s_no}&roomId=${b.room_id}`}>
+                                    <Link
+                                      to={`/tenants/new?bedId=${b.s_no}&roomId=${b.room_id}`}
+                                    >
                                       Add Tenant
                                     </Link>
                                   </Button>
@@ -358,7 +416,9 @@ export function BedsScreen() {
                                     Bed {b.bed_no}
                                   </h3>
                                   <Badge
-                                    variant={isOccupied ? 'secondary' : 'default'}
+                                    variant={
+                                      isOccupied ? 'secondary' : 'default'
+                                    }
                                     className='text-xs'
                                   >
                                     {isOccupied ? 'Occupied' : 'Available'}
@@ -378,7 +438,9 @@ export function BedsScreen() {
                                       ? `₹${String(b.bed_price)}`
                                       : '—'}
                                   </div>
-                                  <div className='text-muted-foreground'>Price</div>
+                                  <div className='text-muted-foreground'>
+                                    Price
+                                  </div>
                                 </div>
                                 {tenant?.name && (
                                   <div className='max-w-32 text-center'>
@@ -402,7 +464,7 @@ export function BedsScreen() {
                               )}
 
                               <div
-                                className='flex-shrink-0 flex items-center gap-2'
+                                className='flex flex-shrink-0 items-center gap-2'
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 {!isOccupied && (
@@ -412,7 +474,9 @@ export function BedsScreen() {
                                     size='sm'
                                     className='text-xs'
                                   >
-                                    <Link to={`/tenants/new?bedId=${b.s_no}&roomId=${b.room_id}`}>
+                                    <Link
+                                      to={`/tenants/new?bedId=${b.s_no}&roomId=${b.room_id}`}
+                                    >
                                       Add Tenant
                                     </Link>
                                   </Button>
@@ -433,17 +497,17 @@ export function BedsScreen() {
               </div>
             )}
 
-            {allBeds.length > 0 && (
+            {state.allBeds.length > 0 && (
               <>
                 {/* Skeleton loading at the bottom */}
                 <AnimatePresence>
-                  {(isFetching || (isInfiniteFetching && hasMore)) && (
+                  {(isFetching || (isInfiniteFetching && state.hasMore)) && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className='space-y-2 mb-8'
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      className='mb-8 space-y-2'
                     >
                       {Array.from({ length: 2 }).map((_, index) => (
                         <motion.div
@@ -458,40 +522,42 @@ export function BedsScreen() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-                
+
                 {/* End of data indicator */}
                 <AnimatePresence>
-                  {!hasMore && allBeds.length > 0 && !isFetching && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
-                      className='mt-8 mb-12 text-center py-4 border-t'
-                    >
-                      <div className='flex items-center justify-center gap-2 text-sm text-muted-foreground'>
-                        <motion.div 
-                          className='h-px bg-border flex-1 max-w-16'
-                          initial={{ scaleX: 0 }}
-                          animate={{ scaleX: 1 }}
-                          transition={{ duration: 0.5, delay: 0.2 }}
-                        ></motion.div>
-                        <motion.span
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.3, delay: 0.3 }}
-                        >
-                          Showing all {allBeds.length} beds
-                        </motion.span>
-                        <motion.div 
-                          className='h-px bg-border flex-1 max-w-16'
-                          initial={{ scaleX: 0 }}
-                          animate={{ scaleX: 1 }}
-                          transition={{ duration: 0.5, delay: 0.2 }}
-                        ></motion.div>
-                      </div>
-                    </motion.div>
-                  )}
+                  {!state.hasMore &&
+                    state.allBeds.length > 0 &&
+                    !isFetching && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.4, ease: 'easeOut' }}
+                        className='mt-8 mb-12 border-t py-4 text-center'
+                      >
+                        <div className='flex items-center justify-center gap-2 text-sm text-muted-foreground'>
+                          <motion.div
+                            className='h-px max-w-16 flex-1 bg-border'
+                            initial={{ scaleX: 0 }}
+                            animate={{ scaleX: 1 }}
+                            transition={{ duration: 0.5, delay: 0.2 }}
+                          ></motion.div>
+                          <motion.span
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.3, delay: 0.3 }}
+                          >
+                            Showing all {state.allBeds.length} beds
+                          </motion.span>
+                          <motion.div
+                            className='h-px max-w-16 flex-1 bg-border'
+                            initial={{ scaleX: 0 }}
+                            animate={{ scaleX: 1 }}
+                            transition={{ duration: 0.5, delay: 0.2 }}
+                          ></motion.div>
+                        </div>
+                      </motion.div>
+                    )}
                 </AnimatePresence>
               </>
             )}
@@ -508,9 +574,7 @@ export function BedsScreen() {
             pgId={selectedPGLocationId}
             onSaved={() => {
               setEditTarget(null)
-              setPage(1)
-              setAllBeds([])
-              setHasMore(true)
+              dispatch({ type: 'RESET' })
               if (selectedPGLocationId && queryOptions) {
                 void trigger(queryOptions)
               }

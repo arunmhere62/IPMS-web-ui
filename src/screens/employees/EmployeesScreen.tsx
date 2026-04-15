@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import {
   useDeleteEmployeeMutation,
   useGetEmployeesQuery,
@@ -31,6 +31,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { ActionButtons } from '@/components/form/action-buttons'
+import { PageHeader } from '@/components/form/page-header'
 import { EmployeeFormDialog } from './EmployeeFormDialog'
 
 type ErrorLike = {
@@ -38,15 +39,61 @@ type ErrorLike = {
   message?: string
 }
 
+type EmployeesState = {
+  page: number
+  allEmployees: Employee[]
+  hasMore: boolean
+}
+
+type EmployeesAction =
+  | { type: 'RESET' }
+  | { type: 'SET_PAGE'; page: number }
+  | { type: 'ADD_EMPLOYEES'; page: number; data: Employee[]; hasMore: boolean }
+
+function employeesReducer(
+  state: EmployeesState,
+  action: EmployeesAction
+): EmployeesState {
+  switch (action.type) {
+    case 'RESET': {
+      return {
+        page: 1,
+        allEmployees: [],
+        hasMore: true,
+      }
+    }
+    case 'SET_PAGE': {
+      return {
+        ...state,
+        page: action.page,
+      }
+    }
+    case 'ADD_EMPLOYEES': {
+      return {
+        ...state,
+        allEmployees:
+          action.page === 1
+            ? action.data
+            : [...state.allEmployees, ...action.data],
+        hasMore: action.hasMore,
+      }
+    }
+    default:
+      return state
+  }
+}
+
 export function EmployeesScreen() {
   const selectedPGLocationId =
     useAppSelector((s) => s.pgLocations.selectedPGLocationId) ?? null
 
   const [query, setQuery] = useState('')
-  const [page, setPage] = useState(1)
   const limit = 20
-  const [allEmployees, setAllEmployees] = useState<Employee[]>([])
-  const [hasMore, setHasMore] = useState(true)
+  const [state, dispatch] = useReducer(employeesReducer, {
+    page: 1,
+    allEmployees: [],
+    hasMore: true,
+  })
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Employee | null>(null)
@@ -62,7 +109,7 @@ export function EmployeesScreen() {
     refetch,
   } = useGetEmployeesQuery(
     {
-      page,
+      page: state.page,
       limit,
       pg_id: selectedPGLocationId ?? undefined,
       search: query.trim() ? query.trim() : undefined,
@@ -78,20 +125,18 @@ export function EmployeesScreen() {
   useEffect(() => {
     if (employeesResponse?.data) {
       const newEmployees = employeesResponse.data as Employee[]
-      if (page === 1) {
-        setAllEmployees(newEmployees)
-      } else {
-        setAllEmployees((prev) => [...prev, ...newEmployees])
-      }
-      setHasMore(Boolean(employeesResponse.pagination?.hasMore))
+      dispatch({
+        type: 'ADD_EMPLOYEES',
+        page: state.page,
+        data: newEmployees,
+        hasMore: Boolean(employeesResponse.pagination?.hasMore),
+      })
     }
-  }, [employeesResponse, page])
+  }, [employeesResponse, state.page])
 
   // Reset when query or location changes
   useEffect(() => {
-    setAllEmployees([])
-    setPage(1)
-    setHasMore(true)
+    dispatch({ type: 'RESET' })
   }, [query, selectedPGLocationId])
 
   // Intersection Observer for infinite scroll
@@ -101,8 +146,13 @@ export function EmployeesScreen() {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isFetching && !isLoading) {
-          setPage((prev) => prev + 1)
+        if (
+          entries[0].isIntersecting &&
+          state.hasMore &&
+          !isFetching &&
+          !isLoading
+        ) {
+          dispatch({ type: 'SET_PAGE', page: state.page + 1 })
         }
       },
       { threshold: 0.1 }
@@ -110,9 +160,9 @@ export function EmployeesScreen() {
 
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [hasMore, isFetching, isLoading])
+  }, [state.hasMore, isFetching, isLoading, state.page])
 
-  const employees = allEmployees
+  const employees = state.allEmployees
 
   const fetchErrorMessage =
     (error as ErrorLike | undefined)?.data?.message ||
@@ -140,8 +190,7 @@ export function EmployeesScreen() {
       showSuccessAlert('Employee deleted successfully')
       setDeleteDialogOpen(false)
       setDeleteTarget(null)
-      setAllEmployees([])
-      setPage(1)
+      dispatch({ type: 'RESET' })
       void refetch()
     } catch (e: unknown) {
       showErrorAlert(e, 'Delete Error')
@@ -155,26 +204,24 @@ export function EmployeesScreen() {
 
   return (
     <div className='container mx-auto max-w-7xl px-4 py-4'>
-      <div className='mb-4 flex items-center justify-between border-b pb-3'>
-        <div>
-          <h1 className='text-2xl font-bold'>Employees</h1>
-          <p className='text-xs text-muted-foreground'>
-            Manage employee records
-          </p>
-        </div>
-        <Button
-          size='sm'
-          onClick={openCreate}
-          disabled={!selectedPGLocationId}
-          className='bg-black text-white hover:bg-black/90'
-        >
-          <Plus className='mr-1 size-3.5' />
-          Add Employee
-        </Button>
-      </div>
+      <PageHeader
+        title='Employees'
+        showBack={true}
+        right={
+          <Button
+            size='sm'
+            onClick={openCreate}
+            disabled={!selectedPGLocationId}
+            className='bg-black text-white hover:bg-black/90'
+          >
+            <Plus className='mr-1 size-3.5' />
+            Add Employee
+          </Button>
+        }
+      />
 
       {fetchErrorMessage ? (
-        <div className='mb-3'>
+        <div className='mt-3 mb-3'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load employees</AlertTitle>
@@ -183,14 +230,14 @@ export function EmployeesScreen() {
         </div>
       ) : null}
 
-      <div className='mb-3 flex items-center justify-between gap-3'>
+      <div className='mt-3 mb-3 flex items-center justify-between gap-3'>
         <div className='relative max-w-sm flex-1'>
           <Search className='pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground' />
           <Input
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
-              setPage(1)
+              dispatch({ type: 'RESET' })
             }}
             placeholder='Search employees...'
             className='h-8 pl-8 text-sm'
@@ -294,7 +341,7 @@ export function EmployeesScreen() {
               <div ref={sentinelRef} className='h-4' />
 
               {/* Loading indicator at the bottom */}
-              {isFetching && hasMore && (
+              {isFetching && state.hasMore && (
                 <div className='mt-3 flex items-center justify-center py-4'>
                   <div className='size-5 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
                   <span className='ml-2 text-xs text-muted-foreground'>
@@ -304,7 +351,7 @@ export function EmployeesScreen() {
               )}
 
               {/* End of list indicator */}
-              {!hasMore && employees.length > 0 && (
+              {!state.hasMore && employees.length > 0 && (
                 <div className='mt-3 py-4 text-center text-xs text-muted-foreground'>
                   No more employees to load
                 </div>
@@ -324,8 +371,7 @@ export function EmployeesScreen() {
         onSaved={() => {
           setDialogOpen(false)
           setEditTarget(null)
-          setAllEmployees([])
-          setPage(1)
+          dispatch({ type: 'RESET' })
           void refetch()
         }}
       />

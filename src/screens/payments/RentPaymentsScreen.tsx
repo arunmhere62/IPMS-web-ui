@@ -1,26 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useReducer, useState } from 'react'
 import {
-  useGetTenantPaymentsQuery,
+  useLazyGetTenantPaymentsQuery,
   useUpdatePaymentStatusMutation,
-  type TenantPaymentsListParams,
 } from '@/services/paymentsApi'
 import { useAppSelector } from '@/store/hooks'
 import type { RootState } from '@/store/store'
 import type { Payment } from '@/types'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ArrowLeft,
   Calendar,
   CircleAlert,
   CreditCard,
-  Filter,
   Home,
   Bed,
   MapPin,
-  RefreshCw,
   DollarSign,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -35,23 +33,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { PageHeader } from '@/components/form/page-header'
-
-type StatusFilter = 'ALL' | 'PAID' | 'PARTIAL' | 'PENDING' | 'FAILED'
-
-type TenantPaymentsQueryParams = TenantPaymentsListParams & {
-  month?: string
-  year?: number
-  start_date?: string
-  end_date?: string
-}
 
 type PaymentWithCycle = Payment & {
   tenant_rent_cycles?: {
@@ -67,22 +49,59 @@ type ErrorLike = {
 
 type BadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive'
 
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
+type PaymentsState = {
+  page: number
+  allPayments: PaymentWithCycle[]
+  hasMore: boolean
+  hasLoadedOnce: boolean
+}
 
-type QuickFilter = 'NONE' | 'LAST_WEEK' | 'LAST_MONTH'
+type PaymentsAction =
+  | { type: 'RESET' }
+  | { type: 'SET_PAGE'; page: number }
+  | {
+      type: 'ADD_PAYMENTS'
+      page: number
+      data: PaymentWithCycle[]
+      hasMore: boolean
+    }
+
+function paymentsReducer(
+  state: PaymentsState,
+  action: PaymentsAction
+): PaymentsState {
+  switch (action.type) {
+    case 'RESET': {
+      return {
+        page: 1,
+        allPayments: [],
+        hasMore: true,
+        hasLoadedOnce: false,
+      }
+    }
+    case 'SET_PAGE': {
+      return {
+        ...state,
+        page: action.page,
+      }
+    }
+    case 'ADD_PAYMENTS': {
+      const existingIds = new Set(state.allPayments.map((p) => p.s_no))
+      const newPayments = action.data.filter((p) => !existingIds.has(p.s_no))
+      return {
+        ...state,
+        allPayments:
+          action.page === 1
+            ? action.data
+            : [...state.allPayments, ...newPayments],
+        hasMore: action.hasMore,
+        hasLoadedOnce: true,
+      }
+    }
+    default:
+      return state
+  }
+}
 
 const formatDate = (value?: string) => {
   const s = String(value ?? '')
@@ -111,113 +130,105 @@ const statusBadgeVariant = (status?: string) => {
   return 'outline'
 }
 
-const asArray = <T,>(value: unknown): T[] =>
-  Array.isArray(value) ? (value as T[]) : []
-
-const readListData = (value: unknown): unknown => {
-  if (!value || typeof value !== 'object') return undefined
-  return (value as Record<string, unknown>)['data']
-}
-
-const readPagination = (value: unknown): unknown => {
-  if (!value || typeof value !== 'object') return undefined
-  return (value as Record<string, unknown>)['pagination']
-}
-
 export function RentPaymentsScreen() {
   const navigate = useNavigate()
   const selectedPGLocationId = useAppSelector(
     (s: RootState) => s.pgLocations?.selectedPGLocationId
   )
 
-  const [page, setPage] = useState(1)
   const limit = 50
-
-  const [filtersOpen, setFiltersOpen] = useState(false)
-
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
-  const [selectedYear, setSelectedYear] = useState<number | null>(null)
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('NONE')
-
-  const [draftStatus, setDraftStatus] = useState<StatusFilter>('ALL')
-  const [draftMonth, setDraftMonth] = useState<string | null>(null)
-  const [draftYear, setDraftYear] = useState<number | null>(null)
-  const [draftQuick, setDraftQuick] = useState<QuickFilter>('NONE')
-
-  const years = useMemo(() => {
-    const y = new Date().getFullYear()
-    return [y, y - 1, y - 2]
-  }, [])
-
-  const toISODate = (d: Date) => d.toISOString().split('T')[0]
-
-  const computedDates = useMemo(() => {
-    if (quickFilter === 'NONE')
-      return { start_date: undefined, end_date: undefined }
-    const end = new Date()
-    const start = new Date()
-    if (quickFilter === 'LAST_WEEK') start.setDate(end.getDate() - 7)
-    if (quickFilter === 'LAST_MONTH') start.setMonth(end.getMonth() - 1)
-    return { start_date: toISODate(start), end_date: toISODate(end) }
-  }, [quickFilter])
+  const [state, dispatch] = useReducer(paymentsReducer, {
+    page: 1,
+    allPayments: [],
+    hasMore: true,
+    hasLoadedOnce: false,
+  })
 
   const queryArgs = useMemo(() => {
-    const params: TenantPaymentsQueryParams = {
-      page,
+    if (!selectedPGLocationId) return undefined
+
+    return {
+      page: state.page,
       limit,
+      pg_id: selectedPGLocationId,
     }
+  }, [state.page, limit, selectedPGLocationId])
 
-    if (selectedPGLocationId) params.pg_id = selectedPGLocationId
-    if (statusFilter !== 'ALL') params.status = statusFilter
-
-    if (selectedMonth && selectedYear) {
-      params.month = selectedMonth
-      params.year = selectedYear
-    } else if (computedDates.start_date && computedDates.end_date) {
-      params.start_date = computedDates.start_date
-      params.end_date = computedDates.end_date
-    }
-
-    return params
-  }, [
-    computedDates.end_date,
-    computedDates.start_date,
-    limit,
-    page,
-    selectedMonth,
-    selectedPGLocationId,
-    selectedYear,
-    statusFilter,
-  ])
-
-  const {
-    data: paymentsResponse,
-    isLoading,
-    error,
-    refetch,
-  } = useGetTenantPaymentsQuery(queryArgs, { skip: !selectedPGLocationId })
+  const [trigger, { data: paymentsResponse, isLoading, isFetching, error }] =
+    useLazyGetTenantPaymentsQuery()
 
   const [updateStatus, { isLoading: updatingStatus }] =
     useUpdatePaymentStatusMutation()
 
-  const payments = useMemo(() => {
-    return asArray<PaymentWithCycle>(readListData(paymentsResponse))
-  }, [paymentsResponse])
+  // Reset state when location changes
+  useEffect(() => {
+    dispatch({ type: 'RESET' })
+  }, [selectedPGLocationId])
 
-  const pagination = readPagination(paymentsResponse) as
-    | {
-        total?: number
-        page?: number
-        limit?: number
-        totalPages?: number
-        hasMore?: boolean
-      }
-    | undefined
+  // Load initial data or when page changes
+  useEffect(() => {
+    if (selectedPGLocationId && queryArgs) {
+      void trigger(queryArgs)
+    }
+  }, [trigger, selectedPGLocationId, queryArgs])
 
-  const totalPages = Number(
-    pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1)
-  )
+  const { isFetching: isInfiniteFetching, checkScroll } = useInfiniteScroll({
+    hasMore: state.hasMore,
+    isLoading: isFetching,
+  })
+
+  // Accumulate payments data when response changes
+  useEffect(() => {
+    if (paymentsResponse?.data) {
+      dispatch({
+        type: 'ADD_PAYMENTS',
+        page: state.page,
+        data: paymentsResponse.data,
+        hasMore:
+          (paymentsResponse.pagination as { hasMore?: boolean })?.hasMore ??
+          false,
+      })
+
+      // Check if we need to load more immediately after data loads
+      setTimeout(() => {
+        checkScroll()
+      }, 100)
+    }
+  }, [paymentsResponse, state.page, checkScroll])
+
+  // Load more data when infinite scroll triggers
+  useEffect(() => {
+    if (
+      isInfiniteFetching &&
+      state.hasMore &&
+      !isFetching &&
+      selectedPGLocationId
+    ) {
+      const nextPage = state.page + 1
+      dispatch({ type: 'SET_PAGE', page: nextPage })
+      void trigger({
+        ...queryArgs!,
+        page: nextPage,
+      })
+    }
+  }, [
+    isInfiniteFetching,
+    state.hasMore,
+    isFetching,
+    state.page,
+    trigger,
+    selectedPGLocationId,
+    queryArgs,
+  ])
+
+  const payments = state.allPayments
+
+  const refetch = () => {
+    dispatch({ type: 'RESET' })
+    if (selectedPGLocationId && queryArgs) {
+      void trigger(queryArgs)
+    }
+  }
 
   const fetchErrorMessage =
     (error as ErrorLike | undefined)?.data?.message ||
@@ -250,92 +261,9 @@ export function RentPaymentsScreen() {
     }
   }
 
-  const canPrev = page > 1
-  const canNext =
-    Boolean(pagination?.hasMore) ||
-    (Number.isFinite(totalPages) && page < totalPages)
-
-  const filterCount = useMemo(() => {
-    let c = 0
-    if (statusFilter !== 'ALL') c++
-    if (quickFilter !== 'NONE') c++
-    if (selectedMonth || selectedYear) c++
-    return c
-  }, [quickFilter, selectedMonth, selectedYear, statusFilter])
-
-  const openFilters = () => {
-    setDraftStatus(statusFilter)
-    setDraftMonth(selectedMonth)
-    setDraftYear(selectedYear)
-    setDraftQuick(quickFilter)
-    setFiltersOpen(true)
-  }
-
-  const applyFilters = () => {
-    setStatusFilter(draftStatus)
-    setSelectedMonth(draftMonth)
-    setSelectedYear(draftYear)
-    setQuickFilter(draftQuick)
-    setPage(1)
-    setFiltersOpen(false)
-  }
-
-  const clearFilters = () => {
-    setDraftStatus('ALL')
-    setDraftMonth(null)
-    setDraftYear(null)
-    setDraftQuick('NONE')
-
-    setStatusFilter('ALL')
-    setSelectedMonth(null)
-    setSelectedYear(null)
-    setQuickFilter('NONE')
-    setPage(1)
-    setFiltersOpen(false)
-  }
-
-  const goBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1)
-      return
-    }
-    navigate('/payments')
-  }
-
   return (
     <div className='container mx-auto max-w-6xl px-3 py-6'>
-      <div className='mb-3'>
-        <Button type='button' variant='outline' size='sm' onClick={goBack}>
-          <ArrowLeft className='me-2 size-4' />
-          Back
-        </Button>
-      </div>
-      <PageHeader
-        title='Rent Payments'
-        subtitle='Track monthly rent payments and statuses'
-        right={
-          <>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => void refetch()}
-              disabled={isLoading}
-            >
-              <RefreshCw className='me-2 size-4' />
-              Refresh
-            </Button>
-            <Button variant='outline' size='sm' onClick={openFilters}>
-              <Filter className='me-2 size-4' />
-              Filters
-              {filterCount > 0 ? (
-                <Badge variant='secondary' className='ms-2'>
-                  {filterCount}
-                </Badge>
-              ) : null}
-            </Button>
-          </>
-        }
-      />
+      <PageHeader title='Rent Payments' showBack={true} />
 
       {!selectedPGLocationId ? (
         <div className='mt-4 rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>
@@ -353,12 +281,36 @@ export function RentPaymentsScreen() {
         </div>
       ) : null}
 
-      <div className='mt-4 grid gap-3'>
+      <div className='mt-3 pb-16'>
         {isLoading ? (
-          <div className='rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>
-            Loading...
+          <div className='space-y-3'>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={`skeleton-${index}`}
+                className='rounded-lg border bg-card p-5'
+              >
+                <div className='flex items-start gap-4'>
+                  <div className='flex-1 space-y-3'>
+                    <div className='h-6 w-32 animate-pulse rounded bg-gray-200'></div>
+                    <div className='h-4 w-24 animate-pulse rounded bg-gray-200'></div>
+                    <div className='grid grid-cols-2 gap-3'>
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className='h-10 animate-pulse rounded bg-gray-200'
+                        ></div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className='flex flex-col gap-2'>
+                    <div className='h-6 w-12 animate-pulse rounded bg-gray-200'></div>
+                    <div className='h-6 w-16 animate-pulse rounded bg-gray-200'></div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        ) : payments.length === 0 ? (
+        ) : payments.length === 0 && state.hasLoadedOnce ? (
           <div className='rounded-md border bg-card px-3 py-8 text-center'>
             <div className='text-base font-semibold'>No Payments</div>
             <div className='mt-1 text-xs text-muted-foreground'>
@@ -366,297 +318,252 @@ export function RentPaymentsScreen() {
             </div>
           </div>
         ) : (
-          payments.map((p) => {
-            const tenantName = p.tenants?.name || `Tenant #${p.tenant_id}`
-            const canViewTenant =
-              Boolean(p.tenants) && !p.tenant_unavailable_reason
-            const statusColor =
-              p.status === 'PAID'
-                ? 'bg-slate-700'
-                : p.status === 'PARTIAL'
-                  ? 'bg-orange-500'
-                  : p.status === 'PENDING'
-                    ? 'bg-amber-500'
-                    : 'bg-red-500'
+          <div className='space-y-3'>
+            <AnimatePresence>
+              {payments.map((p, index) => {
+                const tenantName = p.tenants?.name || `Tenant #${p.tenant_id}`
+                const canViewTenant =
+                  Boolean(p.tenants) && !p.tenant_unavailable_reason
+                const statusColor =
+                  p.status === 'PAID'
+                    ? 'bg-slate-700'
+                    : p.status === 'PARTIAL'
+                      ? 'bg-orange-500'
+                      : p.status === 'PENDING'
+                        ? 'bg-amber-500'
+                        : 'bg-red-500'
 
-            return (
-              <Card
-                key={p.s_no}
-                className='group cursor-pointer border-2 border-transparent bg-gradient-to-br from-white via-white to-slate-50 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200'
-                onClick={() =>
-                  canViewTenant && navigate(`/tenants/${p.tenant_id}`)
-                }
-              >
-                <CardContent className='p-5'>
-                  <div className='flex items-start gap-4'>
-                    <div className='min-w-0 flex-1'>
-                      <div className='mb-2 flex items-center gap-2'>
-                        <div className='h-8 w-1 rounded-full bg-gradient-to-b from-slate-400 to-slate-300'></div>
-                        <div>
-                          <h3 className='text-lg font-bold text-foreground'>
-                            {tenantName}
-                          </h3>
-                          {p.tenants?.phone_no && (
-                            <p className='text-xs text-muted-foreground'>
-                              {p.tenants.phone_no}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                return (
+                  <motion.div
+                    key={`payment-${p.s_no}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{
+                      duration: 0.3,
+                      delay: index * 0.05,
+                      ease: 'easeOut',
+                    }}
+                  >
+                    <Card
+                      className='group cursor-pointer border-2 border-transparent bg-gradient-to-br from-white via-white to-slate-50 transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200'
+                      onClick={() =>
+                        canViewTenant && navigate(`/tenants/${p.tenant_id}`)
+                      }
+                    >
+                      <CardContent className='p-5'>
+                        <div className='flex items-start gap-4'>
+                          <div className='min-w-0 flex-1'>
+                            <div className='mb-2 flex items-center gap-2'>
+                              <div className='h-8 w-1 rounded-full bg-gradient-to-b from-slate-400 to-slate-300'></div>
+                              <div>
+                                <h3 className='text-lg font-bold text-foreground'>
+                                  {tenantName}
+                                </h3>
+                                {p.tenants?.phone_no && (
+                                  <p className='text-xs text-muted-foreground'>
+                                    {p.tenants.phone_no}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
 
-                      <div className='mt-3 grid grid-cols-2 gap-3'>
-                        <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
-                          <Calendar className='h-4 w-4 text-slate-500' />
-                          <span className='text-xs font-medium text-slate-700'>
-                            {p.payment_date ? formatDate(p.payment_date) : '—'}
-                          </span>
-                        </div>
-                        <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
-                          <CreditCard className='h-4 w-4 text-slate-500' />
-                          <span className='text-xs font-medium text-slate-700'>
-                            {p.payment_method}
-                          </span>
-                        </div>
-                        <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
-                          <Home className='h-4 w-4 text-slate-500' />
-                          <span className='text-xs font-medium text-slate-700'>
-                            Room {p.rooms?.room_no || 'N/A'}
-                          </span>
-                        </div>
-                        <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
-                          <Bed className='h-4 w-4 text-slate-500' />
-                          <span className='text-xs font-medium text-slate-700'>
-                            Bed {p.beds?.bed_no || 'N/A'}
-                          </span>
-                        </div>
-                      </div>
+                            <div className='mt-3 grid grid-cols-2 gap-3'>
+                              <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
+                                <Calendar className='h-4 w-4 text-slate-500' />
+                                <span className='text-xs font-medium text-slate-700'>
+                                  {p.payment_date
+                                    ? formatDate(p.payment_date)
+                                    : '—'}
+                                </span>
+                              </div>
+                              <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
+                                <CreditCard className='h-4 w-4 text-slate-500' />
+                                <span className='text-xs font-medium text-slate-700'>
+                                  {p.payment_method}
+                                </span>
+                              </div>
+                              <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
+                                <Home className='h-4 w-4 text-slate-500' />
+                                <span className='text-xs font-medium text-slate-700'>
+                                  Room {p.rooms?.room_no || 'N/A'}
+                                </span>
+                              </div>
+                              <div className='flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2'>
+                                <Bed className='h-4 w-4 text-slate-500' />
+                                <span className='text-xs font-medium text-slate-700'>
+                                  Bed {p.beds?.bed_no || 'N/A'}
+                                </span>
+                              </div>
+                            </div>
 
-                      <div className='mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 p-2'>
-                        <MapPin className='h-4 w-4 text-slate-500' />
-                        <span className='text-xs font-medium text-slate-700'>
-                          {p.pg_locations?.location_name || 'N/A'}
-                        </span>
-                      </div>
+                            <div className='mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 p-2'>
+                              <MapPin className='h-4 w-4 text-slate-500' />
+                              <span className='text-xs font-medium text-slate-700'>
+                                {p.pg_locations?.location_name || 'N/A'}
+                              </span>
+                            </div>
 
-                      {p.actual_rent_amount &&
-                        p.actual_rent_amount !== p.amount_paid && (
-                          <div className='mt-2 flex items-center gap-2 text-xs text-muted-foreground'>
-                            <DollarSign className='h-3 w-3' />
-                            <span>
-                              Actual Rent: {formatMoney(p.actual_rent_amount)}
+                            {p.actual_rent_amount &&
+                              p.actual_rent_amount !== p.amount_paid && (
+                                <div className='mt-2 flex items-center gap-2 text-xs text-muted-foreground'>
+                                  <DollarSign className='h-3 w-3' />
+                                  <span>
+                                    Actual Rent:{' '}
+                                    {formatMoney(p.actual_rent_amount)}
+                                  </span>
+                                </div>
+                              )}
+
+                            {p.tenant_rent_cycles && (
+                              <div className='mt-2 text-xs text-muted-foreground'>
+                                <span className='font-medium'>Cycle:</span>{' '}
+                                {formatDate(p.tenant_rent_cycles.cycle_start)} -{' '}
+                                {formatDate(p.tenant_rent_cycles.cycle_end)}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className='flex flex-col items-end gap-2'>
+                            <Badge
+                              variant='outline'
+                              className='border-slate-200 bg-slate-100 text-xs font-semibold text-slate-700'
+                            >
+                              #{p.s_no}
+                            </Badge>
+                            <Badge
+                              variant={
+                                statusBadgeVariant(p.status) as BadgeVariant
+                              }
+                              className={`text-xs font-semibold ${statusColor} border-0 text-white`}
+                            >
+                              {p.status}
+                            </Badge>
+                            {p.status === 'PENDING' && (
+                              <Button
+                                size='sm'
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  askMarkAsPaid(p)
+                                }}
+                                disabled={updatingStatus}
+                                className='bg-slate-700 hover:bg-slate-800'
+                              >
+                                Mark Paid
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className='mt-4 border-t border-slate-200 pt-4'>
+                          <div className='flex items-center justify-between'>
+                            <span className='text-sm text-muted-foreground'>
+                              Amount Paid
                             </span>
+                            <div className='flex items-center gap-2'>
+                              <span className='text-2xl font-bold text-slate-700'>
+                                {formatMoney(p.amount_paid)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {p.remarks && (
+                          <div className='mt-4 rounded-lg border-l-4 border-slate-400 bg-slate-50 p-3'>
+                            <div className='mb-1 text-xs font-semibold text-muted-foreground'>
+                              Remarks
+                            </div>
+                            <div className='text-sm'>{p.remarks}</div>
                           </div>
                         )}
-
-                      {p.tenant_rent_cycles && (
-                        <div className='mt-2 text-xs text-muted-foreground'>
-                          <span className='font-medium'>Cycle:</span>{' '}
-                          {formatDate(p.tenant_rent_cycles.cycle_start)} -{' '}
-                          {formatDate(p.tenant_rent_cycles.cycle_end)}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className='flex flex-col items-end gap-2'>
-                      <Badge
-                        variant='outline'
-                        className='border-slate-200 bg-slate-100 text-xs font-semibold text-slate-700'
-                      >
-                        #{p.s_no}
-                      </Badge>
-                      <Badge
-                        variant={statusBadgeVariant(p.status) as BadgeVariant}
-                        className={`text-xs font-semibold ${statusColor} border-0 text-white`}
-                      >
-                        {p.status}
-                      </Badge>
-                      {p.status === 'PENDING' && (
-                        <Button
-                          size='sm'
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            askMarkAsPaid(p)
-                          }}
-                          disabled={updatingStatus}
-                          className='bg-slate-700 hover:bg-slate-800'
-                        >
-                          Mark Paid
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className='mt-4 border-t border-slate-200 pt-4'>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-sm text-muted-foreground'>
-                        Amount Paid
-                      </span>
-                      <div className='flex items-center gap-2'>
-                        <span className='text-2xl font-bold text-slate-700'>
-                          {formatMoney(p.amount_paid)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {p.remarks && (
-                    <div className='mt-4 rounded-lg border-l-4 border-slate-400 bg-slate-50 p-3'>
-                      <div className='mb-1 text-xs font-semibold text-muted-foreground'>
-                        Remarks
-                      </div>
-                      <div className='text-sm'>{p.remarks}</div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })
-        )}
-      </div>
-
-      <div className='mt-6 flex items-center justify-between gap-2'>
-        <Button
-          type='button'
-          variant='outline'
-          size='sm'
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={!canPrev}
-        >
-          Prev
-        </Button>
-        <div className='text-xs text-muted-foreground'>Page {page}</div>
-        <Button
-          type='button'
-          variant='outline'
-          size='sm'
-          onClick={() => setPage((p) => p + 1)}
-          disabled={!canNext}
-        >
-          Next
-        </Button>
-      </div>
-
-      <AlertDialog open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Filters</AlertDialogTitle>
-            <AlertDialogDescription>
-              Filter payments by status and date.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <div className='grid gap-3'>
-            <div className='grid gap-2'>
-              <div className='text-sm font-medium'>Status</div>
-              <Select
-                value={draftStatus}
-                onValueChange={(v) => setDraftStatus(v as StatusFilter)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder='Select status' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='ALL'>All</SelectItem>
-                  <SelectItem value='PAID'>Paid</SelectItem>
-                  <SelectItem value='PARTIAL'>Partial</SelectItem>
-                  <SelectItem value='PENDING'>Pending</SelectItem>
-                  <SelectItem value='FAILED'>Failed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className='grid gap-2'>
-              <div className='text-sm font-medium'>Quick Filter</div>
-              <Select
-                value={draftQuick}
-                onValueChange={(v) => {
-                  const next = v as QuickFilter
-                  setDraftQuick(next)
-                  if (next !== 'NONE') {
-                    setDraftMonth(null)
-                    setDraftYear(null)
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder='Select quick filter' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='NONE'>None</SelectItem>
-                  <SelectItem value='LAST_WEEK'>Last Week</SelectItem>
-                  <SelectItem value='LAST_MONTH'>Last Month</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className='grid gap-3 sm:grid-cols-2'>
-              <div className='grid gap-2'>
-                <div className='text-sm font-medium'>Month</div>
-                <Select
-                  value={draftMonth ?? ''}
-                  onValueChange={(v) => {
-                    const next = v || null
-                    setDraftMonth(next)
-                    if (next) setDraftQuick('NONE')
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select month' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value=''>All</SelectItem>
-                    {MONTHS.map((m) => (
-                      <SelectItem key={m} value={m}>
-                        {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className='grid gap-2'>
-                <div className='text-sm font-medium'>Year</div>
-                <Select
-                  value={draftYear ? String(draftYear) : ''}
-                  onValueChange={(v) => {
-                    const next = v ? Number(v) : null
-                    setDraftYear(
-                      Number.isFinite(next as number) ? (next as number) : null
-                    )
-                    if (v) setDraftQuick('NONE')
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select year' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value=''>All</SelectItem>
-                    {years.map((y) => (
-                      <SelectItem key={y} value={String(y)}>
-                        {y}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className='text-xs text-muted-foreground'>
-              Month + Year will override quick filter.
-            </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )
+              })}
+            </AnimatePresence>
           </div>
+        )}
 
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setFiltersOpen(false)}>
-              Cancel
-            </AlertDialogCancel>
-            <Button type='button' variant='outline' onClick={clearFilters}>
-              Clear
-            </Button>
-            <AlertDialogAction onClick={applyFilters}>Apply</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* Skeleton loading at the bottom */}
+        <AnimatePresence>
+          {(isFetching || (isInfiniteFetching && state.hasMore)) &&
+            state.allPayments.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className='mb-8 space-y-3'
+              >
+                {Array.from({ length: 2 }).map((_, index) => (
+                  <motion.div
+                    key={`skeleton-${index}`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1, duration: 0.3 }}
+                  >
+                    <div className='rounded-lg border bg-card p-5'>
+                      <div className='flex items-start gap-4'>
+                        <div className='flex-1 space-y-3'>
+                          <div className='h-6 w-32 animate-pulse rounded bg-gray-200'></div>
+                          <div className='h-4 w-24 animate-pulse rounded bg-gray-200'></div>
+                          <div className='grid grid-cols-2 gap-3'>
+                            {[1, 2, 3, 4].map((i) => (
+                              <div
+                                key={i}
+                                className='h-10 animate-pulse rounded bg-gray-200'
+                              ></div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className='flex flex-col gap-2'>
+                          <div className='h-6 w-12 animate-pulse rounded bg-gray-200'></div>
+                          <div className='h-6 w-16 animate-pulse rounded bg-gray-200'></div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+        </AnimatePresence>
+
+        {/* End of data indicator */}
+        <AnimatePresence>
+          {!state.hasMore && state.allPayments.length > 0 && !isFetching && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+              className='mt-8 mb-12 border-t py-4 text-center'
+            >
+              <div className='flex items-center justify-center gap-2 text-sm text-muted-foreground'>
+                <motion.div
+                  className='h-px max-w-16 flex-1 bg-border'
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                ></motion.div>
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.3 }}
+                >
+                  Showing all {state.allPayments.length} payments
+                </motion.span>
+                <motion.div
+                  className='h-px max-w-16 flex-1 bg-border'
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                ></motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       <AlertDialog
         open={markPaidDialogOpen}

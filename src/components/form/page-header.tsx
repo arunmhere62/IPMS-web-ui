@@ -29,7 +29,7 @@ export function PageHeader({
             variant='outline'
             size='icon'
             onClick={() => window.history.back()}
-            className='h-8 w-8 shrink-0'
+            className='mr-2 h-10 w-10 shrink-0'
           >
             <ChevronLeft className='size-4' />
           </Button>

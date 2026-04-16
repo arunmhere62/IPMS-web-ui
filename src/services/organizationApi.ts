@@ -70,38 +70,93 @@ export interface GetOrganizationStatsResponse {
   data: OrganizationStats
 }
 
+export interface GetOrganizationByIdResponse {
+  success: boolean
+  data: Organization
+}
+
+export interface UpdateOrganizationResponse {
+  success: boolean
+  data: Organization
+}
+
 type ApiEnvelope<T> = {
   data?: T
 }
 
 export const organizationApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
-    getAllOrganizations: build.query<GetOrganizationsResponse, GetOrganizationsParams | void>({
+    getAllOrganizations: build.query<
+      GetOrganizationsResponse,
+      GetOrganizationsParams | void
+    >({
       query: (params) => ({
         url: '/organizations',
         method: 'GET',
         params: params || undefined,
       }),
-      transformResponse: (response: ApiEnvelope<GetOrganizationsResponse> | any) => (response as any)?.data ?? response,
+      transformResponse: (
+        response:
+          | ApiEnvelope<GetOrganizationsResponse>
+          | GetOrganizationsResponse
+      ): GetOrganizationsResponse =>
+        (response as ApiEnvelope<GetOrganizationsResponse>)?.data ??
+        (response as GetOrganizationsResponse),
       providesTags: (result) => {
-        const orgs = (result as any)?.data || []
+        const orgs = result?.data || []
         return [
           { type: 'Organizations' as const, id: 'LIST' },
-          ...orgs.map((o: Organization) => ({ type: 'Organization' as const, id: o.s_no })),
+          ...orgs.map((o: Organization) => ({
+            type: 'Organization' as const,
+            id: o.s_no,
+          })),
         ]
       },
     }),
 
     getOrganizationStats: build.query<GetOrganizationStatsResponse, void>({
       query: () => ({ url: '/organizations/stats', method: 'GET' }),
-      transformResponse: (response: ApiEnvelope<GetOrganizationStatsResponse> | any) => (response as any)?.data ?? response,
+      transformResponse: (
+        response:
+          | ApiEnvelope<GetOrganizationStatsResponse>
+          | GetOrganizationStatsResponse
+      ): GetOrganizationStatsResponse =>
+        (response as ApiEnvelope<GetOrganizationStatsResponse>)?.data ??
+        (response as GetOrganizationStatsResponse),
       providesTags: [{ type: 'OrganizationStats' as const, id: 'SINGLE' }],
     }),
 
-    getOrganizationById: build.query<any, number>({
+    getOrganizationById: build.query<GetOrganizationByIdResponse, number>({
       query: (id) => ({ url: `/organizations/${id}`, method: 'GET' }),
-      transformResponse: (response: ApiEnvelope<any> | any) => (response as any)?.data ?? response,
+      transformResponse: (
+        response:
+          | ApiEnvelope<GetOrganizationByIdResponse>
+          | GetOrganizationByIdResponse
+      ): GetOrganizationByIdResponse =>
+        (response as ApiEnvelope<GetOrganizationByIdResponse>)?.data ??
+        (response as GetOrganizationByIdResponse),
       providesTags: (_res, _err, id) => [{ type: 'Organization' as const, id }],
+    }),
+
+    updateOrganization: build.mutation<
+      UpdateOrganizationResponse,
+      { id: number; data: { name?: string; description?: string } }
+    >({
+      query: ({ id, data }) => ({
+        url: `/organizations/${id}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      transformResponse: (
+        response:
+          | ApiEnvelope<UpdateOrganizationResponse>
+          | UpdateOrganizationResponse
+      ): UpdateOrganizationResponse =>
+        (response as ApiEnvelope<UpdateOrganizationResponse>)?.data ??
+        (response as UpdateOrganizationResponse),
+      invalidatesTags: (_res, _err, arg) => [
+        { type: 'Organization' as const, id: arg.id },
+      ],
     }),
   }),
   overrideExisting: false,
@@ -114,4 +169,5 @@ export const {
   useLazyGetOrganizationStatsQuery,
   useGetOrganizationByIdQuery,
   useLazyGetOrganizationByIdQuery,
+  useUpdateOrganizationMutation,
 } = organizationApi

@@ -329,7 +329,7 @@ export function HomePage() {
       </div>
 
       <div className='mt-5 grid gap-4 lg:grid-cols-3'>
-        <Card className='lg:col-span-2'>
+        <Card className='py-4 lg:col-span-2'>
           <CardHeader className='pb-2'>
             <CardTitle className='flex items-center gap-2 text-base'>
               <TrendingUp className='size-4 text-primary' />
@@ -401,7 +401,7 @@ export function HomePage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className='py-4'>
           <CardHeader className='pb-2'>
             <CardTitle className='text-base'>Monthly Metrics</CardTitle>
           </CardHeader>
@@ -468,7 +468,7 @@ export function HomePage() {
         </div>
       </div>
 
-      <Card className='mt-3'>
+      <Card className='mt-3 py-4'>
         <CardContent className='space-y-4'>
           <ScrollArea orientation='horizontal' className='w-full'>
             <Tabs

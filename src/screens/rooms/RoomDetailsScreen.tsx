@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { BedFormDialog } from '@/screens/beds/BedFormDialog'
 import { RoomFormDialog } from '@/screens/rooms/RoomFormDialog'
 import {
@@ -10,13 +10,7 @@ import {
   useGetRoomByIdQuery,
 } from '@/services/roomsApi'
 import { useAppSelector } from '@/store/hooks'
-import {
-  Bed as BedIcon,
-  ChevronLeft,
-  CircleAlert,
-  DoorOpen,
-  Plus,
-} from 'lucide-react'
+import { Bed as BedIcon, CircleAlert, DoorOpen, Plus } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -35,23 +29,86 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ActionButtons } from '@/components/form/action-buttons'
 
-const unwrapRoom = (response: any): Room | null => {
-  if (!response) return null
-  const root = (response as any)?.data ?? response
-  const nested = (root as any)?.data ?? root
-  return (nested as any) ?? null
+interface ApiResponse<T> {
+  data: T
 }
 
-const unwrapBeds = (response: any): Bed[] => {
+interface NestedApiResponse<T> {
+  data: ApiResponse<T>
+}
+
+interface ApiError {
+  data?: {
+    message?: string
+  }
+  message?: string
+}
+
+interface RootState {
+  pgLocations: {
+    selectedPGLocationId: number | null
+  }
+}
+
+interface ExtendedBed {
+  s_no: number
+  bed_no: string
+  bed_price?: number | string
+  is_occupied?: boolean
+  tenants?: Array<{
+    s_no?: number
+    name?: string
+    phone_no?: string
+    status?: string
+  }>
+}
+
+interface ExtendedRoom {
+  s_no: number
+  room_no: string
+  images?: string[]
+  total_beds?: number
+  occupied_beds?: number
+  available_beds?: number
+  pg_locations?: {
+    s_no?: number
+    location_name?: string
+  }
+}
+
+const unwrapRoom = (
+  response:
+    | ApiResponse<Room>
+    | NestedApiResponse<Room>
+    | Room
+    | null
+    | undefined
+): Room | null => {
+  if (!response) return null
+  const root =
+    'data' in response ? (response as ApiResponse<Room>).data : response
+  const nested = 'data' in root ? (root as ApiResponse<Room>).data : root
+  return nested as Room | null
+}
+
+const unwrapBeds = (
+  response:
+    | ApiResponse<Bed[]>
+    | NestedApiResponse<Bed[]>
+    | Bed[]
+    | null
+    | undefined
+): Bed[] => {
   if (!response) return []
-  const root = (response as any)?.data ?? response
-  const nested = (root as any)?.data ?? root
+  const root =
+    'data' in response ? (response as ApiResponse<Bed[]>).data : response
+  const nested = 'data' in root ? (root as ApiResponse<Bed[]>).data : root
   const data = Array.isArray(nested)
     ? nested
-    : Array.isArray((nested as any)?.data)
-      ? (nested as any).data
+    : Array.isArray((nested as ApiResponse<Bed[]>)?.data)
+      ? (nested as ApiResponse<Bed[]>).data
       : []
-  return Array.isArray(data) ? (data as Bed[]) : []
+  return Array.isArray(data) ? data : []
 }
 
 export function RoomDetailsScreen() {
@@ -60,8 +117,8 @@ export function RoomDetailsScreen() {
   const roomId = Number(params.id)
 
   const selectedPGLocationId = useAppSelector(
-    (s) => (s as any).pgLocations?.selectedPGLocationId
-  ) as number | null
+    (s: RootState) => s.pgLocations?.selectedPGLocationId
+  )
 
   const [bedDialogOpen, setBedDialogOpen] = useState(false)
   const [editBed, setEditBed] = useState<Bed | null>(null)
@@ -77,18 +134,18 @@ export function RoomDetailsScreen() {
     isLoading: roomLoading,
     error: roomError,
     refetch: refetchRoom,
-  } = useGetRoomByIdQuery(Number.isFinite(roomId) ? roomId : (0 as any), {
+  } = useGetRoomByIdQuery(Number.isFinite(roomId) ? roomId : 0, {
     skip: !Number.isFinite(roomId) || roomId <= 0,
-  } as any)
+  })
 
   const {
     data: bedsResponse,
     isLoading: bedsLoading,
     error: bedsError,
     refetch: refetchBeds,
-  } = useGetBedsByRoomIdQuery(Number.isFinite(roomId) ? roomId : (0 as any), {
+  } = useGetBedsByRoomIdQuery(Number.isFinite(roomId) ? roomId : 0, {
     skip: !Number.isFinite(roomId) || roomId <= 0,
-  } as any)
+  })
 
   const [deleteRoom, { isLoading: deletingRoom }] = useDeleteRoomMutation()
   const [deleteBed, { isLoading: deletingBed }] = useDeleteBedMutation()
@@ -96,27 +153,27 @@ export function RoomDetailsScreen() {
   const room = unwrapRoom(roomResponse)
   const beds = unwrapBeds(bedsResponse)
 
-  const fetchErrorMessage =
-    (roomError as any)?.data?.message ||
-    (roomError as any)?.message ||
-    (bedsError as any)?.data?.message ||
-    (bedsError as any)?.message
+  const extendedRoom = room as ExtendedRoom
 
-  const images: string[] = Array.isArray((room as any)?.images)
-    ? ((room as any).images as any)
+  const fetchErrorMessage =
+    (roomError as ApiError)?.data?.message ||
+    (roomError as ApiError)?.message ||
+    (bedsError as ApiError)?.data?.message ||
+    (bedsError as ApiError)?.message
+
+  const images: string[] = Array.isArray(extendedRoom?.images)
+    ? (extendedRoom.images ?? [])
     : []
 
-  const stats = useMemo(() => {
-    const total = Number((room as any)?.total_beds ?? beds.length)
-    const occupied = Number(
-      (room as any)?.occupied_beds ??
-        beds.filter((b) => Boolean((b as any)?.is_occupied)).length
-    )
-    const available = Number(
-      (room as any)?.available_beds ?? Math.max(0, total - occupied)
-    )
-    return { total, occupied, available }
-  }, [beds, room])
+  const total = Number(extendedRoom?.total_beds ?? beds.length)
+  const occupied = Number(
+    extendedRoom?.occupied_beds ??
+      beds.filter((b) => Boolean((b as ExtendedBed)?.is_occupied)).length
+  )
+  const available = Number(
+    extendedRoom?.available_beds ?? Math.max(0, total - occupied)
+  )
+  const stats = { total, occupied, available }
 
   const openAddBed = () => {
     setEditBed(null)
@@ -142,8 +199,8 @@ export function RoomDetailsScreen() {
       setDeleteBedTarget(null)
       void refetchBeds()
       void refetchRoom()
-    } catch (e: any) {
-      showErrorAlert(e, 'Delete Error')
+    } catch (e: unknown) {
+      showErrorAlert(e as Error, 'Delete Error')
     }
   }
 
@@ -153,8 +210,8 @@ export function RoomDetailsScreen() {
       await deleteRoom(roomId).unwrap()
       showSuccessAlert('Room deleted successfully')
       navigate('/rooms')
-    } catch (e: any) {
-      showErrorAlert(e, 'Delete Error')
+    } catch (e: unknown) {
+      showErrorAlert(e as Error, 'Delete Error')
     }
   }
 
@@ -172,30 +229,11 @@ export function RoomDetailsScreen() {
           </p>
         </div>
         <div className='flex items-center gap-1.5'>
-          <Button asChild variant='outline' size='sm'>
-            <Link to='/rooms'>
-              <ChevronLeft className='me-1 size-3' />
-              Back
-            </Link>
-          </Button>
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={() => {
-              void refetchRoom()
-              void refetchBeds()
-            }}
-          >
-            Refresh
-          </Button>
           {room && (
-            <Button
-              size='sm'
-              onClick={() => setRoomDialogOpen(true)}
-              className='bg-black text-white hover:bg-black/90'
-            >
-              Edit
-            </Button>
+            <ActionButtons
+              onEdit={() => setRoomDialogOpen(true)}
+              onDelete={() => setDeleteRoomOpen(true)}
+            />
           )}
         </div>
       </div>
@@ -251,14 +289,6 @@ export function RoomDetailsScreen() {
                     </div>
                   </div>
                 </div>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={() => setDeleteRoomOpen(true)}
-                  className='border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-xs'
-                >
-                  Delete Room
-                </Button>
               </div>
 
               <div className='grid grid-cols-3 gap-2'>
@@ -272,13 +302,17 @@ export function RoomDetailsScreen() {
                   <div className='text-lg font-bold text-blue-600'>
                     {stats.occupied}
                   </div>
-                  <div className='text-[10px] text-muted-foreground'>Occupied</div>
+                  <div className='text-[10px] text-muted-foreground'>
+                    Occupied
+                  </div>
                 </div>
                 <div className='rounded-lg border p-1.5 text-center'>
                   <div className='text-lg font-bold text-green-600'>
                     {stats.available}
                   </div>
-                  <div className='text-[10px] text-muted-foreground'>Available</div>
+                  <div className='text-[10px] text-muted-foreground'>
+                    Available
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -321,7 +355,7 @@ export function RoomDetailsScreen() {
                   size='sm'
                   onClick={openAddBed}
                   disabled={!selectedPGLocationId}
-                  className='bg-black text-white hover:bg-black/90 text-xs'
+                  className='bg-black text-xs text-white hover:bg-black/90'
                 >
                   <Plus className='me-1 size-3' />
                   Add Bed
@@ -364,14 +398,14 @@ export function RoomDetailsScreen() {
                             <div className='truncate text-[10px] text-muted-foreground'>
                               <Badge
                                 variant={
-                                  (b as any).is_occupied
+                                  (b as ExtendedBed).is_occupied
                                     ? 'secondary'
                                     : 'default'
                                 }
                                 className='mr-1 text-[10px]'
                               >
                                 {String(
-                                  (b as any).is_occupied
+                                  (b as ExtendedBed).is_occupied
                                     ? 'Occupied'
                                     : 'Available'
                                 )}
@@ -379,24 +413,26 @@ export function RoomDetailsScreen() {
                               {String(b.bed_price ?? '').length > 0
                                 ? `₹${String(b.bed_price)}`
                                 : ''}
-                              {(b as any).tenants?.[0]?.name
-                                ? ` • ${(b as any).tenants[0].name}`
+                              {(b as ExtendedBed).tenants?.[0]?.name
+                                ? ` • ${(b as ExtendedBed).tenants?.[0]?.name ?? ''}`
                                 : ''}
-                              {(b as any).tenants?.[0]?.phone_no
-                                ? ` • ${(b as any).tenants[0].phone_no}`
+                              {(b as ExtendedBed).tenants?.[0]?.phone_no
+                                ? ` • ${(b as ExtendedBed).tenants?.[0]?.phone_no ?? ''}`
                                 : ''}
                             </div>
                           </div>
                         </div>
                         <div className='flex items-center gap-1'>
-                          {!(b as any).is_occupied && (
+                          {!(b as ExtendedBed).is_occupied && (
                             <Button
                               asChild
                               variant='outline'
                               size='sm'
                               className='text-xs'
                             >
-                              <Link to={`/tenants/new?bedId=${b.s_no}&roomId=${room.s_no}`}>
+                              <Link
+                                to={`/tenants/new?bedId=${b.s_no}&roomId=${room.s_no}`}
+                              >
                                 Add Tenant
                               </Link>
                             </Button>

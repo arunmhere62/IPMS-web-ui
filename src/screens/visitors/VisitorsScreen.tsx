@@ -5,8 +5,8 @@ import {
   type Visitor,
 } from '@/services/visitorsApi'
 import { useAppSelector } from '@/store/hooks'
-import { CircleAlert, Plus, Search, Users } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { CircleAlert, Search, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -133,34 +133,7 @@ export function VisitorsScreen() {
 
   return (
     <div className='container mx-auto max-w-6xl px-3 py-6'>
-      <PageHeader
-        title='Visitors'
-        subtitle='Manage visitors'
-        right={
-          <>
-            <Button
-              asChild
-              type='button'
-              size='icon'
-              aria-label='Add visitor'
-              title='Add visitor'
-              disabled={!selectedPGLocationId}
-            >
-              <Link to='/visitors/new'>
-                <Plus className='size-4' />
-              </Link>
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => refetch()}
-              disabled={!selectedPGLocationId}
-            >
-              Refresh
-            </Button>
-          </>
-        }
-      />
+      <PageHeader title='Visitors' />
 
       {fetchErrorMessage ? (
         <div className='mt-6'>

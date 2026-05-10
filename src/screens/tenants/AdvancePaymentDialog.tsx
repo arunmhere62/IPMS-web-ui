@@ -2,8 +2,10 @@ import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useCreateAdvancePaymentMutation } from '@/services/paymentsApi'
+import { Calendar } from 'lucide-react'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { FormDatePicker } from '@/components/ui/date-picker'
 import { Form } from '@/components/ui/form'
 import { FormDialog } from '@/components/form/form-dialog'
@@ -20,6 +22,18 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+const formatDate = (value?: string) => {
+  const s = String(value ?? '')
+  if (!s) return '—'
+  const d = new Date(s)
+  if (Number.isNaN(d.getTime())) return s.includes('T') ? s.split('T')[0] : s
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 type AdvancePaymentDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -30,6 +44,7 @@ type AdvancePaymentDialogProps = {
     room_id: number
     bed_id: number
     rooms?: { rent_price?: number }
+    check_in_date?: string
   }
   onSaved: () => void
 }
@@ -106,6 +121,20 @@ export function AdvancePaymentDialog({
           onSubmit={form.handleSubmit(handleSubmit)}
           className='grid gap-4'
         >
+          {tenant.check_in_date && (
+            <Card className='border-slate-200 bg-slate-50 p-0 shadow-none'>
+              <CardContent className='p-3'>
+                <div className='flex items-center gap-2 text-sm'>
+                  <Calendar className='h-4 w-4 text-slate-500' />
+                  <span className='text-muted-foreground'>Joining Date:</span>
+                  <span className='font-medium text-slate-700'>
+                    {formatDate(tenant.check_in_date)}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <FormNumberInput
             control={form.control}
             name='amount_paid'

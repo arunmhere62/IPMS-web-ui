@@ -47,7 +47,10 @@ export interface RefundPayment {
 export interface CurrentBill {
   s_no: number
   bill_amount: number
+  amount: number
   bill_date: string
+  due_date?: string
+  status?: string
   created_at: string
   updated_at: string
 }
@@ -62,6 +65,19 @@ export interface PendingPaymentMonth {
   is_overdue: boolean
 }
 
+export interface PaymentCycleSummary {
+  start_date: string
+  end_date: string
+  totalPaid?: number
+  due?: number
+  remainingDue?: number
+  status?: string
+  expected_from_allocations?: number
+  due_from_payments?: number
+  cycle_id?: number
+  payments?: TenantPayment[]
+}
+
 export interface PendingPayment {
   tenant_id: number
   tenant_name: string
@@ -74,6 +90,11 @@ export interface PendingPayment {
   next_due_date?: string
   monthly_rent: number
   pending_months: PendingPaymentMonth[]
+}
+
+export interface ProofDocument {
+  document_type: string
+  document_url: string
 }
 
 export interface Tenant {
@@ -93,24 +114,15 @@ export interface Tenant {
   tenant_address?: string
   city_id?: number
   state_id?: number
-  images?: any
-  proof_documents?: any
+  images?: string[]
+  proof_documents?: ProofDocument[]
   created_at: string
   updated_at: string
-  payment_cycle_summaries?: Array<{
-    start_date: string
-    end_date: string
-    totalPaid?: number
-    due?: number
-    remainingDue?: number
-    status?: string
-    expected_from_allocations?: number
-    due_from_payments?: number
-  }>
+  payment_cycle_summaries?: PaymentCycleSummary[]
   tenant_allocations?: Array<{
     s_no: number
     effective_from: string
-    effective_to?: string | null
+    effective_to?: string
     bed_price_snapshot?: number
     pg_id: number
     room_id: number
@@ -132,6 +144,15 @@ export interface Tenant {
     s_no: number
     location_name: string
     address: string
+    rent_cycle_type?: string
+    city?: {
+      s_no: number
+      name: string
+    }
+    state?: {
+      s_no: number
+      name: string
+    }
   }
   rooms?: {
     s_no: number
@@ -141,6 +162,7 @@ export interface Tenant {
   beds?: {
     s_no: number
     bed_no: string
+    bed_price?: number
   }
   city?: {
     s_no: number
@@ -150,6 +172,15 @@ export interface Tenant {
     s_no: number
     name: string
   }
+  tenant_rent_cycles?: Array<{
+    s_no?: number
+    cycle_type?: string
+    cycle_start?: string
+    cycle_end?: string
+    anchor_day?: number
+  }>
+  payment_status?: 'PAID' | 'PARTIAL' | 'PENDING' | 'OVERDUE'
+  last_payment_date?: string
   rent_payments?: TenantPayment[]
   advance_payments?: AdvancePayment[]
   refund_payments?: RefundPayment[]
@@ -179,8 +210,8 @@ export interface CreateTenantDto {
   tenant_address?: string
   city_id?: number
   state_id?: number
-  images?: any
-  proof_documents?: any
+  images?: string[]
+  proof_documents?: ProofDocument[]
 }
 
 export interface CreateCurrentBillDto {
@@ -195,7 +226,7 @@ export interface CreateCurrentBillDto {
 
 export type CurrentBillResponse = {
   success: boolean
-  data: any
+  data: CurrentBill
   message?: string
 }
 
@@ -252,44 +283,118 @@ export type TransferTenantRequest = {
 
 type ApiEnvelope<T> = {
   data?: T
+  success?: boolean
+  statusCode?: number
+  message?: string
 }
 
-const unwrapCentralData = <T>(response: any): T => {
-  if (response && typeof response === 'object' && 'success' in response && 'statusCode' in response) {
-    return (response as any).data as T
+const unwrapCentralData = <T>(response: unknown): T => {
+  if (
+    response &&
+    typeof response === 'object' &&
+    'success' in response &&
+    'statusCode' in response
+  ) {
+    return (response as ApiEnvelope<T>).data as T
   }
   return response as T
 }
 
-const normalizeListResponse = <T>(response: any): { success: boolean; data: T; pagination?: any; message?: string } => {
-  const unwrapped = unwrapCentralData<any>(response)
+const normalizeListResponse = <T>(
+  response: unknown
+): {
+  success: boolean
+  data: T
+  pagination?:
+    | {
+        page: number
+        limit: number
+        total: number
+        totalPages: number
+        hasMore: boolean
+      }
+    | undefined
+  message?: string
+} => {
+  const unwrapped = unwrapCentralData<{
+    success?: boolean
+    data?:
+      | T
+      | {
+          data?: T
+          pagination?: {
+            page: number
+            limit: number
+            total: number
+            totalPages: number
+            hasMore: boolean
+          }
+        }
+    pagination?: {
+      page: number
+      limit: number
+      total: number
+      totalPages: number
+      hasMore: boolean
+    }
+    message?: string
+  }>(response)
 
-  if (unwrapped && typeof unwrapped === 'object' && 'success' in unwrapped && 'data' in unwrapped) {
-    return unwrapped as any
+  if (
+    unwrapped &&
+    typeof unwrapped === 'object' &&
+    'success' in unwrapped &&
+    'data' in unwrapped
+  ) {
+    return unwrapped as {
+      success: boolean
+      data: T
+      pagination?:
+        | {
+            page: number
+            limit: number
+            total: number
+            totalPages: number
+            hasMore: boolean
+          }
+        | undefined
+      message?: string
+    }
   }
 
-  const items = (unwrapped as any)?.data ?? unwrapped
-  const pagination = (unwrapped as any)?.pagination
+  const items = unwrapped?.data ?? unwrapped
+  const pagination = unwrapped?.pagination
 
   return {
-    success: (response as any)?.success ?? true,
+    success: (response as { success?: boolean })?.success ?? true,
     data: items as T,
     pagination,
-    message: (response as any)?.message,
+    message: (response as { message?: string })?.message,
   }
 }
 
-const normalizeEntityResponse = <T>(response: any): { success: boolean; data: T; message?: string } => {
-  const unwrapped = unwrapCentralData<any>(response)
+const normalizeEntityResponse = <T>(
+  response: unknown
+): { success: boolean; data: T; message?: string } => {
+  const unwrapped = unwrapCentralData<{
+    success?: boolean
+    data?: T | { data?: T }
+    message?: string
+  }>(response)
 
-  if (unwrapped && typeof unwrapped === 'object' && 'success' in unwrapped && 'data' in unwrapped) {
-    return unwrapped as any
+  if (
+    unwrapped &&
+    typeof unwrapped === 'object' &&
+    'success' in unwrapped &&
+    'data' in unwrapped
+  ) {
+    return unwrapped as { success: boolean; data: T; message?: string }
   }
 
   return {
-    success: (response as any)?.success ?? true,
-    data: ((unwrapped as any)?.data ?? unwrapped) as T,
-    message: (response as any)?.message,
+    success: (response as { success?: boolean })?.success ?? true,
+    data: (unwrapped?.data ?? unwrapped) as T,
+    message: (response as { message?: string })?.message,
   }
 }
 
@@ -314,15 +419,38 @@ export const tenantsApi = baseApi.injectEndpoints({
           method: 'GET',
         }
       },
-      transformResponse: (response: ApiEnvelope<any> | any): GetTenantsResponse => {
-        const normalized = normalizeListResponse<any>(response)
+      transformResponse: (
+        response: ApiEnvelope<unknown> | unknown
+      ): GetTenantsResponse => {
+        const normalized = normalizeListResponse<Tenant[]>(response)
         const extracted = normalized.data
-        const items = Array.isArray(extracted) ? extracted : (extracted as any)?.data
+        const items = Array.isArray(extracted)
+          ? extracted
+          : (extracted as { data?: Tenant[] })?.data
+
+        const pagination = (
+          extracted as {
+            pagination?: {
+              page: number
+              limit: number
+              total: number
+              totalPages: number
+              hasMore: boolean
+            }
+          }
+        )?.pagination ??
+          normalized.pagination ?? {
+            page: 1,
+            limit: 20,
+            total: 0,
+            totalPages: 0,
+            hasMore: false,
+          }
 
         return {
           success: Boolean(normalized.success),
           data: Array.isArray(items) ? items : [],
-          pagination: (extracted as any)?.pagination ?? normalized.pagination,
+          pagination,
         }
       },
       providesTags: (result) => {
@@ -336,26 +464,38 @@ export const tenantsApi = baseApi.injectEndpoints({
 
     getTenantById: build.query<TenantResponse, number>({
       query: (id) => ({ url: `/tenants/${id}`, method: 'GET' }),
-      transformResponse: (response: ApiEnvelope<any> | any) => normalizeEntityResponse<Tenant>(response),
+      transformResponse: (response: ApiEnvelope<unknown> | unknown) =>
+        normalizeEntityResponse<Tenant>(response),
       providesTags: (_result, _err, id) => [{ type: 'Tenant', id }],
     }),
 
     createTenant: build.mutation<TenantResponse, CreateTenantDto>({
       query: (body) => ({ url: '/tenants', method: 'POST', body }),
-      transformResponse: (response: ApiEnvelope<any> | any) => normalizeEntityResponse<Tenant>(response),
+      transformResponse: (response: ApiEnvelope<unknown> | unknown) =>
+        normalizeEntityResponse<Tenant>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'Tenants' as const, id: 'LIST' },
         { type: 'Beds' as const, id: 'LIST' },
-        ...(typeof (arg as any)?.room_id === 'number' ? [{ type: 'Beds' as const, id: (arg as any).room_id }] : []),
+        ...(typeof arg.room_id === 'number'
+          ? [{ type: 'Beds' as const, id: arg.room_id }]
+          : []),
         { type: 'Rooms' as const, id: 'LIST' },
         { type: 'Dashboard' as const, id: 'SUMMARY' },
         { type: 'Dashboard' as const, id: 'MONTHLY_METRICS' },
       ],
     }),
 
-    updateTenant: build.mutation<TenantResponse, { id: number; data: Partial<CreateTenantDto> }>({
-      query: ({ id, data }) => ({ url: `/tenants/${id}`, method: 'PUT', body: data }),
-      transformResponse: (response: ApiEnvelope<any> | any) => normalizeEntityResponse<Tenant>(response),
+    updateTenant: build.mutation<
+      TenantResponse,
+      { id: number; data: Partial<CreateTenantDto> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/tenants/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      transformResponse: (response: ApiEnvelope<unknown> | unknown) =>
+        normalizeEntityResponse<Tenant>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'Tenants', id: 'LIST' },
         { type: 'Tenant', id: arg.id },
@@ -364,23 +504,29 @@ export const tenantsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    deleteTenant: build.mutation<{ success: boolean; message: string }, number>({
-      query: (id) => ({ url: `/tenants/${id}`, method: 'DELETE' }),
-      transformResponse: (response: ApiEnvelope<any> | any) => {
-        const unwrapped = unwrapCentralData<any>(response)
-        return (unwrapped as any)?.data ?? unwrapped
-      },
-      invalidatesTags: (_res, _err, id) => [
-        { type: 'Tenants', id: 'LIST' },
-        { type: 'Tenant', id },
-        { type: 'Dashboard' as const, id: 'SUMMARY' },
-        { type: 'Dashboard' as const, id: 'MONTHLY_METRICS' },
-      ],
-    }),
+    deleteTenant: build.mutation<{ success: boolean; message: string }, number>(
+      {
+        query: (id) => ({ url: `/tenants/${id}`, method: 'DELETE' }),
+        transformResponse: (response: ApiEnvelope<unknown> | unknown) => {
+          const unwrapped = unwrapCentralData<{
+            success: boolean
+            message: string
+          }>(response)
+          return unwrapped ?? { success: true, message: '' }
+        },
+        invalidatesTags: (_res, _err, id) => [
+          { type: 'Tenants', id: 'LIST' },
+          { type: 'Tenant', id },
+          { type: 'Dashboard' as const, id: 'SUMMARY' },
+          { type: 'Dashboard' as const, id: 'MONTHLY_METRICS' },
+        ],
+      }
+    ),
 
     checkoutTenant: build.mutation<TenantResponse, number>({
       query: (id) => ({ url: `/tenants/${id}/checkout`, method: 'POST' }),
-      transformResponse: (response: ApiEnvelope<any> | any) => normalizeEntityResponse<Tenant>(response),
+      transformResponse: (response: ApiEnvelope<unknown> | unknown) =>
+        normalizeEntityResponse<Tenant>(response),
       invalidatesTags: (_res, _err, id) => [
         { type: 'Tenants', id: 'LIST' },
         { type: 'Tenant', id },
@@ -389,13 +535,17 @@ export const tenantsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    checkoutTenantWithDate: build.mutation<TenantResponse, CheckoutTenantWithDateRequest>({
+    checkoutTenantWithDate: build.mutation<
+      TenantResponse,
+      CheckoutTenantWithDateRequest
+    >({
       query: ({ id, check_out_date }) => ({
         url: `/tenants/${id}/checkout`,
         method: 'POST',
         body: { check_out_date },
       }),
-      transformResponse: (response: ApiEnvelope<any> | any) => normalizeEntityResponse<Tenant>(response),
+      transformResponse: (response: ApiEnvelope<unknown> | unknown) =>
+        normalizeEntityResponse<Tenant>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'Tenants', id: 'LIST' },
         { type: 'Tenant', id: arg.id },
@@ -404,13 +554,17 @@ export const tenantsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    updateTenantCheckoutDate: build.mutation<TenantResponse, UpdateTenantCheckoutDateRequest>({
+    updateTenantCheckoutDate: build.mutation<
+      TenantResponse,
+      UpdateTenantCheckoutDateRequest
+    >({
       query: ({ id, ...body }) => ({
         url: `/tenants/${id}/checkout-date`,
         method: 'PUT',
         body,
       }),
-      transformResponse: (response: ApiEnvelope<any> | any) => normalizeEntityResponse<Tenant>(response),
+      transformResponse: (response: ApiEnvelope<unknown> | unknown) =>
+        normalizeEntityResponse<Tenant>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'Tenants', id: 'LIST' },
         { type: 'Tenant', id: arg.id },
@@ -425,7 +579,8 @@ export const tenantsApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      transformResponse: (response: ApiEnvelope<any> | any) => normalizeEntityResponse<Tenant>(response),
+      transformResponse: (response: ApiEnvelope<unknown> | unknown) =>
+        normalizeEntityResponse<Tenant>(response),
       invalidatesTags: (_res, _err, arg) => [
         { type: 'Tenants', id: 'LIST' },
         { type: 'Tenant', id: arg.id },
@@ -437,9 +592,13 @@ export const tenantsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    createCurrentBill: build.mutation<CurrentBillResponse, CreateCurrentBillDto>({
+    createCurrentBill: build.mutation<
+      CurrentBillResponse,
+      CreateCurrentBillDto
+    >({
       query: (body) => ({ url: '/current-bills', method: 'POST', body }),
-      transformResponse: (response: ApiEnvelope<any> | any) => normalizeEntityResponse<any>(response),
+      transformResponse: (response: ApiEnvelope<unknown> | unknown) =>
+        normalizeEntityResponse<CurrentBill>(response),
       invalidatesTags: [
         { type: 'Tenants', id: 'LIST' },
         { type: 'Dashboard' as const, id: 'SUMMARY' },

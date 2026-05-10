@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -64,6 +63,8 @@ export function SignupScreen() {
       rentCycleEnd: 30,
     },
   })
+
+  const phoneValue = form.watch('phone')
 
   const loadLegalDocs = useCallback(async () => {
     try {
@@ -230,115 +231,120 @@ export function SignupScreen() {
   }
 
   return (
-    <div className='container mx-auto flex min-h-[calc(100vh-64px)] max-w-6xl items-center px-4 py-10 sm:py-12'>
-      <div className='mx-auto w-full max-w-xl'>
-        <Card className='w-full'>
-          <CardHeader>
-            <CardTitle>{phoneVerified ? 'Setup your PG' : 'Sign up easily'}</CardTitle>
-            <CardDescription>
-              {phoneVerified
-                ? 'Complete setup to continue using the app'
-                : 'Verify your phone number to get started'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form className='grid gap-4'>
-                <FormField
-                  control={form.control}
-                  name='phone'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder='10 digit number'
-                          {...field}
-                          disabled={phoneVerified}
-                          onChange={(e) => {
-                            field.onChange(e.target.value)
-                            resetPhoneFlow()
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
+    <div className='flex h-screen w-screen flex-col overflow-hidden lg:flex-row'>
+      {/* Form - On top for mobile, right side for desktop */}
+      <div className='order-1 flex w-full items-center justify-center overflow-y-auto bg-white lg:order-2 lg:w-1/2'>
+        <div className='w-full max-w-[420px] px-8 py-12'>
+          <h1 className='mb-2 text-center text-3xl font-bold text-slate-900'>
+            {phoneVerified ? 'Setup your PG' : 'Create Account'}
+          </h1>
+          <p className='mb-8 text-center text-slate-500'>
+            {phoneVerified
+              ? 'Complete setup to get started'
+              : 'Verify your phone number to continue'}
+          </p>
 
-                      {!phoneVerified ? (
-                        <div className='mt-2 grid gap-2'>
+          <div>
+            <Form {...form}>
+              <form className='space-y-5'>
+                {!phoneVerified ? (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name='phone'
+                      render={({ field }) => (
+                        <FormItem className='flex flex-col'>
+                          <FormLabel className='text-left text-sm font-medium text-slate-700'>Phone Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder='Enter 10 digit number'
+                              {...field}
+                              disabled={otpSent}
+                              onChange={(e) => {
+                                field.onChange(e.target.value)
+                                if (otpSent) resetPhoneFlow()
+                              }}
+                              className='h-12 rounded-lg border-slate-200 focus:border-slate-400'
+                            />
+                          </FormControl>
+                          <FormMessage className='text-left' />
+                        </FormItem>
+                      )}
+                    />
+
+                    {!otpSent ? (
+                      <Button
+                        type='button'
+                        disabled={sending || !String(phoneValue || '').trim()}
+                        onClick={() => void onSendOtp()}
+                        className='h-12 w-full rounded-full bg-blue-600 text-base font-medium hover:bg-blue-700'
+                      >
+                        {sending ? 'Sending...' : 'Send OTP'}
+                      </Button>
+                    ) : (
+                      <>
+                        <div>
+                          <label className='mb-2 block text-sm font-medium text-slate-700'>Verification Code</label>
+                          <Input
+                            placeholder='Enter 4-digit OTP'
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            maxLength={4}
+                            className='h-12 rounded-lg border-slate-200 text-center text-xl tracking-widest focus:border-slate-400'
+                          />
+                          <p className='mt-2 text-xs text-slate-500'>Sent to {fullPhone}</p>
+                        </div>
+                        <div className='flex gap-3'>
                           <Button
                             type='button'
-                            disabled={sending || !String(field.value || '').trim()}
-                            onClick={() => void onSendOtp()}
-                            className='w-full sm:w-auto'
+                            onClick={onVerifyOtp}
+                            disabled={verifying}
+                            className='h-12 flex-1 rounded-full bg-blue-600 text-base font-medium hover:bg-blue-700'
                           >
-                            {sending ? 'Sending...' : 'Send OTP'}
+                            {verifying ? 'Verifying...' : 'Verify'}
                           </Button>
-
-                          {otpSent ? (
-                            <div className='grid gap-2'>
-                              <div className='text-sm text-muted-foreground'>OTP sent to {fullPhone}</div>
-                              <Input
-                                placeholder='Enter 4-digit OTP'
-                                value={otp}
-                                onChange={(e) => setOtp(e.target.value)}
-                              />
-                              <div className='flex flex-col gap-2 sm:flex-row'>
-                                <Button
-                                  type='button'
-                                  onClick={onVerifyOtp}
-                                  disabled={verifying}
-                                  className='w-full sm:w-auto'
-                                >
-                                  {verifying ? 'Please wait...' : 'Verify OTP'}
-                                </Button>
-                                <Button
-                                  type='button'
-                                  variant='outline'
-                                  className='w-full sm:w-auto'
-                                  onClick={() => {
-                                    setOtpSent(false)
-                                    setOtp('')
-                                  }}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className='text-xs text-muted-foreground'>You will receive a 4-digit OTP on your phone number</div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className='mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700'>
-                          <div>Phone Verified</div>
-                          <Button type='button' variant='ghost' size='sm' className='h-7 px-2' onClick={resetPhoneFlow}>
-                            Change
+                          <Button
+                            type='button'
+                            variant='outline'
+                            onClick={() => {
+                              setOtpSent(false)
+                              setOtp('')
+                            }}
+                            className='h-12 flex-1 rounded-lg border-slate-200'
+                          >
+                            Cancel
                           </Button>
                         </div>
-                      )}
-                    </FormItem>
-                  )}
-                />
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className='flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3'>
+                    <div className='text-sm font-medium text-emerald-700'>Phone Verified</div>
+                    <Button type='button' variant='ghost' size='sm' className='h-8 px-2 text-emerald-700 hover:text-emerald-800' onClick={resetPhoneFlow}>
+                      Change
+                    </Button>
+                  </div>
+                )}
 
                 {phoneVerified ? (
                   <>
-                    <div className='rounded-lg border bg-primary/5 px-3 py-3 text-sm'>
-                      <div className='font-semibold'>Quick setup</div>
-                      <div className='mt-0.5 text-xs text-muted-foreground'>Just a few details — you’re ready to start.</div>
+                    <div className='rounded-lg border border-blue-100 bg-blue-50 px-4 py-3'>
+                      <div className='text-center text-sm font-semibold text-blue-900'>Quick setup</div>
+                      <div className='mt-0.5 text-center text-xs text-blue-700'>Just a few details to get started.</div>
                     </div>
 
-                    <div className='grid gap-4 lg:grid-cols-2'>
+                    <div className='space-y-4'>
                       <FormField
                         control={form.control}
                         name='pgName'
                         render={({ field }) => (
-                          <FormItem className='lg:col-span-2'>
-                            <FormLabel>1. PG Name</FormLabel>
+                          <FormItem className='flex flex-col'>
+                            <FormLabel className='text-left text-sm font-medium text-slate-700'>PG Name</FormLabel>
                             <FormControl>
-                              <Input placeholder='e.g., Green Valley PG' {...field} />
+                              <Input placeholder='e.g., Green Valley PG' {...field} className='h-12 rounded-lg border-slate-200' />
                             </FormControl>
-                            <FormMessage />
-                            <div className='text-xs text-muted-foreground'>This will also be used as your organization name for now.</div>
+                            <FormMessage className='text-left' />
                           </FormItem>
                         )}
                       />
@@ -347,12 +353,12 @@ export function SignupScreen() {
                         control={form.control}
                         name='name'
                         render={({ field }) => (
-                          <FormItem className='lg:col-span-2'>
-                            <FormLabel>2. Your Full Name</FormLabel>
+                          <FormItem className='flex flex-col'>
+                            <FormLabel className='text-left text-sm font-medium text-slate-700'>Your Full Name</FormLabel>
                             <FormControl>
-                              <Input placeholder='e.g., John Doe' {...field} />
+                              <Input placeholder='e.g., John Doe' {...field} className='h-12 rounded-lg border-slate-200' />
                             </FormControl>
-                            <FormMessage />
+                            <FormMessage className='text-left' />
                           </FormItem>
                         )}
                       />
@@ -361,17 +367,16 @@ export function SignupScreen() {
                         control={form.control}
                         name='rentCycleType'
                         render={({ field }) => (
-                          <FormItem className='lg:col-span-2'>
-                            <FormLabel>3. Rent Cycle Type</FormLabel>
-                            <FormMessage />
-                            <div className='mt-2 grid gap-2 sm:grid-cols-2'>
+                          <FormItem className='flex flex-col'>
+                            <FormLabel className='text-left text-sm font-medium text-slate-700'>Rent Cycle Type</FormLabel>
+                            <div className='mt-2 grid gap-3 sm:grid-cols-2'>
                               <button
                                 type='button'
                                 className={
-                                  'rounded-lg border px-3 py-3 text-left transition ' +
+                                  'rounded-lg border px-4 py-3 text-left transition ' +
                                   ((field.value || 'CALENDAR') === 'CALENDAR'
-                                    ? 'border-primary bg-primary/10'
-                                    : 'bg-background hover:bg-muted/40')
+                                    ? 'border-blue-600 bg-blue-50'
+                                    : 'border-slate-200 bg-white hover:bg-slate-50')
                                 }
                                 onClick={() => {
                                   field.onChange('CALENDAR')
@@ -380,15 +385,15 @@ export function SignupScreen() {
                                 }}
                               >
                                 <div className='text-sm font-semibold'>Calendar Month</div>
-                                <div className='mt-1 text-xs text-muted-foreground'>Rent month is 1st → 30th (or 31st).</div>
+                                <div className='mt-1 text-xs text-slate-500'>1st to 30th/31st</div>
                               </button>
                               <button
                                 type='button'
                                 className={
-                                  'rounded-lg border px-3 py-3 text-left transition ' +
+                                  'rounded-lg border px-4 py-3 text-left transition ' +
                                   ((field.value || 'CALENDAR') === 'MIDMONTH'
-                                    ? 'border-primary bg-primary/10'
-                                    : 'bg-background hover:bg-muted/40')
+                                    ? 'border-blue-600 bg-blue-50'
+                                    : 'border-slate-200 bg-white hover:bg-slate-50')
                                 }
                                 onClick={() => {
                                   field.onChange('MIDMONTH')
@@ -396,8 +401,8 @@ export function SignupScreen() {
                                   form.setValue('rentCycleEnd', 30)
                                 }}
                               >
-                                <div className='text-sm font-semibold'>Mid‑Month / Check‑in based</div>
-                                <div className='mt-1 text-xs text-muted-foreground'>Rent cycle starts from tenant check‑in date.</div>
+                                <div className='text-sm font-semibold'>Check-in Based</div>
+                                <div className='mt-1 text-xs text-slate-500'>From tenant start date</div>
                               </button>
                             </div>
                           </FormItem>
@@ -409,8 +414,8 @@ export function SignupScreen() {
                           control={form.control}
                           name='rentCycleEnd'
                           render={({ field }) => (
-                            <FormItem className='lg:col-span-2'>
-                              <FormLabel>Rent Cycle End Day</FormLabel>
+                            <FormItem className='flex flex-col'>
+                              <FormLabel className='text-left text-sm font-medium text-slate-700'>Rent Cycle End Day</FormLabel>
                               <FormControl>
                                 <Input
                                   placeholder='30'
@@ -420,68 +425,98 @@ export function SignupScreen() {
                                     const n = v ? Number(v) : NaN
                                     field.onChange(Number.isFinite(n) ? n : null)
                                   }}
+                                  className='h-12 rounded-lg border-slate-200'
                                 />
                               </FormControl>
-                              <FormMessage />
+                              <FormMessage className='text-left' />
                             </FormItem>
                           )}
                         />
                       ) : null}
                     </div>
 
-                    <div className='grid gap-2'>
-                      <div className='flex items-start gap-2'>
-                        <Checkbox
-                          checked={hasAgreedToLegal}
-                          onCheckedChange={(v) => setHasAgreedToLegal(Boolean(v))}
-                          id='legal'
-                        />
-                        <label htmlFor='legal' className='text-sm text-muted-foreground'>
-                          I agree to{' '}
-                          {findLegalDocUrl(['TERMS', 'TERMS_AND_CONDITIONS', 'TNC', 'T_AND_C']) ? (
-                            <a
-                              className='text-primary underline'
-                              href={findLegalDocUrl(['TERMS', 'TERMS_AND_CONDITIONS', 'TNC', 'T_AND_C'])}
-                              target='_blank'
-                              rel='noreferrer'
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              Terms & Conditions
-                            </a>
-                          ) : (
-                            <span>Terms & Conditions</span>
-                          )}{' '}
-                          and{' '}
-                          {findLegalDocUrl(['PRIVACY', 'PRIVACY_POLICY']) ? (
-                            <a
-                              className='text-primary underline'
-                              href={findLegalDocUrl(['PRIVACY', 'PRIVACY_POLICY'])}
-                              target='_blank'
-                              rel='noreferrer'
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              Privacy Policy
-                            </a>
-                          ) : (
-                            <span>Privacy Policy</span>
-                          )}
-                        </label>
-                      </div>
+                    <div className='flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4'>
+                      <Checkbox
+                        checked={hasAgreedToLegal}
+                        onCheckedChange={(v) => setHasAgreedToLegal(Boolean(v))}
+                        id='legal'
+                        className='mt-0.5'
+                      />
+                      <label htmlFor='legal' className='text-sm text-slate-600'>
+                        I agree to{' '}
+                        {findLegalDocUrl(['TERMS', 'TERMS_AND_CONDITIONS', 'TNC', 'T_AND_C']) ? (
+                          <a
+                            className='text-blue-600 hover:text-blue-700'
+                            href={findLegalDocUrl(['TERMS', 'TERMS_AND_CONDITIONS', 'TNC', 'T_AND_C'])}
+                            target='_blank'
+                            rel='noreferrer'
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Terms & Conditions
+                          </a>
+                        ) : (
+                          <span>Terms & Conditions</span>
+                        )}{' '}
+                        and{' '}
+                        {findLegalDocUrl(['PRIVACY', 'PRIVACY_POLICY']) ? (
+                          <a
+                            className='text-blue-600 hover:text-blue-700'
+                            href={findLegalDocUrl(['PRIVACY', 'PRIVACY_POLICY'])}
+                            target='_blank'
+                            rel='noreferrer'
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Privacy Policy
+                          </a>
+                        ) : (
+                          <span>Privacy Policy</span>
+                        )}
+                      </label>
                     </div>
 
-                    <Button type='button' onClick={onSignup} disabled={!phoneVerified || signingUp}>
-                      {signingUp ? 'Creating...' : 'Create account'}
+                    <Button 
+                      type='button' 
+                      onClick={onSignup} 
+                      disabled={!phoneVerified || signingUp}
+                      className='h-12 w-full rounded-full bg-blue-600 text-base font-medium hover:bg-blue-700'
+                    >
+                      {signingUp ? 'Creating...' : 'Create Account'}
                     </Button>
                   </>
                 ) : null}
 
-                <Button type='button' variant='link' onClick={() => navigate('/login')}>
+                <div className='flex items-center gap-4 py-2'>
+                  <div className='h-px flex-1 bg-slate-200' />
+                  <span className='text-xs text-slate-400'>or</span>
+                  <div className='h-px flex-1 bg-slate-200' />
+                </div>
+
+                <Button 
+                  type='button' 
+                  variant='outline' 
+                  onClick={() => navigate('/login')}
+                  className='h-12 w-full rounded-lg border-slate-200'
+                >
                   Already have an account? Login
                 </Button>
               </form>
             </Form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* Branding - Hidden on mobile, left side on desktop */}
+      <div className='order-2 hidden h-full w-full flex-col items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-slate-900 text-white lg:order-1 lg:flex lg:w-1/2'>
+        <div className='flex flex-col items-center justify-center p-12'>
+          <div className='mb-8 text-6xl'>🏠</div>
+          <h1 className='mb-4 text-4xl font-bold'>IPMS</h1>
+          <p className='text-center text-lg text-white/80'>
+            Indian PG Management System
+          </p>
+          <div className='mt-12 text-sm text-white/60'>
+            Manage your PG properties efficiently
+          </div>
+        </div>
       </div>
     </div>
   )

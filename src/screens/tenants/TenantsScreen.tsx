@@ -275,7 +275,7 @@ export function TenantsScreen() {
         </div>
       ) : (
         <>
-          <div className='mt-4 flex flex-row gap-2 items-start sm:flex-col sm:items-start'>
+          <div className='mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2'>
             <div className='relative w-full sm:max-w-xs'>
               <Search className='pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground' />
               <Input

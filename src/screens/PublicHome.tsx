@@ -24,7 +24,6 @@ import {
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-
 import bannerMultiplePgSelection from '@/assets/banner-add-images/mutiple-pg-selection.png'
 import bannerRentFollowUps from '@/assets/banner-add-images/rent-follow-ups.png'
 import bannerRoomBedAllocation from '@/assets/banner-add-images/room-bed-allocation.png'
@@ -509,27 +508,6 @@ export function PublicHome() {
           </div>
         </div>
 
-        <div className='mt-20 grid gap-3'>
-          <div className='flex items-center gap-3'>
-            <div className='h-10 w-10 rounded-2xl bg-fuchsia-500/10' />
-            <div className='text-2xl font-semibold'>Pricing</div>
-          </div>
-          <div className='text-sm text-muted-foreground'>
-            Choose a plan that fits your PG size. Billing happens in the mobile app.
-          </div>
-        </div>
-
-        <div className='relative mt-6 overflow-hidden rounded-3xl border border-fuchsia-500/10 bg-[radial-gradient(900px_circle_at_80%_0%,rgba(217,70,239,0.12),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.70),rgba(255,255,255,0.40))] p-6 backdrop-blur sm:p-8'>
-          <div className='flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between'>
-            <div className='text-sm text-muted-foreground'>
-              View all plans and features on the subscriptions page.
-            </div>
-            <Button asChild>
-              <Link to='/subscriptions'>View Pricing</Link>
-            </Button>
-          </div>
-        </div>
-
         <div className='mt-20 rounded-3xl border border-slate-900/10 bg-[radial-gradient(900px_circle_at_0%_0%,rgba(15,23,42,0.06),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.75),rgba(255,255,255,0.45))] p-6 backdrop-blur sm:p-8'>
           <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
             <div>
@@ -558,7 +536,70 @@ export function PublicHome() {
           </div>
         </div>
 
-        <div className='mt-20 rounded-3xl border border-primary/15 bg-[radial-gradient(900px_circle_at_20%_0%,rgba(37,99,235,0.14),transparent_55%),radial-gradient(900px_circle_at_85%_70%,rgba(16,185,129,0.10),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.50))] p-6 backdrop-blur sm:p-10'>
+        {/* Legal & trust strip */}
+        <div className='mt-20 rounded-3xl border border-border bg-muted/30 p-6 sm:p-8'>
+          <div className='grid gap-6 sm:grid-cols-3'>
+            {/* Business info */}
+            <div>
+              <div className='mb-2 text-xs font-semibold uppercase tracking-wider text-foreground'>Business</div>
+              <div className='space-y-1 text-xs text-muted-foreground'>
+                <div className='font-medium text-foreground'>Indian PG Management System (IPMS)</div>
+                <div>Website: www.IndianPGManagement.com</div>
+                <div>
+                  Email:{' '}
+                  <a href='mailto:info@IndianPGManagement.com' className='text-primary hover:underline'>
+                    info@IndianPGManagement.com
+                  </a>
+                </div>
+                <div>
+                  Phone:{' '}
+                  <a href='tel:+918248449609' className='text-primary hover:underline'>+91 82484 49609</a>
+                  {' / '}
+                  <a href='tel:+919042528852' className='text-primary hover:underline'>+91 90425 28852</a>
+                </div>
+              </div>
+            </div>
+
+            {/* Legal links */}
+            <div>
+              <div className='mb-2 text-xs font-semibold uppercase tracking-wider text-foreground'>Legal</div>
+              <div className='flex flex-col gap-1.5'>
+                {[
+                  { label: 'Terms of Service', to: '/terms' },
+                  { label: 'Privacy Policy', to: '/privacy' },
+                  { label: 'Cancellation & Refund Policy', to: '/refund-policy' },
+                  { label: 'Pricing / Subscription Plans', to: '/subscriptions' },
+                  { label: 'FAQ', to: '/faq' },
+                ].map((l) => (
+                  <Link key={l.to} to={l.to} className='text-xs text-primary hover:underline'>
+                    {l.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Secure payments */}
+            <div>
+              <div className='mb-2 text-xs font-semibold uppercase tracking-wider text-foreground'>Secure Payments</div>
+              <div className='space-y-2 text-xs text-muted-foreground'>
+                <div className='flex items-start gap-2'>
+                  <ShieldCheck className='mt-0.5 size-3.5 shrink-0 text-emerald-500' />
+                  <span>Payments processed via a secure, PCI-DSS compliant payment gateway.</span>
+                </div>
+                <div className='flex items-start gap-2'>
+                  <ShieldCheck className='mt-0.5 size-3.5 shrink-0 text-emerald-500' />
+                  <span>We do not store card or bank details. All transactions are SSL encrypted.</span>
+                </div>
+                <div className='flex items-start gap-2'>
+                  <ShieldCheck className='mt-0.5 size-3.5 shrink-0 text-emerald-500' />
+                  <span>Subscription billing is managed in the mobile app. License fees are non-refundable except in case of duplicate/failed transactions.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className='mt-8 rounded-3xl border border-primary/15 bg-[radial-gradient(900px_circle_at_20%_0%,rgba(37,99,235,0.14),transparent_55%),radial-gradient(900px_circle_at_85%_70%,rgba(16,185,129,0.10),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.50))] p-6 backdrop-blur sm:p-10'>
           <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
             <div>
               <div className='text-2xl font-semibold'>Ready to grow your PG with IPMS?</div>

@@ -4,11 +4,13 @@ import storage from 'redux-persist/lib/storage'
 import authReducer from './slices/authSlice'
 import pgLocationReducer from './slices/pgLocationSlice'
 import { baseApi } from '@/services/baseApi'
+import { publicSubscriptionApi } from '@/services/subscriptionApi'
 
 const rootReducer = combineReducers({
   auth: authReducer,
   pgLocations: pgLocationReducer,
   [baseApi.reducerPath]: baseApi.reducer,
+  [publicSubscriptionApi.reducerPath]: publicSubscriptionApi.reducer,
 })
 
 const persistConfig = {
@@ -26,7 +28,7 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }).concat(baseApi.middleware),
+    }).concat(baseApi.middleware).concat(publicSubscriptionApi.middleware),
 })
 
 export const persistor = persistStore(store)

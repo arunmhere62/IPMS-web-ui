@@ -7,7 +7,7 @@ export function PageHeader({
   title,
   subtitle,
   right,
-  showBack = true,
+  showBack = false,
   className,
 }: {
   title: string

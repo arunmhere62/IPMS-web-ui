@@ -47,6 +47,7 @@ export function PublicHeader({ className }: PublicHeaderProps) {
       { title: 'FAQ', href: '/faq', isActive: location.pathname === '/faq' },
       { title: 'Terms', href: '/terms', isActive: location.pathname === '/terms' },
       { title: 'Privacy', href: '/privacy', isActive: location.pathname === '/privacy' },
+      { title: 'Refund Policy', href: '/refund-policy', isActive: location.pathname === '/refund-policy' },
     ],
     [location.pathname]
   )

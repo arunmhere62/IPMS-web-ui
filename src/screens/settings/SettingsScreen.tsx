@@ -212,7 +212,7 @@ export function SettingsScreen() {
                   Refresh
                 </Button>
                 <Button asChild size='sm' className='h-9'>
-                  <Link to='/subscriptions'>
+                  <Link to='/subscriptions/manage'>
                     <Tags className='mr-1.5 size-4' />
                     View Plans
                   </Link>

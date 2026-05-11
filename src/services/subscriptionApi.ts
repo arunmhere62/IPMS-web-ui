@@ -1,4 +1,27 @@
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import { baseApi } from './baseApi'
+
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined
+
+export const publicSubscriptionApi = createApi({
+  reducerPath: 'publicSubscriptionApi',
+  baseQuery: fetchBaseQuery({ baseUrl: API_BASE_URL || '' }),
+  endpoints: (build) => ({
+    getPublicPlans: build.query<SubscriptionPlan[], void>({
+      query: () => ({ url: '/subscription/plans', method: 'GET' }),
+      transformResponse: (response: unknown) => {
+        const rec = (v: unknown): v is Record<string, unknown> =>
+          Boolean(v) && typeof v === 'object' && !Array.isArray(v)
+        let cur: unknown = response
+        for (let i = 0; i < 4; i++) {
+          if (rec(cur) && 'data' in cur) { cur = (cur as any).data; continue }
+          break
+        }
+        return Array.isArray(cur) ? (cur as SubscriptionPlan[]) : []
+      },
+    }),
+  }),
+})
 
 export interface SubscriptionPlan {
   s_no: number
@@ -220,6 +243,8 @@ export const subscriptionApi = baseApi.injectEndpoints({
   }),
   overrideExisting: false,
 })
+
+export const { useGetPublicPlansQuery } = publicSubscriptionApi
 
 export const {
   useGetPlansQuery,

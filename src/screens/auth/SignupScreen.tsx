@@ -231,9 +231,9 @@ export function SignupScreen() {
   }
 
   return (
-    <div className='flex h-screen w-screen flex-col overflow-hidden lg:flex-row'>
+    <div className='flex h-full w-full flex-col overflow-hidden lg:flex-row'>
       {/* Form - On top for mobile, right side for desktop */}
-      <div className='order-1 flex w-full items-center justify-center overflow-y-auto bg-white lg:order-2 lg:w-1/2'>
+      <div className='order-1 flex h-full w-full items-center justify-center overflow-y-auto bg-white lg:order-2 lg:w-1/2'>
         <div className='w-full max-w-[420px] px-8 py-12'>
           <h1 className='mb-2 text-center text-3xl font-bold text-slate-900'>
             {phoneVerified ? 'Setup your PG' : 'Create Account'}

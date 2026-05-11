@@ -56,7 +56,7 @@ export const sidebarData: SidebarData = {
         },
         {
           title: 'Subscriptions',
-          url: '/subscriptions',
+          url: '/subscriptions/manage',
           icon: CreditCard,
         },
         {

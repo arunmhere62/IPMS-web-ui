@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { getCookie } from '@/lib/cookies'
 import { PublicHeader } from '@/components/layout/public-header'
+import { AppFooter } from '@/components/layout/app-footer'
 
 export function PublicLayout() {
   const location = useLocation()
@@ -22,7 +23,7 @@ export function PublicLayout() {
       className={
         isHome
           ? "relative overflow-hidden bg-[radial-gradient(1200px_circle_at_15%_5%,rgba(37,99,235,0.16),transparent_55%),radial-gradient(900px_circle_at_85%_15%,rgba(16,185,129,0.12),transparent_52%),radial-gradient(700px_circle_at_55%_95%,rgba(168,85,247,0.10),transparent_55%),linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,1))]"
-          : undefined
+          : "flex h-screen flex-col overflow-hidden"
       }
     >
       {isHome ? (
@@ -33,10 +34,13 @@ export function PublicLayout() {
         </>
       ) : null}
 
-      <div className={isHome ? 'relative' : undefined}>
+      <div className={isHome ? 'relative' : 'flex min-h-0 flex-1 flex-col'}>
         <PublicHeader />
 
-        <Outlet />
+        <div className={isHome ? undefined : 'min-h-0 flex-1 overflow-y-auto'}>
+          <Outlet />
+          <AppFooter />
+        </div>
       </div>
     </div>
   )

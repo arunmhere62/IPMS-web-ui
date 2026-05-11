@@ -7,11 +7,13 @@ import { SignupScreen } from "@/screens/auth/SignupScreen";
 import { HomePage } from "@/screens/HomePage";
 import { PublicHome } from "@/screens/PublicHome";
 import { SubscriptionsScreen } from "@/screens/subscription/SubscriptionsScreen";
+import { AuthSubscriptionsScreen } from "@/screens/subscription/AuthSubscriptionsScreen";
 import { SubscriptionHistoryScreen } from "@/screens/subscription/SubscriptionHistoryScreen";
 import { SubscriptionConfirmScreen } from "@/screens/subscription/SubscriptionConfirmScreen";
 import { FaqScreen } from "@/screens/faq/FaqScreen";
 import { TermsScreen } from "@/screens/public/TermsScreen";
 import { PrivacyScreen } from "@/screens/public/PrivacyScreen";
+import { RefundPolicyScreen } from "@/screens/public/RefundPolicyScreen";
 import { PGLocationsScreen } from "@/screens/pg-locations/PGLocationsScreen";
 import { PGDetailsScreen } from "@/screens/pg-locations/PGDetailsScreen";
 import { EmployeesScreen } from "@/screens/employees/EmployeesScreen";
@@ -44,6 +46,8 @@ export function AppRoutes() {
         <Route path="/faq" element={<FaqScreen />} />
         <Route path="/terms" element={<TermsScreen />} />
         <Route path="/privacy" element={<PrivacyScreen />} />
+        <Route path="/refund-policy" element={<RefundPolicyScreen />} />
+        <Route path="/subscriptions" element={<SubscriptionsScreen />} />
       </Route>
       <Route element={<AuthenticatedLayout />}>
         <Route path="/" element={<HomePage />} />
@@ -71,15 +75,9 @@ export function AppRoutes() {
         <Route path="/payments/rent" element={<RentPaymentsScreen />} />
         <Route path="/payments/advance" element={<AdvancePaymentsScreen />} />
         <Route path="/payments/refund" element={<RefundPaymentsScreen />} />
-        <Route path="/subscriptions" element={<SubscriptionsScreen />} />
-        <Route
-          path="/subscriptions/confirm"
-          element={<SubscriptionConfirmScreen />}
-        />
-        <Route
-          path="/subscriptions/history"
-          element={<SubscriptionHistoryScreen />}
-        />
+        <Route path="/subscriptions/manage" element={<AuthSubscriptionsScreen />} />
+        <Route path="/subscriptions/confirm" element={<SubscriptionConfirmScreen />} />
+        <Route path="/subscriptions/history" element={<SubscriptionHistoryScreen />} />
       </Route>
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>

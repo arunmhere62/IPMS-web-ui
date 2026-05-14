@@ -38,47 +38,50 @@ export function RefundPolicyScreen() {
                 <SectionHeader title='Subscription Cancellation' />
                 <div className='space-y-2 text-sm text-muted-foreground'>
                   <p>
-                    You may cancel your subscription at any time from within the mobile app. Upon
-                    cancellation, your access to paid features will continue until the end of the
-                    current billing period. No further charges will be made after cancellation.
+                    Subscriptions are non-cancellable mid-cycle. Once a subscription is activated,
+                    it remains active until the end of the paid period.
                   </p>
                   <p>
-                    Cancellation requests must be submitted before the next billing cycle to avoid
-                    being charged for the subsequent period.
+                    If you wish to <strong>close your account</strong> or stop using the platform,
+                    please contact us directly — we do not offer a self-serve account deletion option
+                    at this time.
+                  </p>
+                  <p>
+                    <strong>To close your account, contact us at:</strong>{' '}
+                    <a href='mailto:info@IndianPGManagement.com' className='text-primary underline underline-offset-2'>
+                      info@IndianPGManagement.com
+                    </a>{' '}or call{' '}
+                    <a href='tel:+918248449609' className='text-primary underline underline-offset-2'>+91 82484 49609</a>.
                   </p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border border-red-100 bg-red-50/60 p-6 shadow-sm backdrop-blur'>
                 <SectionHeader title='Refund Policy' />
                 <div className='space-y-2 text-sm text-muted-foreground'>
+                  <p className='font-semibold text-red-700'>
+                    ⚠ We do not provide refunds for subscription payments.
+                  </p>
                   <p>
-                    <strong>Subscription Fees:</strong> All subscription and license payments are
-                    non-refundable once processed. We do not offer pro-rated refunds for unused
-                    portions of an active subscription period.
+                    All subscription fees are collected upfront and are <strong>strictly non-refundable</strong>.
+                    This includes partial-period cancellations, unused days, and plan downgrades.
                   </p>
                   <p>
                     <strong>Duplicate / Erroneous Payments:</strong> If you have been charged more
-                    than once for the same transaction or have been charged incorrectly, please
-                    contact us within 7 days of the transaction at{' '}
-                    <a
-                      href='mailto:info@IndianPGManagement.com'
-                      className='text-primary underline underline-offset-2'
-                    >
+                    than once for the same transaction, please contact us within 7 days at{' '}
+                    <a href='mailto:info@IndianPGManagement.com' className='text-primary underline underline-offset-2'>
                       info@IndianPGManagement.com
-                    </a>
-                    . After verification, the duplicate or erroneous amount will be refunded within
-                    7 working days to your original payment method.
+                    </a>.
+                    After verification, duplicate amounts will be refunded within 7 working days.
                   </p>
                   <p>
-                    <strong>Failed Transactions:</strong> In the event that a payment is deducted
-                    from your account but the subscription is not activated, please contact our
-                    support team. Such amounts will be refunded within 7 working days upon
-                    confirmation.
+                    <strong>Failed Transactions:</strong> If payment was deducted but the
+                    subscription was not activated, contact us and we will resolve it within
+                    7 working days.
                   </p>
                   <p>
-                    <strong>Free Trial Period:</strong> No payment is required during the free trial
-                    period. You will only be charged once you choose to upgrade to a paid plan.
+                    <strong>Free Trial:</strong> No payment is required during the free trial.
+                    You are only charged when you choose to upgrade.
                   </p>
                 </div>
               </section>

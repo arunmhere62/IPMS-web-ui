@@ -7,6 +7,8 @@ const CURRENT_YEAR = new Date().getFullYear()
 const LEGAL_LINKS = [
   { label: 'Terms and Conditions', to: '/terms' },
   { label: 'Privacy Policy', to: '/privacy' },
+  { label: 'Cancellation & Refund', to: '/refund-policy' },
+  { label: 'Contact Us', to: '/contact' },
   { label: 'FAQ', to: '/faq' },
   { label: 'Pricing', to: '/subscriptions' },
 ]

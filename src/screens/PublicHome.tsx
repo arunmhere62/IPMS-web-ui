@@ -567,6 +567,8 @@ export function PublicHome() {
                 {[
                   { label: 'Terms and Conditions', to: '/terms' },
                   { label: 'Privacy Policy', to: '/privacy' },
+                  { label: 'Cancellation & Refund', to: '/refund-policy' },
+                  { label: 'Contact Us', to: '/contact' },
                   { label: 'Pricing / Subscription Plans', to: '/subscriptions' },
                   { label: 'FAQ', to: '/faq' },
                 ].map((l) => (

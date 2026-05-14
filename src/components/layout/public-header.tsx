@@ -1,14 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/assets/logo'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { TopNav } from '@/components/layout/top-nav'
 import { ThemeSwitch } from '@/components/theme-switch'
 
 type PublicHeaderProps = {
   className?: string
 }
+
+const legalLinks = [
+  { title: 'Terms and Conditions', href: '/terms' },
+  { title: 'Privacy Policy', href: '/privacy' },
+  { title: 'Cancellation & Refund', href: '/refund-policy' },
+  { title: 'Contact Us', href: '/contact' },
+]
 
 export function PublicHeader({ className }: PublicHeaderProps) {
   const location = useLocation()
@@ -40,13 +54,14 @@ export function PublicHeader({ className }: PublicHeaderProps) {
     }
   }, [])
 
+  const isLegalActive = legalLinks.some(l => location.pathname === l.href)
+
   const links = useMemo(
     () => [
       { title: 'Home', href: '/home', isActive: location.pathname === '/home' },
       { title: 'Subscriptions', href: '/subscriptions', isActive: location.pathname === '/subscriptions' },
       { title: 'FAQ', href: '/faq', isActive: location.pathname === '/faq' },
-      { title: 'Terms and Conditions', href: '/terms', isActive: location.pathname === '/terms' },
-      { title: 'Privacy Policy', href: '/privacy', isActive: location.pathname === '/privacy' },
+      ...legalLinks.map(l => ({ title: l.title, href: l.href, isActive: location.pathname === l.href })),
     ],
     [location.pathname]
   )
@@ -66,8 +81,29 @@ export function PublicHeader({ className }: PublicHeaderProps) {
           <span className='hidden sm:inline'>IPMS</span>
         </Link>
 
-        <div className='mx-auto hidden lg:flex'>
-          <TopNav links={links} showMobileMenu={false} />
+        <div className='mx-auto hidden items-center space-x-4 lg:flex xl:space-x-6'>
+          <TopNav links={links.slice(0, 3)} showMobileMenu={false} />
+
+          {/* Legal dropdown */}
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button className={cn(
+                'flex items-center gap-1 text-base font-medium transition-colors hover:text-primary',
+                isLegalActive ? 'text-foreground' : 'text-muted-foreground'
+              )}>
+                Policies & Support <ChevronDown className='size-4' />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align='start'>
+              {legalLinks.map(l => (
+                <DropdownMenuItem key={l.href} asChild>
+                  <NavLink to={l.href} className={location.pathname === l.href ? '' : 'text-muted-foreground'}>
+                    {l.title}
+                  </NavLink>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className='ms-auto flex items-center gap-2'>
@@ -81,6 +117,7 @@ export function PublicHeader({ className }: PublicHeaderProps) {
           </div>
 
           <ThemeSwitch />
+          {/* Mobile menu includes all links including legal */}
           <TopNav links={links} showDesktopNav={false} />
         </div>
       </div>

@@ -7,6 +7,7 @@ export function PublicLayout() {
   const location = useLocation()
   const isEmbedded = new URLSearchParams(location.search).get('embed') === '1'
   const isHome = location.pathname === '/home'
+  const isAuthScreen = location.pathname === '/login' || location.pathname === '/signup'
 
   const accessToken = getCookie('access_token')
 
@@ -39,7 +40,7 @@ export function PublicLayout() {
 
         <div className={isHome ? undefined : 'min-h-0 flex-1 overflow-y-auto'}>
           <Outlet />
-          <AppFooter />
+          {!isAuthScreen && <AppFooter />}
         </div>
       </div>
     </div>

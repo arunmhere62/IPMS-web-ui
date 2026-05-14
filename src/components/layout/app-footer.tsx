@@ -5,9 +5,8 @@ import { Mail, Phone, ShieldCheck } from 'lucide-react'
 const CURRENT_YEAR = new Date().getFullYear()
 
 const LEGAL_LINKS = [
-  { label: 'Terms of Service', to: '/terms' },
+  { label: 'Terms and Conditions', to: '/terms' },
   { label: 'Privacy Policy', to: '/privacy' },
-  { label: 'Cancellation & Refund Policy', to: '/refund-policy' },
   { label: 'FAQ', to: '/faq' },
   { label: 'Pricing', to: '/subscriptions' },
 ]

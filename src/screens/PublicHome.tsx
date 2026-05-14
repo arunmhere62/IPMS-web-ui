@@ -565,9 +565,8 @@ export function PublicHome() {
               <div className='mb-2 text-xs font-semibold uppercase tracking-wider text-foreground'>Legal</div>
               <div className='flex flex-col gap-1.5'>
                 {[
-                  { label: 'Terms of Service', to: '/terms' },
+                  { label: 'Terms and Conditions', to: '/terms' },
                   { label: 'Privacy Policy', to: '/privacy' },
-                  { label: 'Cancellation & Refund Policy', to: '/refund-policy' },
                   { label: 'Pricing / Subscription Plans', to: '/subscriptions' },
                   { label: 'FAQ', to: '/faq' },
                 ].map((l) => (

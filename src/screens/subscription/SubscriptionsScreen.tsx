@@ -1,6 +1,15 @@
+import { useState } from 'react'
 import { useGetPublicPlansQuery, type SubscriptionPlan } from '@/services/subscriptionApi'
-import { Check, Flame, Sparkles, Zap } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Check, Flame, LogIn, Sparkles, UserPlus, Zap } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 const formatPrice = (price: string | number, currency?: string) => {
   const n = typeof price === 'string' ? parseFloat(price) : price
@@ -65,7 +74,7 @@ const CARD_THEMES = [
   },
 ]
 
-function PlanCard({ plan, recommended, idx }: { plan: SubscriptionPlan; recommended: boolean; idx: number }) {
+function PlanCard({ plan, recommended, idx, onGetStarted }: { plan: SubscriptionPlan; recommended: boolean; idx: number; onGetStarted: (planName: string) => void }) {
   const isFreePlan = Boolean(plan.is_free)
   const isTrialPlan = Boolean(plan.is_trial)
   const features = getFeatures(plan)
@@ -140,12 +149,12 @@ function PlanCard({ plan, recommended, idx }: { plan: SubscriptionPlan; recommen
 
       <div className={`mx-6 mb-6 mt-auto h-px bg-gradient-to-r ${theme.accent} opacity-20`} />
       <div className='px-6 pb-6'>
-        <Link
-          to='/signup'
+        <button
+          onClick={() => onGetStarted(plan.name)}
           className={`flex w-full items-center justify-center rounded-2xl bg-gradient-to-r ${theme.accent} py-3 text-sm font-bold text-white shadow-lg transition-all hover:opacity-90 hover:shadow-xl active:scale-95`}
         >
           Get Started
-        </Link>
+        </button>
         <div className='mt-3 text-center text-[11px] text-white/25'>Subscribe in the mobile app after signup</div>
       </div>
     </div>
@@ -154,6 +163,8 @@ function PlanCard({ plan, recommended, idx }: { plan: SubscriptionPlan; recommen
 
 export function SubscriptionsScreen() {
   const { data: plans = [], isLoading } = useGetPublicPlansQuery()
+  const navigate = useNavigate()
+  const [loginPrompt, setLoginPrompt] = useState<{ open: boolean; planName: string }>({ open: false, planName: '' })
 
   const recommendedSno = plans.filter(p => p.is_active !== false).find(p =>
     p.name.toLowerCase().includes('premium')
@@ -201,12 +212,51 @@ export function SubscriptionsScreen() {
           ) : (
             <div className='grid grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3'>
               {plans.map((p, i) => (
-                <PlanCard key={p.s_no} plan={p} recommended={p.s_no === recommendedSno} idx={i} />
+                <PlanCard
+                  key={p.s_no}
+                  plan={p}
+                  recommended={p.s_no === recommendedSno}
+                  idx={i}
+                  onGetStarted={(planName) => setLoginPrompt({ open: true, planName })}
+                />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Login prompt dialog */}
+      <Dialog open={loginPrompt.open} onOpenChange={(open) => setLoginPrompt(prev => ({ ...prev, open }))}>
+        <DialogContent className='sm:max-w-sm'>
+          <DialogHeader>
+            <DialogTitle className='text-lg font-bold'>Sign in to subscribe</DialogTitle>
+            <DialogDescription className='text-sm text-muted-foreground'>
+              To subscribe to the <span className='font-semibold text-foreground'>{loginPrompt.planName}</span> plan,
+              you need an account. It only takes a minute to get started.
+            </DialogDescription>
+          </DialogHeader>
+          <div className='mt-2 flex flex-col gap-3'>
+            <Button
+              className='w-full'
+              onClick={() => { navigate('/login') }}
+            >
+              <LogIn className='mr-2 size-4' />
+              Login to your account
+            </Button>
+            <Button
+              variant='outline'
+              className='w-full'
+              onClick={() => { navigate('/signup') }}
+            >
+              <UserPlus className='mr-2 size-4' />
+              Create a new account
+            </Button>
+            <p className='text-center text-[11px] text-muted-foreground'>
+              After signing up, download the mobile app to complete your subscription.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

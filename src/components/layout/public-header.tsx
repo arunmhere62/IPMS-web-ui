@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { TopNav } from '@/components/layout/top-nav'
-import { ThemeSwitch } from '@/components/theme-switch'
 
 type PublicHeaderProps = {
   className?: string
@@ -21,7 +20,6 @@ const legalLinks = [
   { title: 'Terms and Conditions', href: '/terms' },
   { title: 'Privacy Policy', href: '/privacy' },
   { title: 'Cancellation & Refund', href: '/refund-policy' },
-  { title: 'Contact Us', href: '/contact' },
 ]
 
 export function PublicHeader({ className }: PublicHeaderProps) {
@@ -61,6 +59,7 @@ export function PublicHeader({ className }: PublicHeaderProps) {
       { title: 'Home', href: '/home', isActive: location.pathname === '/home' },
       { title: 'Subscriptions', href: '/subscriptions', isActive: location.pathname === '/subscriptions' },
       { title: 'FAQ', href: '/faq', isActive: location.pathname === '/faq' },
+      { title: 'Contact Us', href: '/contact', isActive: location.pathname === '/contact' },
       ...legalLinks.map(l => ({ title: l.title, href: l.href, isActive: location.pathname === l.href })),
     ],
     [location.pathname]
@@ -82,7 +81,7 @@ export function PublicHeader({ className }: PublicHeaderProps) {
         </Link>
 
         <div className='mx-auto hidden items-center space-x-4 lg:flex xl:space-x-6'>
-          <TopNav links={links.slice(0, 3)} showMobileMenu={false} />
+          <TopNav links={links.slice(0, 4)} showMobileMenu={false} />
 
           {/* Legal dropdown */}
           <DropdownMenu modal={false}>
@@ -116,7 +115,6 @@ export function PublicHeader({ className }: PublicHeaderProps) {
             </Button>
           </div>
 
-          <ThemeSwitch />
           {/* Mobile menu includes all links including legal */}
           <TopNav links={links} showDesktopNav={false} />
         </div>

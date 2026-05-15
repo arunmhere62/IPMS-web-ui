@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, HelpCircle, Users, Bed, DoorOpen, UserRound, User, Settings, Ticket, CreditCard, Wallet } from 'lucide-react'
+import { LayoutDashboard, Building2, HelpCircle, Users, Bed, DoorOpen, UserRound, User, Settings, Ticket, CreditCard, Wallet, FileText, Shield, RefreshCcw } from 'lucide-react'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
@@ -71,7 +71,32 @@ export const sidebarData: SidebarData = {
         },
         {
           title: 'FAQ',
-          url: '/faq',
+          url: '/dashboard/faq',
+          icon: HelpCircle,
+        },
+      ],
+    },
+    {
+      title: 'Policies & Support',
+      items: [
+        {
+          title: 'Terms and Conditions',
+          url: '/dashboard/terms',
+          icon: FileText,
+        },
+        {
+          title: 'Privacy Policy',
+          url: '/dashboard/privacy',
+          icon: Shield,
+        },
+        {
+          title: 'Cancellation & Refund',
+          url: '/dashboard/refund-policy',
+          icon: RefreshCcw,
+        },
+        {
+          title: 'Contact Us',
+          url: '/dashboard/contact',
           icon: HelpCircle,
         },
       ],

@@ -18,7 +18,6 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { Header } from '@/components/layout/header'
 import { SkipToMain } from '@/components/skip-to-main'
-import { AppFooter } from '@/components/layout/app-footer'
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
@@ -110,7 +109,6 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
           </Header>
           <div className='flex min-h-0 flex-1 flex-col'>
             {children ?? <Outlet />}
-            <AppFooter />
           </div>
         </SidebarInset>
       </SidebarProvider>

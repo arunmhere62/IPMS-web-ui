@@ -40,17 +40,7 @@ import { RefundPaymentsScreen } from "@/screens/payments/RefundPaymentsScreen";
 export function AppRoutes() {
   return (
     <Routes>
-      <Route element={<PublicLayout />}>
-        <Route path="/home" element={<PublicHome />} />
-        <Route path="/login" element={<LoginScreen />} />
-        <Route path="/signup" element={<SignupScreen />} />
-        <Route path="/faq" element={<FaqScreen />} />
-        <Route path="/terms" element={<TermsScreen />} />
-        <Route path="/privacy" element={<PrivacyScreen />} />
-        <Route path="/refund-policy" element={<RefundPolicyScreen />} />
-        <Route path="/contact" element={<ContactUsScreen />} />
-        <Route path="/subscriptions" element={<SubscriptionsScreen />} />
-      </Route>
+      {/* Authenticated routes first - includes hybrid policy pages */}
       <Route element={<AuthenticatedLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/pg-locations" element={<PGLocationsScreen />} />
@@ -72,7 +62,6 @@ export function AppRoutes() {
         <Route path="/rooms/:id" element={<RoomDetailsScreen />} />
         <Route path="/beds" element={<BedsScreen />} />
         <Route path="/beds/:id" element={<BedDetailsScreen />} />
-        <Route path="/faq" element={<FaqScreen />} />
         <Route path="/payments" element={<PaymentsScreen />} />
         <Route path="/payments/rent" element={<RentPaymentsScreen />} />
         <Route path="/payments/advance" element={<AdvancePaymentsScreen />} />
@@ -80,6 +69,24 @@ export function AppRoutes() {
         <Route path="/subscriptions/manage" element={<AuthSubscriptionsScreen />} />
         <Route path="/subscriptions/confirm" element={<SubscriptionConfirmScreen />} />
         <Route path="/subscriptions/history" element={<SubscriptionHistoryScreen />} />
+        {/* Dashboard policy pages - shown inside app with sidebar */}
+        <Route path="/dashboard/faq" element={<FaqScreen />} />
+        <Route path="/dashboard/terms" element={<TermsScreen />} />
+        <Route path="/dashboard/privacy" element={<PrivacyScreen />} />
+        <Route path="/dashboard/refund-policy" element={<RefundPolicyScreen />} />
+        <Route path="/dashboard/contact" element={<ContactUsScreen />} />
+      </Route>
+      {/* Public routes - for logged-out users */}
+      <Route element={<PublicLayout />}>
+        <Route path="/home" element={<PublicHome />} />
+        <Route path="/login" element={<LoginScreen />} />
+        <Route path="/signup" element={<SignupScreen />} />
+        <Route path="/faq" element={<FaqScreen />} />
+        <Route path="/terms" element={<TermsScreen />} />
+        <Route path="/privacy" element={<PrivacyScreen />} />
+        <Route path="/refund-policy" element={<RefundPolicyScreen />} />
+        <Route path="/contact" element={<ContactUsScreen />} />
+        <Route path="/subscriptions" element={<SubscriptionsScreen />} />
       </Route>
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>

@@ -17,6 +17,7 @@ type PublicHeaderProps = {
 }
 
 const legalLinks = [
+  { title: 'Software Services', href: '/software-services' },
   { title: 'Terms and Conditions', href: '/terms' },
   { title: 'Privacy Policy', href: '/privacy' },
   { title: 'Cancellation & Refund', href: '/refund-policy' },

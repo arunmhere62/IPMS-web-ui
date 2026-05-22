@@ -15,6 +15,7 @@ import { TermsScreen } from "@/screens/public/TermsScreen";
 import { PrivacyScreen } from "@/screens/public/PrivacyScreen";
 import { RefundPolicyScreen } from "@/screens/public/RefundPolicyScreen";
 import { ContactUsScreen } from "@/screens/public/ContactUsScreen";
+import { SoftwareServicesScreen } from "@/screens/public/SoftwareServicesScreen";
 import { PGLocationsScreen } from "@/screens/pg-locations/PGLocationsScreen";
 import { PGDetailsScreen } from "@/screens/pg-locations/PGDetailsScreen";
 import { EmployeesScreen } from "@/screens/employees/EmployeesScreen";
@@ -75,6 +76,7 @@ export function AppRoutes() {
         <Route path="/dashboard/privacy" element={<PrivacyScreen />} />
         <Route path="/dashboard/refund-policy" element={<RefundPolicyScreen />} />
         <Route path="/dashboard/contact" element={<ContactUsScreen />} />
+        <Route path="/dashboard/software-services" element={<SoftwareServicesScreen />} />
       </Route>
       {/* Public routes - for logged-out users */}
       <Route element={<PublicLayout />}>
@@ -86,6 +88,7 @@ export function AppRoutes() {
         <Route path="/privacy" element={<PrivacyScreen />} />
         <Route path="/refund-policy" element={<RefundPolicyScreen />} />
         <Route path="/contact" element={<ContactUsScreen />} />
+        <Route path="/software-services" element={<SoftwareServicesScreen />} />
         <Route path="/subscriptions" element={<SubscriptionsScreen />} />
       </Route>
       <Route path="*" element={<Navigate to="/home" replace />} />

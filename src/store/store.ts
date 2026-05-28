@@ -1,8 +1,8 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit'
 import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
-import authReducer from './slices/authSlice'
-import pgLocationReducer from './slices/pgLocationSlice'
+import authReducer, { logout } from './slices/authSlice'
+import pgLocationReducer, { resetPGLocation } from './slices/pgLocationSlice'
 import { baseApi } from '@/services/baseApi'
 import { publicSubscriptionApi } from '@/services/subscriptionApi'
 
@@ -21,6 +21,18 @@ const persistConfig = {
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)
 
+// On logout: reset pgLocations slice and purge persisted localStorage
+const logoutMiddleware = () => (next: (action: unknown) => unknown) => (action: unknown) => {
+  const result = next(action)
+  if ((action as { type?: string }).type === logout.type) {
+    store.dispatch(resetPGLocation())
+    store.dispatch(baseApi.util.resetApiState())
+    store.dispatch(publicSubscriptionApi.util.resetApiState())
+    setTimeout(() => persistor.purge(), 0)
+  }
+  return result
+}
+
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
@@ -28,7 +40,7 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }).concat(baseApi.middleware).concat(publicSubscriptionApi.middleware),
+    }).concat(logoutMiddleware).concat(baseApi.middleware).concat(publicSubscriptionApi.middleware),
 })
 
 export const persistor = persistStore(store)

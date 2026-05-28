@@ -1,32 +1,62 @@
 import { baseApi } from './baseApi'
 
-type CentralEnvelope<T> = {
-  success?: boolean
-  statusCode?: number
-  message?: string
-  data?: T
-}
-
+// Backend wraps all responses with ResponseUtil.success():
+// { success: boolean, statusCode: number, message: string, data: T, timestamp?: string }
 type ApiEnvelope<T> = {
-  data?: T
+  success: boolean
+  statusCode: number
+  message: string
+  data: T
+  timestamp?: string
+  path?: string
 }
 
-const unwrapCentralData = <T>(response: any): T => {
-  if (response && typeof response === 'object' && 'success' in response && 'statusCode' in response) {
-    return (response as any).data as T
-  }
+const isApiEnvelope = <T>(v: unknown): v is ApiEnvelope<T> =>
+  typeof v === 'object' && v !== null && 'success' in v && 'statusCode' in v && 'data' in v
+
+const unwrap = <T>(response: unknown): T => {
+  if (isApiEnvelope<T>(response)) return response.data
   return response as T
 }
 
-const unwrapApiOrCentralData = <T>(response: any): T => {
-  const central = unwrapCentralData<T>(response)
-  if (central && typeof central === 'object' && 'data' in (central as any)) {
-    return ((central as any).data ?? central) as T
-  }
-  if (response && typeof response === 'object' && 'data' in response) {
-    return (response as any).data as T
-  }
-  return response as T
+// User shape returned by /auth/verify-otp
+export type ApiUser = {
+  s_no: number
+  name: string
+  email: string
+  phone: string
+  role_id: number
+  role_name: string
+  organization_id: number | null
+  organization_name?: string
+  status: string
+  address?: string | null
+  city_id?: number | null
+  state_id?: number | null
+  gender?: string | null
+}
+
+// Raw token shape from jwt.service.ts generateTokens()
+type TokenData = {
+  access_token: string
+  refresh_token: string
+  token_type: 'Bearer'
+  expires_in: number
+}
+
+// /auth/verify-otp data field
+type VerifyOtpData = { user: ApiUser } & TokenData
+
+// /auth/send-otp and /auth/send-signup-otp data field
+type OtpSendData = { phone: string; expiresIn: string }
+
+// /auth/signup data field
+type SignupData = {
+  userId: number
+  pgId: number
+  organizationId: number
+  email?: string
+  name: string
 }
 
 export type SendOtpRequest = { phone: string }
@@ -41,86 +71,73 @@ export type SignupRequest = {
   rentCycleEnd?: number | null
 }
 
-export type VerifyOtpResponse = {
-  user: any
-  accessToken: string
-  refreshToken?: string
-}
+export type SendOtpResponse = { phone: string; expiresIn: string }
 
-export type RefreshTokenRequest = {
+export type VerifyOtpResponse = {
+  user: ApiUser
+  accessToken: string
   refreshToken: string
 }
 
+export type RefreshTokenRequest = { refreshToken: string }
+
 export type RefreshTokenResponse = {
   accessToken: string
-  refreshToken?: string
+  refreshToken: string
 }
 
-type VerifyOtpRawResponse = {
-  user: any
-  accessToken?: string
-  refreshToken?: string
-  access_token?: string
-  refresh_token?: string
+export type SignupResponse = {
+  success: boolean
+  message: string
+  data: SignupData
 }
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
-    sendOtp: build.mutation<unknown, SendOtpRequest>({
+    sendOtp: build.mutation<SendOtpResponse, SendOtpRequest>({
       query: (body) => ({ url: '/auth/send-otp', method: 'POST', body }),
-      transformResponse: (r: CentralEnvelope<any> | ApiEnvelope<any> | any) => r,
+      transformResponse: (r: unknown): SendOtpResponse => unwrap<OtpSendData>(r),
     }),
 
     verifyOtp: build.mutation<VerifyOtpResponse, VerifyOtpRequest>({
       query: (body) => ({ url: '/auth/verify-otp', method: 'POST', body }),
-      transformResponse: (response: CentralEnvelope<VerifyOtpRawResponse> | ApiEnvelope<VerifyOtpRawResponse> | any) => {
-        const r = unwrapApiOrCentralData<VerifyOtpRawResponse>(response)
+      transformResponse: (response: unknown): VerifyOtpResponse => {
+        const r = unwrap<VerifyOtpData>(response)
         return {
-          user: (r as any).user,
-          accessToken: (r as any).accessToken ?? (r as any).access_token,
-          refreshToken: (r as any).refreshToken ?? (r as any).refresh_token,
+          user: r.user,
+          accessToken: r.access_token,
+          refreshToken: r.refresh_token,
         }
       },
     }),
 
-    sendSignupOtp: build.mutation<unknown, SendOtpRequest>({
+    sendSignupOtp: build.mutation<SendOtpResponse, SendOtpRequest>({
       query: (body) => ({ url: '/auth/send-signup-otp', method: 'POST', body }),
-      transformResponse: (r: CentralEnvelope<any> | any) => unwrapCentralData<any>(r),
+      transformResponse: (r: unknown): SendOtpResponse => unwrap<OtpSendData>(r),
     }),
 
-    verifySignupOtp: build.mutation<unknown, VerifyOtpRequest>({
+    verifySignupOtp: build.mutation<SendOtpResponse, VerifyOtpRequest>({
       query: (body) => ({ url: '/auth/verify-signup-otp', method: 'POST', body }),
-      transformResponse: (r: CentralEnvelope<any> | any) => unwrapCentralData<any>(r),
+      transformResponse: (r: unknown): SendOtpResponse => unwrap<OtpSendData>(r),
     }),
 
-    signup: build.mutation<any, SignupRequest>({
+    signup: build.mutation<SignupResponse, SignupRequest>({
       query: (body) => ({ url: '/auth/signup', method: 'POST', body }),
-      transformResponse: (response: CentralEnvelope<any> | any) => {
-        const data = unwrapCentralData<any>(response)
-        if (response && typeof response === 'object') {
-          return {
-            ...data,
-            message: (response as any).message,
-            success: (response as any).success,
-            statusCode: (response as any).statusCode,
-          }
-        }
-        return data
-      },
+      transformResponse: (r: unknown): SignupResponse => r as SignupResponse,
     }),
 
-    logout: build.mutation<unknown, void>({
+    logout: build.mutation<{ success: boolean; message: string }, void>({
       query: () => ({ url: '/auth/logout', method: 'POST' }),
-      transformResponse: (r: CentralEnvelope<any> | ApiEnvelope<any> | any) => r,
+      transformResponse: (r: unknown) => r as { success: boolean; message: string },
     }),
 
     refreshToken: build.mutation<RefreshTokenResponse, RefreshTokenRequest>({
       query: (body) => ({ url: '/auth/refresh', method: 'POST', body }),
-      transformResponse: (response: CentralEnvelope<any> | ApiEnvelope<any> | any) => {
-        const r = unwrapApiOrCentralData<any>(response)
+      transformResponse: (response: unknown): RefreshTokenResponse => {
+        const r = unwrap<TokenData>(response)
         return {
-          accessToken: (r as any).accessToken ?? (r as any).access_token,
-          refreshToken: (r as any).refreshToken ?? (r as any).refresh_token,
+          accessToken: r.access_token,
+          refreshToken: r.refresh_token,
         }
       },
     }),

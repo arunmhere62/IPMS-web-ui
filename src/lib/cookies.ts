@@ -41,3 +41,16 @@ export function removeCookie(name: string): void {
 
   document.cookie = `${name}=; path=/; max-age=0`
 }
+
+/**
+ * Clear all authentication-related cookies
+ */
+export function clearAuthCookies(): void {
+  removeCookie('access_token')
+  removeCookie('refresh_token')
+  removeCookie('x_user_id')
+  removeCookie('x_organization_id')
+  removeCookie('x-organization-id')
+  removeCookie('x_pg_location_id')
+  removeCookie('x-pg-location-id')
+}

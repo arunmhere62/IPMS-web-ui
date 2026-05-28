@@ -15,8 +15,9 @@ const pgLocationSlice = createSlice({
     setSelectedPGLocation: (state, action: PayloadAction<number | null>) => {
       state.selectedPGLocationId = action.payload
     },
+    resetPGLocation: () => initialState,
   },
 })
 
-export const { setSelectedPGLocation } = pgLocationSlice.actions
+export const { setSelectedPGLocation, resetPGLocation } = pgLocationSlice.actions
 export default pgLocationSlice.reducer

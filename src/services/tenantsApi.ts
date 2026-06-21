@@ -13,6 +13,7 @@ export interface TenantPayment {
   actual_rent_amount?: number
   start_date?: string
   end_date?: string
+  cycle_id?: number
   tenant_rent_cycles?: {
     s_no?: number
     cycle_type?: string
@@ -22,6 +23,7 @@ export interface TenantPayment {
   payment_method?: string
   status?: string
   remarks?: string
+  bed_rent_amount_snapshot?: number
 }
 
 export interface AdvancePayment {

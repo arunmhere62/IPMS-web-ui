@@ -216,13 +216,15 @@ export function RentPaymentDialog({
       title='Add Rent Payment'
       description={`Record a rent payment for ${tenant.name}`}
       size='lg'
+      bodyClassName='max-h-[90vh] overflow-y-auto'
       footer={
-        <div className='flex w-full justify-end gap-2'>
+        <div className='flex w-full flex-col-reverse sm:flex-row sm:justify-end gap-2'>
           <Button
             type='button'
             variant='outline'
             onClick={() => onOpenChange(false)}
             disabled={creating}
+            className='w-full sm:w-auto'
           >
             Cancel
           </Button>
@@ -230,6 +232,7 @@ export function RentPaymentDialog({
             type='submit'
             form='rent-payment-form'
             disabled={creating || !form.formState.isValid}
+            className='w-full sm:w-auto'
           >
             {creating ? 'Saving...' : 'Save Payment'}
           </Button>
@@ -250,7 +253,7 @@ export function RentPaymentDialog({
 
           {/* Tenant Info */}
           <div className='rounded-md border bg-muted/30 p-3'>
-            <div className='grid grid-cols-2 gap-3'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
               <div>
                 <div className='text-[10px] text-muted-foreground'>Joining Date</div>
                 <div className='text-xs font-semibold'>
@@ -280,7 +283,7 @@ export function RentPaymentDialog({
 
           {/* Rent Period Selection */}
           <div className='rounded-md border bg-card p-4'>
-            <div className='flex items-center justify-between gap-2'>
+            <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
               <div className='text-sm font-semibold'>Rent Period</div>
               <Button
                 type='button'
@@ -288,6 +291,7 @@ export function RentPaymentDialog({
                 size='sm'
                 onClick={skipGapsAndUseNextPeriod}
                 disabled={loadingGaps}
+                className='w-full sm:w-auto'
               >
                 {loadingGaps ? 'Loading...' : 'Next Period'}
               </Button>
@@ -310,7 +314,7 @@ export function RentPaymentDialog({
                         variant={selected ? 'default' : 'outline'}
                         onClick={() => selectGap(g)}
                         disabled={loadingGaps}
-                        className='relative'
+                        className='relative flex-1 sm:flex-none'
                       >
                         {formatGapLabel(g.gapStart, g.gapEnd)}
                         {g.rentDue && (
@@ -373,26 +377,27 @@ export function RentPaymentDialog({
           {/* Payment Details */}
           <div className='grid gap-4 sm:grid-cols-2'>
             <div className='flex flex-col'>
-              <label className='text-sm font-medium'>Payment Date</label>
-              <div className='mt-1'>
-                <DatePicker
-                  selected={selectedDate}
-                  onSelect={(date) => {
-                    setSelectedDate(date)
-                    form.setValue('payment_date', date ? date.toISOString().split('T')[0] : '')
-                  }}
-                  placeholder='Pick a date'
-                />
-              </div>
+              <label className='mb-1.5 text-sm font-medium'>Payment Date</label>
+              <DatePicker
+                selected={selectedDate}
+                onSelect={(date) => {
+                  setSelectedDate(date)
+                  form.setValue('payment_date', date ? date.toISOString().split('T')[0] : '')
+                }}
+                placeholder='Pick a date'
+              />
             </div>
-            <FormSelectField
-              control={form.control}
-              name='payment_method'
-              label='Payment Method'
-              placeholder='Select method'
-              options={paymentMethodOptions}
-              required
-            />
+            <div className='flex flex-col'>
+              <FormSelectField
+                control={form.control}
+                name='payment_method'
+                label='Payment Method'
+                placeholder='Select method'
+                options={paymentMethodOptions}
+                required
+                className='w-full'
+              />
+            </div>
           </div>
 
           {/* Remarks */}

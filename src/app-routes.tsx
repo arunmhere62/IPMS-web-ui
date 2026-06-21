@@ -16,6 +16,7 @@ import { PrivacyScreen } from "@/screens/public/PrivacyScreen";
 import { RefundPolicyScreen } from "@/screens/public/RefundPolicyScreen";
 import { ContactUsScreen } from "@/screens/public/ContactUsScreen";
 import { SoftwareServicesScreen } from "@/screens/public/SoftwareServicesScreen";
+import { AboutUsScreen } from "@/screens/public/AboutUsScreen";
 import { PGLocationsScreen } from "@/screens/pg-locations/PGLocationsScreen";
 import { PGDetailsScreen } from "@/screens/pg-locations/PGDetailsScreen";
 import { EmployeesScreen } from "@/screens/employees/EmployeesScreen";
@@ -72,6 +73,7 @@ export function AppRoutes() {
         <Route path="/subscriptions/history" element={<SubscriptionHistoryScreen />} />
         {/* Dashboard policy pages - shown inside app with sidebar */}
         <Route path="/dashboard/faq" element={<FaqScreen />} />
+        <Route path="/dashboard/about" element={<AboutUsScreen />} />
         <Route path="/dashboard/terms" element={<TermsScreen />} />
         <Route path="/dashboard/privacy" element={<PrivacyScreen />} />
         <Route path="/dashboard/refund-policy" element={<RefundPolicyScreen />} />
@@ -84,6 +86,7 @@ export function AppRoutes() {
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/signup" element={<SignupScreen />} />
         <Route path="/faq" element={<FaqScreen />} />
+        <Route path="/about" element={<AboutUsScreen />} />
         <Route path="/terms" element={<TermsScreen />} />
         <Route path="/privacy" element={<PrivacyScreen />} />
         <Route path="/refund-policy" element={<RefundPolicyScreen />} />

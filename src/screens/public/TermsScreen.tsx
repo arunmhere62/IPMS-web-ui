@@ -9,14 +9,10 @@ function SectionHeader({ title }: { title: string }) {
 
 export function TermsScreen() {
   return (
-    <div className='legal-page relative overflow-hidden'>
-      <div className='pointer-events-none absolute -top-24 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl' />
-      <div className='pointer-events-none absolute -right-24 top-40 h-[420px] w-[420px] rounded-full bg-amber-500/10 blur-3xl' />
-      <div className='pointer-events-none absolute -left-24 bottom-0 h-[420px] w-[420px] rounded-full bg-violet-500/10 blur-3xl' />
-
+    <div className='legal-page'>
       <div className='container mx-auto max-w-6xl px-4 py-10 sm:py-12'>
         <div className='mx-auto max-w-3xl'>
-          <div className='relative overflow-hidden rounded-3xl border border-slate-900/10 bg-[radial-gradient(900px_circle_at_0%_0%,rgba(15,23,42,0.06),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.50))] p-6 shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur sm:p-10'>
+          <div className='relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 sm:p-10'>
             <PageHeader
               title='Terms of Use'
               subtitle='Please read these terms carefully before using the service.'
@@ -25,7 +21,17 @@ export function TermsScreen() {
             <div className='mt-8 space-y-6'>
               <div className='text-sm text-muted-foreground'>Last Updated: January 11, 2026</div>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
+                <div className='mt-1 space-y-2 text-sm text-muted-foreground'>
+                  <p>
+                    These Terms are published by <strong>Satz Techno Solutions</strong> (Partnership),
+                    doing business as <strong>IndianPGManagement.com (IPMS)</strong>, with registered office at
+                    No 1/50, P.K Street Mettu Kantigai, Gudapakkam, Chennai, Thiruvallur, Tamil Nadu, 600124, India.
+                  </p>
+                </div>
+              </section>
+
+              <section className='rounded-2xl border bg-white p-6'>
                 <p className='text-sm text-muted-foreground'>
                   PLEASE READ THE FOLLOWING TERMS AND CONDITIONS OF USE CAREFULLY BEFORE USING THIS WEBSITE AND APPLICATIONS.
                 </p>
@@ -34,7 +40,7 @@ export function TermsScreen() {
                 </p>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Disclaimer" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>You understand that it is your responsibility to provide valid information only after going through our privacy policy. We are not liable or responsible for any loss in communication due to invalid information provided while using our services.</p>
@@ -42,7 +48,7 @@ export function TermsScreen() {
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Copyright" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>This site's entire content, including but not limited to text, graphics or code, is copyrighted as a collective work under the Indian Copyrights Act and is the property of IndianPGManagement.com. The collective work includes works that are licensed to IndianPGManagement.com. Copyright 2017, IndianPGManagement.com ALL RIGHTS RESERVED. Permission is granted to electronically copy and print hard copy portions of this site for the sole purpose of advertisement. Any other use, including but not limited to the reproduction, distribution, display or transmission of the content of this site is strictly prohibited unless authorized by IndianPGManagement.com. You further agree not to change or delete any proprietary notices from materials downloaded from IndianPGManagement.com.</p>
@@ -128,14 +134,61 @@ export function TermsScreen() {
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Shipping & Delivery Policy" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
-                  <p>Shipping is not applicable for business.</p>
+                  <p>
+                    Note: IPMS is a digital software service. We do not ship physical goods. If we introduce
+                    any merchandise or physical items in the future, the following shipping policy will apply.
+                  </p>
+                  <h3 className='font-medium'>Scope</h3>
+                  <p>
+                    This document sets out the shipping policy that applies to customers that make a purchase at
+                    <strong> www.IndianPGManagement.com</strong>. If you have any questions, please contact our
+                    customer service team at <strong>+91 82484 49609 / +91 90425 28852</strong> or
+                    <strong> info@IndianPGManagement.com</strong>.
+                  </p>
+                  <h3 className='font-medium'>Shipping Options & Delivery Costs</h3>
+                  <p>
+                    We offer the following shipping options — you will be asked to select a shipping method at
+                    checkout.
+                  </p>
+                  <ul className='list-disc ps-5 space-y-1'>
+                    <li>[Standard Shipping — rates/timeframes]</li>
+                    <li>[Express Shipping — rates/timeframes]</li>
+                    <li>[In-Store Pickup/Local Delivery — if applicable]</li>
+                  </ul>
+                  <h3 className='font-medium'>Order Processing Time</h3>
+                  <p>
+                    All orders placed before 2 PM Monday to Friday are processed and dispatched the same day; orders
+                    placed after 2 PM will be dispatched the next business day. Orders placed during the weekend or on
+                    a public holiday will be sent on Monday or the next business day.
+                  </p>
+                  <h3 className='font-medium'>Delivery Address & P.O. Boxes</h3>
+                  <p>
+                    Please note that we are unable to modify the delivery address once you have placed your order. We
+                    do not ship to P.O. boxes.
+                  </p>
+                  <h3 className='font-medium'>International Orders</h3>
+                  <p>
+                    Your package may be subject to import duties and taxes. You, as the customer, are responsible for
+                    paying those fees. We recommend that you check with your local customs office before placing an
+                    order as these fees can be significant and cannot be calculated by us.
+                  </p>
+                  <h3 className='font-medium'>Tracking Your Order</h3>
+                  <p>
+                    Once your order has been dispatched, we will send you a confirmation email with tracking
+                    information. You will be able to track your package directly on the carrier’s website.
+                  </p>
+                  <h3 className='font-medium'>Returns, Refunds, and Exchanges</h3>
+                  <p>
+                    We want you to be completely happy with your purchase — please read our Return & Refund Policy for
+                    detailed information about our processes.
+                  </p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Contact Us" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>You can always reach us at info@IndianPGManagement.com for any kind of support. Looking forward to see you mail!</p>

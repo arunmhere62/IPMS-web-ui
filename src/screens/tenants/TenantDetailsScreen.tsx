@@ -837,25 +837,93 @@ export function TenantDetailsScreen() {
                 </h3>
                 {tenant.tenant_rent_cycles.length > 0 ? (
                   <div className='space-y-2'>
-                    {tenant.tenant_rent_cycles.map((cycle) => (
-                      <div
-                        key={cycle.s_no}
-                        className='rounded-xl border border-teal-200 bg-gradient-to-br from-teal-50 to-white p-3'
-                      >
-                        <div className='flex items-center justify-between'>
-                          <div className='text-xs font-bold text-slate-900'>
-                            {cycle.cycle_type}
+                    {tenant.tenant_rent_cycles.map((cycle) => {
+                      // Find payments linked to this cycle
+                      const cyclePayments = asArray<TenantPayment>(tenant.rent_payments).filter(
+                        (p) => p.cycle_id === cycle.s_no
+                      )
+                      const totalPaid = cyclePayments.reduce(
+                        (sum, p) => sum + safeNum(p.amount_paid),
+                        0
+                      )
+
+                      // Get month name from cycle start date
+                      const monthName = cycle.cycle_start
+                        ? new Date(cycle.cycle_start).toLocaleString('default', { month: 'long', year: 'numeric' })
+                        : 'Unknown'
+
+                      // Get bed price from current bed price (fallback)
+                      const bedPrice = safeNum(tenant.beds?.bed_price)
+
+                      return (
+                        <div
+                          key={cycle.s_no}
+                          className='rounded-xl border border-teal-200 bg-gradient-to-br from-teal-50 to-white p-3'
+                        >
+                          <div className='flex items-center justify-between'>
+                            <div className='flex items-center gap-2'>
+                              <div className='text-xs font-bold text-slate-900'>
+                                {cycle.cycle_type}
+                              </div>
+                              <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
+                                #{cycle.s_no}
+                              </Badge>
+                            </div>
+                            <div className='text-[10px] text-slate-500'>
+                              Day {cycle.anchor_day}
+                            </div>
                           </div>
-                          <div className='text-[10px] text-slate-500'>
-                            Day {cycle.anchor_day}
+                          <div className='mt-1 text-[10px] text-slate-500'>
+                            {monthName}
                           </div>
+                          <div className='mt-1 text-[10px] text-slate-500'>
+                            {toDateOnly(cycle.cycle_start)} -{' '}
+                            {toDateOnly(cycle.cycle_end)}
+                          </div>
+                          <div className='mt-2 grid grid-cols-2 gap-2'>
+                            <div className='rounded-lg border border-slate-200 bg-white/50 p-2'>
+                              <div className='text-[9px] font-medium text-slate-500'>
+                                Bed Price
+                              </div>
+                              <div className='text-xs font-bold text-slate-900'>
+                                ₹{bedPrice}
+                              </div>
+                            </div>
+                            <div className='rounded-lg border border-slate-200 bg-white/50 p-2'>
+                              <div className='text-[9px] font-medium text-slate-500'>
+                                Paid
+                              </div>
+                              <div className={`text-xs font-bold ${totalPaid >= bedPrice ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                ₹{totalPaid}
+                              </div>
+                            </div>
+                          </div>
+                          {cyclePayments.length > 0 && (
+                            <div className='mt-2 space-y-1'>
+                              <div className='flex items-center justify-between'>
+                                <div className='text-[10px] text-slate-600'>
+                                  {cyclePayments.length} payment(s)
+                                </div>
+                                <div className='text-[10px] text-slate-500'>
+                                  {totalPaid >= bedPrice ? 'Settled' : `Due ₹${bedPrice - totalPaid}`}
+                                </div>
+                              </div>
+                              <div className='flex flex-wrap gap-1'>
+                                {cyclePayments.map((payment) => (
+                                  <Badge
+                                    key={payment.s_no}
+                                    variant='outline'
+                                    className='text-[9px] px-1.5 py-0 bg-white'
+                                  >
+                                    Pay #{payment.s_no} (₹{safeNum(payment.amount_paid)})
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className='mt-1 text-[10px] text-slate-500'>
-                          {toDateOnly(cycle.cycle_start)} -{' '}
-                          {toDateOnly(cycle.cycle_end)}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 ) : (
                   <div className='rounded-xl border border-slate-200 bg-slate-50 p-3 text-center'>

@@ -67,21 +67,17 @@ const HELPER_GUIDES: HelperGuide[] = [
 
 export function FaqScreen() {
   return (
-    <div className='relative overflow-hidden'>
-      <div className='pointer-events-none absolute -top-24 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl' />
-      <div className='pointer-events-none absolute -right-24 top-40 h-[420px] w-[420px] rounded-full bg-emerald-500/10 blur-3xl' />
-      <div className='pointer-events-none absolute -left-24 bottom-0 h-[420px] w-[420px] rounded-full bg-violet-500/10 blur-3xl' />
-
+    <div className='legal-page'>
       <div className='container mx-auto max-w-6xl px-4 py-10 sm:py-12'>
         <div className='mx-auto max-w-5xl'>
-          <div className='relative overflow-hidden rounded-3xl border border-slate-900/10 bg-[radial-gradient(900px_circle_at_0%_0%,rgba(15,23,42,0.06),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.50))] p-6 shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur sm:p-10'>
+          <div className='relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 sm:p-10'>
             <div className='flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between'>
               <PageHeader
                 title='FAQ'
                 subtitle='Quick answers to common questions. Use the quick guides below for step-by-step help.'
               />
               <div className='hidden sm:block'>
-                <div className='rounded-2xl border bg-white/60 p-4 shadow-sm backdrop-blur'>
+                <div className='rounded-2xl border bg-white p-4'>
                   <div className='text-sm font-semibold'>Need support?</div>
                   <div className='mt-1 text-xs text-muted-foreground'>
                     Open the mobile app → Settings → Report Issue to create a ticket.
@@ -104,9 +100,9 @@ export function FaqScreen() {
                 {HELPER_GUIDES.map((g) => (
                   <div
                     key={g.title}
-                    className='group overflow-hidden rounded-2xl border bg-card shadow-sm transition hover:border-primary/30 hover:shadow-md'
+                    className='group overflow-hidden rounded-2xl border bg-white transition hover:border-slate-400/50'
                   >
-                    <div className='relative w-full overflow-hidden bg-muted'>
+                    <div className='relative w-full overflow-hidden bg-slate-100'>
                       <img
                         src={g.imageSrc}
                         alt={g.title}
@@ -114,7 +110,7 @@ export function FaqScreen() {
                         loading='lazy'
                         decoding='async'
                       />
-                      <div className='pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0' />
+                      <div className='pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-black/0 to-black/0' />
                     </div>
                     <div className='p-4'>
                       <div className='text-sm font-semibold'>{g.title}</div>

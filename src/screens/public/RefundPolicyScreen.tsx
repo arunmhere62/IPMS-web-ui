@@ -7,22 +7,28 @@ function SectionHeader({ title }: { title: string }) {
 export function RefundPolicyScreen() {
   return (
     <div className='legal-page relative overflow-hidden'>
-      <div className='pointer-events-none absolute -top-24 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl' />
-      <div className='pointer-events-none absolute -right-24 top-40 h-[420px] w-[420px] rounded-full bg-emerald-500/10 blur-3xl' />
-      <div className='pointer-events-none absolute -left-24 bottom-0 h-[420px] w-[420px] rounded-full bg-violet-500/10 blur-3xl' />
 
       <div className='container mx-auto max-w-6xl px-4 py-10 sm:py-12'>
         <div className='mx-auto max-w-3xl'>
-          <div className='relative overflow-hidden rounded-3xl border border-slate-900/10 bg-[radial-gradient(900px_circle_at_0%_0%,rgba(15,23,42,0.06),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.50))] p-6 shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur sm:p-10'>
+          <div className='relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 sm:p-10'>
             <PageHeader
-              title='Cancellation & Refund Policy'
+              title='Refund & Cancellation Policy'
               subtitle='Please read this policy carefully before making a payment.'
             />
 
             <div className='mt-8 space-y-6'>
               <div className='text-sm text-muted-foreground'>Last Updated: January 11, 2026</div>
+              <section className='rounded-2xl border bg-white p-6'>
+                <div className='space-y-2 text-sm text-muted-foreground'>
+                  <p>
+                    This policy is published by <strong>Satz Techno Solutions</strong> (Partnership), doing business as
+                    <strong> IndianPGManagement.com (IPMS)</strong>, with registered office at No 1/50, P.K Street Mettu
+                    Kantigai, Gudapakkam, Chennai, Thiruvallur, Tamil Nadu, 600124, India.
+                  </p>
+                </div>
+              </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title='Overview' />
                 <div className='space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -34,7 +40,21 @@ export function RefundPolicyScreen() {
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Returns' />
+                <div className='space-y-2 text-sm text-muted-foreground'>
+                  <p>
+                    We do not sell physical goods. As our services are delivered digitally (subscriptions,
+                    software features, add-ons), a traditional product return does not apply.
+                  </p>
+                  <p>
+                    If you believe you have been charged in error, please contact us using the details in the
+                    Contact Us section below and we will review your request promptly.
+                  </p>
+                </div>
+              </section>
+
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title='Subscription Cancellation' />
                 <div className='space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -48,46 +68,55 @@ export function RefundPolicyScreen() {
                   </p>
                   <p>
                     <strong>To close your account, contact us at:</strong>{' '}
-                    <a href='mailto:info@IndianPGManagement.com' className='text-primary underline underline-offset-2'>
+                    <a href='mailto:info@IndianPGManagement.com' className='underline underline-offset-2'>
                       info@IndianPGManagement.com
                     </a>{' '}or call{' '}
-                    <a href='tel:+918248449609' className='text-primary underline underline-offset-2'>+91 82484 49609</a>.
+                    <a href='tel:+918248449609' className='underline underline-offset-2'>+91 82484 49609</a>.
                   </p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border border-red-100 bg-red-50/60 p-6 shadow-sm backdrop-blur'>
-                <SectionHeader title='Refund Policy' />
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Refunds' />
                 <div className='space-y-2 text-sm text-muted-foreground'>
-                  <p className='font-semibold text-red-700'>
-                    ⚠ We do not provide refunds for subscription payments.
-                  </p>
                   <p>
-                    All subscription fees are collected upfront and are <strong>strictly non-refundable</strong>.
+                    All subscription fees are collected upfront and are <strong>non-refundable</strong>.
                     This includes partial-period cancellations, unused days, and plan downgrades.
                   </p>
                   <p>
-                    <strong>Duplicate / Erroneous Payments:</strong> If you have been charged more
-                    than once for the same transaction, please contact us within 7 days at{' '}
-                    <a href='mailto:info@IndianPGManagement.com' className='text-primary underline underline-offset-2'>
+                    <strong>Duplicate / Erroneous Payments:</strong> If you have been charged more than once
+                    for the same transaction, please contact us within 7 days at{' '}
+                    <a href='mailto:info@IndianPGManagement.com' className='underline underline-offset-2'>
                       info@IndianPGManagement.com
                     </a>.
-                    After verification, duplicate amounts will be refunded within 7 working days.
+                    After verification, duplicate amounts will be refunded to your original payment method
+                    within 7 working days. Actual credit timelines depend on your card issuer/bank policies.
                   </p>
                   <p>
-                    <strong>Failed Transactions:</strong> If payment was deducted but the
-                    subscription was not activated, contact us and we will resolve it within
-                    7 working days.
+                    <strong>Failed Transactions:</strong> If payment was deducted but the subscription was not
+                    activated, contact us and we will resolve it within 7 working days or initiate a reversal
+                    to the original method as applicable.
                   </p>
                   <p>
-                    <strong>Free Trial:</strong> No payment is required during the free trial.
-                    You are only charged when you choose to upgrade.
+                    <strong>Free Trial:</strong> No payment is required during any free trial. You are charged
+                    only when you choose to upgrade to a paid plan.
                   </p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
-                <SectionHeader title='Non-Refundable Items' />
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Shipping' />
+                <div className='space-y-2 text-sm text-muted-foreground'>
+                  <p>
+                    Shipping does not apply to our services. If a refund is approved, there are no shipping
+                    costs involved. Any third-party charges (gateway/bank fees) are non-refundable and may be
+                    deducted from the refund where applicable.
+                  </p>
+                </div>
+              </section>
+
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Non-Refundable / Non-Returnable Products / Services' />
                 <div className='space-y-2 text-sm text-muted-foreground'>
                   <ul className='list-inside list-disc space-y-1'>
                     <li>Subscription fees for any completed billing period</li>
@@ -98,7 +127,7 @@ export function RefundPolicyScreen() {
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title='How to Request a Refund' />
                 <div className='space-y-2 text-sm text-muted-foreground'>
                   <p>To raise a refund request, please email us at:</p>
@@ -106,7 +135,7 @@ export function RefundPolicyScreen() {
                     <strong>Email:</strong>{' '}
                     <a
                       href='mailto:info@IndianPGManagement.com'
-                      className='text-primary underline underline-offset-2'
+                      className='underline underline-offset-2'
                     >
                       info@IndianPGManagement.com
                     </a>
@@ -118,14 +147,12 @@ export function RefundPolicyScreen() {
                     <li>Date and amount of payment</li>
                     <li>Reason for the refund request</li>
                   </ul>
-                  <p>
-                    We will review and respond to your request within 3 business days. Approved
-                    refunds will be processed within 7 working days.
-                  </p>
+                  <p>We will review and respond to your request within 3 business days.</p>
+                  <p>Approved refunds will be processed within 7 working days to your original method of payment.</p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title='Payment Security' />
                 <div className='space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -136,7 +163,7 @@ export function RefundPolicyScreen() {
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title='Contact Us' />
                 <div className='space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -147,18 +174,18 @@ export function RefundPolicyScreen() {
                     <strong>Email:</strong>{' '}
                     <a
                       href='mailto:info@IndianPGManagement.com'
-                      className='text-primary underline underline-offset-2'
+                      className='underline underline-offset-2'
                     >
                       info@IndianPGManagement.com
                     </a>
                   </p>
                   <p>
                     <strong>Phone:</strong>{' '}
-                    <a href='tel:+918248449609' className='text-primary underline underline-offset-2'>
+                    <a href='tel:+918248449609' className='underline underline-offset-2'>
                       +91 82484 49609
                     </a>
                     {' / '}
-                    <a href='tel:+919042528852' className='text-primary underline underline-offset-2'>
+                    <a href='tel:+919042528852' className='underline underline-offset-2'>
                       +91 90425 28852
                     </a>
                   </p>

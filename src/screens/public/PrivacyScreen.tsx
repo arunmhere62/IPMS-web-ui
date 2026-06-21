@@ -9,14 +9,10 @@ function SectionHeader({ title }: { title: string }) {
 
 export function PrivacyScreen() {
   return (
-    <div className='legal-page relative overflow-hidden'>
-      <div className='pointer-events-none absolute -top-24 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl' />
-      <div className='pointer-events-none absolute -right-24 top-40 h-[420px] w-[420px] rounded-full bg-emerald-500/10 blur-3xl' />
-      <div className='pointer-events-none absolute -left-24 bottom-0 h-[420px] w-[420px] rounded-full bg-violet-500/10 blur-3xl' />
-
+    <div className='legal-page'>
       <div className='container mx-auto max-w-6xl px-4 py-10 sm:py-12'>
         <div className='mx-auto max-w-3xl'>
-          <div className='relative overflow-hidden rounded-3xl border border-slate-900/10 bg-[radial-gradient(900px_circle_at_0%_0%,rgba(15,23,42,0.06),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.50))] p-6 shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur sm:p-10'>
+          <div className='relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 sm:p-10'>
             <PageHeader
               title='Privacy Policy'
               subtitle='This policy describes how we collect, use, and protect your information.'
@@ -25,15 +21,169 @@ export function PrivacyScreen() {
             <div className='mt-8 space-y-6'>
               <div className='text-sm text-muted-foreground'>Last Updated: January 11, 2026</div>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>
-                    This policy applies to products IndianPGManagement.com of Satz Techno Solutions, a partnership incorporated under the Companies Act, 1956 with its registered office at No 1/50, P.K Street Mettu Kantigai, Gudapakkam, Chennai, Thiruvallur, Tamil Nadu, Pin : 600124, India
+                    This policy applies to the products and services of <strong>Satz Techno Solutions</strong>
+                    (Partnership), doing business as <strong>IndianPGManagement.com (IPMS)</strong>.
+                  </p>
+                  <p>
+                    <strong>Registered Office:</strong> No 1/50, P.K Street Mettu Kantigai, Gudapakkam,
+                    Chennai, Thiruvallur, Tamil Nadu, 600124, India
                   </p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title="About This Policy" />
+                <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
+                  <p>
+                    <strong>Satz Techno Solutions</strong> (Partnership), doing business as
+                    <strong> IndianPGManagement.com (IPMS)</strong>, operates the
+                    <strong> IndianPGManagement.com</strong> website and mobile applications, which provide
+                    the services of a cloud-based property management platform for PG (Paying Guest) operators.
+                  </p>
+                  <p>
+                    This page is used to inform website and app visitors regarding our policies with the
+                    collection, use, and disclosure of Personal Information if anyone decides to use our Service.
+                  </p>
+                  <p>
+                    If you choose to use our Service, then you agree to the collection and use of information in
+                    relation to this policy. The Personal Information that we collect is used for providing and
+                    improving the Service. We will not use or share your information with anyone except as
+                    described in this Privacy Policy.
+                  </p>
+                  <p>
+                    The terms used in this Privacy Policy have the same meanings as in our Terms and Conditions,
+                    which is accessible at <strong>/terms</strong>, unless otherwise defined in this Privacy Policy.
+                  </p>
+                </div>
+              </section>
+
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Information Collection and Use' />
+                <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
+                  <p>
+                    For a better experience while using our Service, we may require you to provide us with certain
+                    personally identifiable information, including but not limited to your name, phone number, and
+                    postal address. The information that we collect will be used to contact or identify you.
+                  </p>
+                </div>
+              </section>
+
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Log Data' />
+                <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
+                  <p>
+                    Whenever you visit our Service, we collect information that your browser sends to us that is
+                    called Log Data. This Log Data may include information such as your computer’s Internet Protocol
+                    (IP) address, browser version, pages of our Service that you visit, the time and date of your
+                    visit, the time spent on those pages, and other statistics.
+                  </p>
+                </div>
+              </section>
+
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Cookies' />
+                <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
+                  <p>
+                    Cookies are files with a small amount of data that is commonly used as an anonymous unique
+                    identifier. These are sent to your browser from the website that you visit and are stored on
+                    your device.
+                  </p>
+                  <p>
+                    Our website uses cookies to collect information and to improve our Service. You have the option
+                    to either accept or refuse these cookies, and to know when a cookie is being sent to your
+                    computer. If you choose to refuse our cookies, you may not be able to use some portions of our
+                    Service.
+                  </p>
+                </div>
+              </section>
+
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Service Providers' />
+                <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
+                  <p>We may employ third-party companies and individuals due to the following reasons:</p>
+                  <ul className='list-disc ps-5 space-y-1'>
+                    <li>To facilitate our Service;</li>
+                    <li>To provide the Service on our behalf;</li>
+                    <li>To perform Service-related services; or</li>
+                    <li>To assist us in analyzing how our Service is used.</li>
+                  </ul>
+                  <p>
+                    We want to inform our Service users that these third parties have access to your Personal
+                    Information to perform the tasks assigned to them on our behalf. However, they are obligated not
+                    to disclose or use the information for any other purpose.
+                  </p>
+                </div>
+              </section>
+
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Security' />
+                <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
+                  <p>
+                    We value your trust in providing us your Personal Information, thus we strive to use
+                    commercially acceptable means of protecting it. But remember that no method of transmission over
+                    the internet, or method of electronic storage is 100% secure and reliable, and we cannot
+                    guarantee its absolute security.
+                  </p>
+                </div>
+              </section>
+
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Links to Other Sites' />
+                <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
+                  <p>
+                    Our Service may contain links to other sites. If you click on a third-party link, you will be
+                    directed to that site. These external sites are not operated by us. We strongly advise you to
+                    review the Privacy Policy of these websites. We have no control over, and assume no
+                    responsibility for the content, privacy policies, or practices of any third-party sites or
+                    services.
+                  </p>
+                </div>
+              </section>
+
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Children’s Privacy' />
+                <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
+                  <p>
+                    Our Services do not address anyone under the age of 18. We do not knowingly collect personally
+                    identifiable information from children under 18. In the case we discover that a child under 18
+                    has provided us with personal information, we will delete this from our servers. If you are a
+                    parent or guardian and you are aware that your child has provided us with personal information,
+                    please contact us so that we will be able to take necessary actions.
+                  </p>
+                </div>
+              </section>
+
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Changes to This Privacy Policy' />
+                <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
+                  <p>
+                    We may update our Privacy Policy from time to time. Thus, we advise you to review this page
+                    periodically for any changes. We will notify you of any changes by posting the new Privacy
+                    Policy on this page. These changes are effective immediately after they are posted on this page.
+                  </p>
+                </div>
+              </section>
+
+              <section className='rounded-2xl border bg-white p-6'>
+                <SectionHeader title='Contact Us' />
+                <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
+                  <p>If you have any questions or suggestions about our Privacy Policy, contact us at:</p>
+                  <p>
+                    <strong>Email:</strong> info@IndianPGManagement.com
+                  </p>
+                  <p>
+                    <strong>Phone:</strong> +91 82484 49609 / +91 90425 28852
+                  </p>
+                  <p>
+                    <strong>Registered Office:</strong> No 1/50, P.K Street Mettu Kantigai, Gudapakkam, Chennai,
+                    Thiruvallur, Tamil Nadu, 600124, India
+                  </p>
+                </div>
+              </section>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="1. Introduction" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -49,8 +199,7 @@ export function PrivacyScreen() {
                   </p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="2. Information We Collect" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <h3 className="font-medium">What personal information do we collect?</h3>
@@ -75,8 +224,7 @@ export function PrivacyScreen() {
                   </p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="3. When We Collect Information" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>Information may be collected at various stages of your usage of our Platform such as:</p>
@@ -97,8 +245,7 @@ export function PrivacyScreen() {
                   </ul>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="4. How We Use Your Information" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -128,8 +275,7 @@ export function PrivacyScreen() {
                   </p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="5. Information Sharing and Disclosures" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -161,8 +307,7 @@ export function PrivacyScreen() {
                   </p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="6. Data Storage and Retention" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -173,8 +318,7 @@ export function PrivacyScreen() {
                   </p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="7. How We Protect Your Information" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -191,8 +335,7 @@ export function PrivacyScreen() {
                   </p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="8. Cookies and Tracking" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <h3 className="font-medium">Do we use 'cookies'?</h3>
@@ -211,8 +354,7 @@ export function PrivacyScreen() {
                   <p>It's also important to note that we do not allow third-party behavioral tracking.</p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="9. Third-Party Disclosure and Links" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -233,8 +375,7 @@ export function PrivacyScreen() {
                   </p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="10. Your Consent and Rights" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -258,8 +399,7 @@ export function PrivacyScreen() {
                   </p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="11. Children Information" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -267,8 +407,7 @@ export function PrivacyScreen() {
                   </p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="12. Policy Changes" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -276,8 +415,7 @@ export function PrivacyScreen() {
                   </p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="13. Data Breach Response" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>In order to be in line with Fair Information Practices we will take the following responsive action, should a data breach occur:</p>
@@ -290,8 +428,7 @@ export function PrivacyScreen() {
                   </p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="14. CAN SPAM Act Compliance" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>
@@ -314,8 +451,7 @@ export function PrivacyScreen() {
                   </p>
                 </div>
               </section>
-
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="15. Contact Us" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>

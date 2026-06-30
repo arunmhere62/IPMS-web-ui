@@ -396,6 +396,7 @@ export function TenantDetailsScreen() {
       <div className='px-3 py-2'>
         <PageHeader
           title={tenant?.name || 'Tenant Details'}
+          showBack={true}
           right={
             <>
               {tenant?.s_no ? (
@@ -839,9 +840,9 @@ export function TenantDetailsScreen() {
                   <div className='space-y-2'>
                     {tenant.tenant_rent_cycles.map((cycle) => {
                       // Find payments linked to this cycle
-                      const cyclePayments = asArray<TenantPayment>(tenant.rent_payments).filter(
-                        (p) => p.cycle_id === cycle.s_no
-                      )
+                      const cyclePayments = asArray<TenantPayment>(
+                        tenant.rent_payments
+                      ).filter((p) => p.cycle_id === cycle.s_no)
                       const totalPaid = cyclePayments.reduce(
                         (sum, p) => sum + safeNum(p.amount_paid),
                         0
@@ -849,7 +850,10 @@ export function TenantDetailsScreen() {
 
                       // Get month name from cycle start date
                       const monthName = cycle.cycle_start
-                        ? new Date(cycle.cycle_start).toLocaleString('default', { month: 'long', year: 'numeric' })
+                        ? new Date(cycle.cycle_start).toLocaleString(
+                            'default',
+                            { month: 'long', year: 'numeric' }
+                          )
                         : 'Unknown'
 
                       // Get bed price from current bed price (fallback)
@@ -865,7 +869,10 @@ export function TenantDetailsScreen() {
                               <div className='text-xs font-bold text-slate-900'>
                                 {cycle.cycle_type}
                               </div>
-                              <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
+                              <Badge
+                                variant='outline'
+                                className='px-1.5 py-0 text-[10px]'
+                              >
                                 #{cycle.s_no}
                               </Badge>
                             </div>
@@ -893,7 +900,9 @@ export function TenantDetailsScreen() {
                               <div className='text-[9px] font-medium text-slate-500'>
                                 Paid
                               </div>
-                              <div className={`text-xs font-bold ${totalPaid >= bedPrice ? 'text-emerald-600' : 'text-amber-600'}`}>
+                              <div
+                                className={`text-xs font-bold ${totalPaid >= bedPrice ? 'text-emerald-600' : 'text-amber-600'}`}
+                              >
                                 ₹{totalPaid}
                               </div>
                             </div>
@@ -905,7 +914,9 @@ export function TenantDetailsScreen() {
                                   {cyclePayments.length} payment(s)
                                 </div>
                                 <div className='text-[10px] text-slate-500'>
-                                  {totalPaid >= bedPrice ? 'Settled' : `Due ₹${bedPrice - totalPaid}`}
+                                  {totalPaid >= bedPrice
+                                    ? 'Settled'
+                                    : `Due ₹${bedPrice - totalPaid}`}
                                 </div>
                               </div>
                               <div className='flex flex-wrap gap-1'>
@@ -913,9 +924,10 @@ export function TenantDetailsScreen() {
                                   <Badge
                                     key={payment.s_no}
                                     variant='outline'
-                                    className='text-[9px] px-1.5 py-0 bg-white'
+                                    className='bg-white px-1.5 py-0 text-[9px]'
                                   >
-                                    Pay #{payment.s_no} (₹{safeNum(payment.amount_paid)})
+                                    Pay #{payment.s_no} (₹
+                                    {safeNum(payment.amount_paid)})
                                   </Badge>
                                 ))}
                               </div>

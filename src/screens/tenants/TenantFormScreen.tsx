@@ -1,7 +1,11 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  useSendSignupOtpMutation,
+  useVerifySignupOtpMutation,
+} from '@/services/authApi'
 import {
   useGetCitiesQuery,
   useGetStatesQuery,
@@ -24,13 +28,21 @@ import {
   type Tenant,
 } from '@/services/tenantsApi'
 import { useAppSelector } from '@/store/hooks'
-import { ChevronLeft, CircleAlert, Save } from 'lucide-react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { CheckCircle2, CircleAlert, Loader2, Save } from 'lucide-react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Form } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/form/date-picker'
@@ -43,10 +55,55 @@ import { ImageUploadS3 } from '@/components/form/image-upload-s3'
 import { PageHeader } from '@/components/form/page-header'
 import { PhoneInput } from '@/components/form/phone-input'
 
+const toDigitsOnly = (value: string) => (value || '').replace(/\D/g, '')
+
+const stripCountryCode = (value: string): string => {
+  const s = (value || '').trim()
+  if (!s.startsWith('+')) return s
+  // Strip leading country code (1-4 digits after +), keep last 10
+  const digits = s.replace(/\D/g, '')
+  return digits.length > 10 ? digits.slice(-10) : digits
+}
+
+const withCountryCode = (countryCode: string, localNumber: string): string => {
+  const digits = toDigitsOnly(localNumber)
+  if (!digits) return ''
+  const code = countryCode.startsWith('+') ? countryCode : `+${countryCode}`
+  return `${code}${digits}`
+}
+
+const parseLocalDate = (dateStr: string): Date | undefined => {
+  if (!dateStr) return undefined
+  const clean = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr
+  const [y, m, d] = clean.split('-').map(Number)
+  if (!y || !m || !d) return undefined
+  return new Date(y, m - 1, d)
+}
+
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
-  phone_no: z.string().min(1, 'Phone number is required'),
-  whatsapp_number: z.string().optional().or(z.literal('')),
+  phone_no: z
+    .string()
+    .min(1, 'Phone number is required')
+    .refine(
+      (v) =>
+        /^\d{10}$/.test(
+          toDigitsOnly(v.startsWith('+') ? stripCountryCode(v) : v)
+        ),
+      'Phone number must be exactly 10 digits'
+    ),
+  whatsapp_number: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine(
+      (v) =>
+        !v ||
+        /^\d{10}$/.test(
+          toDigitsOnly(v.startsWith('+') ? stripCountryCode(v) : v)
+        ),
+      'WhatsApp number must be exactly 10 digits'
+    ),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   occupation: z.string().optional().or(z.literal('')),
   tenant_address: z.string().optional().or(z.literal('')),
@@ -111,6 +168,18 @@ export function TenantFormScreen() {
   const navigate = useNavigate()
   const params = useParams()
   const [searchParams] = useSearchParams()
+
+  // Phone OTP verification state
+  const [phoneVerifiedFor, setPhoneVerifiedFor] = useState<string | null>(null)
+  const [phoneSkipped, setPhoneSkipped] = useState(false)
+  const [showOtpDialog, setShowOtpDialog] = useState(false)
+  const [otpValue, setOtpValue] = useState('')
+  const [otpError, setOtpError] = useState('')
+  const [otpPhone, setOtpPhone] = useState('')
+  const [sendSignupOtp, { isLoading: sendingOtp }] = useSendSignupOtpMutation()
+  const [verifySignupOtp, { isLoading: verifyingOtp }] =
+    useVerifySignupOtpMutation()
+  const [resendCooldown, setResendCooldown] = useState(0)
   const tenantId = params.id ? Number(params.id) : null
   const isEditMode = Number.isFinite(tenantId) && Number(tenantId) > 0
 
@@ -144,6 +213,30 @@ export function TenantFormScreen() {
   } = useGetTenantByIdQuery(tenantId ?? 0, { skip: !isEditMode })
 
   const tenant: Tenant | null = tenantResponse?.data ?? null
+
+  const lockTenancyFacts =
+    isEditMode &&
+    !!tenant &&
+    ((Array.isArray(
+      (tenant as unknown as Record<string, unknown[]>).rent_payments
+    ) &&
+      ((tenant as unknown as Record<string, unknown[]>).rent_payments?.length ??
+        0) > 0) ||
+      (Array.isArray(
+        (tenant as unknown as Record<string, unknown[]>).advance_payments
+      ) &&
+        ((tenant as unknown as Record<string, unknown[]>).advance_payments
+          ?.length ?? 0) > 0) ||
+      (Array.isArray(
+        (tenant as unknown as Record<string, unknown[]>).refund_payments
+      ) &&
+        ((tenant as unknown as Record<string, unknown[]>).refund_payments
+          ?.length ?? 0) > 0) ||
+      (Array.isArray(
+        (tenant as unknown as Record<string, unknown[]>).current_bills
+      ) &&
+        ((tenant as unknown as Record<string, unknown[]>).current_bills
+          ?.length ?? 0) > 0))
 
   const [createTenant, { isLoading: creating }] = useCreateTenantMutation()
   const [updateTenant, { isLoading: updating }] = useUpdateTenantMutation()
@@ -190,10 +283,7 @@ export function TenantFormScreen() {
   })
 
   const selectedDate = useMemo(() => {
-    if (watchedCheckInDate) {
-      return new Date(watchedCheckInDate)
-    }
-    return undefined
+    return parseLocalDate(watchedCheckInDate)
   }, [watchedCheckInDate])
 
   const { data: bedsResponse, isLoading: bedsLoading } = useGetAllBedsQuery(
@@ -240,8 +330,8 @@ export function TenantFormScreen() {
     const checkInDate = coerceDateString(tenant.check_in_date)
     form.reset({
       name: String(tenant.name ?? ''),
-      phone_no: String(tenant.phone_no ?? ''),
-      whatsapp_number: String(tenant.whatsapp_number ?? ''),
+      phone_no: stripCountryCode(String(tenant.phone_no ?? '')),
+      whatsapp_number: stripCountryCode(String(tenant.whatsapp_number ?? '')),
       email: String(tenant.email ?? ''),
       occupation: String(tenant.occupation ?? ''),
       tenant_address: String(tenant.tenant_address ?? ''),
@@ -343,6 +433,63 @@ export function TenantFormScreen() {
 
   const saving = creating || updating
 
+  const watchedPhone = useWatch({ control: form.control, name: 'phone_no' })
+  const localPhoneDigits = toDigitsOnly(
+    watchedPhone?.startsWith('+')
+      ? stripCountryCode(watchedPhone)
+      : (watchedPhone ?? '')
+  )
+  const fullPhoneForOtp =
+    localPhoneDigits.length === 10
+      ? withCountryCode('+91', localPhoneDigits)
+      : ''
+  const isPhoneVerified =
+    !!phoneVerifiedFor && phoneVerifiedFor === fullPhoneForOtp
+
+  const handleSendOtp = async (isResend = false) => {
+    if (!fullPhoneForOtp) return
+    try {
+      await sendSignupOtp({ phone: fullPhoneForOtp }).unwrap()
+      setOtpPhone(fullPhoneForOtp)
+      setOtpValue('')
+      setOtpError('')
+      setShowOtpDialog(true)
+      if (isResend) {
+        setResendCooldown(30)
+        const interval = setInterval(() => {
+          setResendCooldown((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval)
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
+      }
+      showSuccessAlert('OTP sent to ' + fullPhoneForOtp)
+    } catch (e: unknown) {
+      showErrorAlert(e, 'Failed to send OTP')
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    if (!otpValue.trim() || otpValue.trim().length !== 4) {
+      setOtpError('Please enter a valid 4-digit OTP')
+      return
+    }
+    try {
+      await verifySignupOtp({ phone: otpPhone, otp: otpValue.trim() }).unwrap()
+      setPhoneVerifiedFor(otpPhone)
+      setShowOtpDialog(false)
+      setOtpValue('')
+      setOtpError('')
+      showSuccessAlert('Phone number verified successfully')
+    } catch (e: unknown) {
+      setOtpError('Invalid OTP. Please try again.')
+      showErrorAlert(e, 'Verification failed')
+    }
+  }
+
   const onSubmit = async (values: FormValues) => {
     if (!selectedPGLocationId) {
       showErrorAlert('Please select a PG location first', 'Error')
@@ -350,10 +497,13 @@ export function TenantFormScreen() {
     }
 
     try {
+      const phoneCountryCode = '+91'
       const dto: CreateTenantDto = {
         name: values.name.trim(),
-        phone_no: values.phone_no?.trim() || undefined,
-        whatsapp_number: values.whatsapp_number?.trim() || undefined,
+        phone_no: withCountryCode(phoneCountryCode, values.phone_no),
+        whatsapp_number: values.whatsapp_number?.trim()
+          ? withCountryCode(phoneCountryCode, values.whatsapp_number)
+          : undefined,
         email: values.email?.trim() || undefined,
         occupation: values.occupation?.trim() || undefined,
         tenant_address: values.tenant_address?.trim() || undefined,
@@ -390,19 +540,12 @@ export function TenantFormScreen() {
     <div className='container mx-auto max-w-4xl px-3 py-6'>
       <PageHeader
         title={isEditMode ? 'Edit Tenant' : 'Add Tenant'}
+        showBack={true}
         subtitle='Tenant details and accommodation'
         right={
-          <>
-            <Button asChild variant='outline' size='sm'>
-              <Link to='/tenants'>
-                <ChevronLeft className='me-1 size-4' />
-                Back
-              </Link>
-            </Button>
-            {isEditMode && tenantId ? (
-              <Badge variant='outline'>#{tenantId}</Badge>
-            ) : null}
-          </>
+          isEditMode && tenantId ? (
+            <Badge variant='outline'>#{tenantId}</Badge>
+          ) : null
         }
       />
 
@@ -456,14 +599,96 @@ export function TenantFormScreen() {
                 />
 
                 <div className='grid gap-4 sm:grid-cols-2'>
-                  <PhoneInput
-                    control={form.control}
-                    name='phone_no'
-                    label='Phone Number'
-                    placeholder='Enter phone number'
-                    required
-                    defaultCountryCode='+91'
-                  />
+                  <div className='space-y-3'>
+                    <PhoneInput
+                      control={form.control}
+                      name='phone_no'
+                      label='Phone Number'
+                      placeholder='Enter phone number'
+                      required
+                      defaultCountryCode='+91'
+                    />
+                    {/* OTP verification section */}
+                    {!isEditMode && (
+                      <div className='rounded-lg border bg-card p-3'>
+                        {isPhoneVerified ? (
+                          <div className='flex items-center gap-2 text-sm font-medium text-emerald-600'>
+                            <CheckCircle2 className='size-4' />
+                            Phone number verified
+                          </div>
+                        ) : phoneSkipped ? (
+                          <div className='space-y-2'>
+                            <div className='text-sm text-muted-foreground'>
+                              Phone verification skipped
+                            </div>
+                            {localPhoneDigits.length === 10 && (
+                              <Button
+                                type='button'
+                                variant='outline'
+                                size='sm'
+                                className='h-7 px-3 text-xs'
+                                onClick={() => {
+                                  setPhoneSkipped(false)
+                                  void handleSendOtp()
+                                }}
+                                disabled={sendingOtp}
+                              >
+                                {sendingOtp ? (
+                                  <>
+                                    <Loader2 className='mr-1 size-3 animate-spin' />
+                                    Sending...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className='mr-1 size-3' />
+                                    Verify Now
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        ) : localPhoneDigits.length === 10 ? (
+                          <div className='space-y-2'>
+                            <div className='text-sm font-medium'>
+                              Verify this phone number
+                            </div>
+                            <div className='flex items-center gap-3'>
+                              <Button
+                                type='button'
+                                variant='default'
+                                className='h-8 px-4 text-sm'
+                                onClick={() => void handleSendOtp()}
+                                disabled={sendingOtp}
+                              >
+                                {sendingOtp ? (
+                                  <>
+                                    <Loader2 className='mr-2 size-4 animate-spin' />
+                                    Sending...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className='mr-2 size-4' />
+                                    Send OTP
+                                  </>
+                                )}
+                              </Button>
+                              <button
+                                type='button'
+                                className='text-sm text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground'
+                                onClick={() => setPhoneSkipped(true)}
+                              >
+                                Skip verification
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className='text-xs text-muted-foreground'>
+                            Enter 10 digits to verify phone number
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <PhoneInput
                     control={form.control}
                     name='whatsapp_number'
@@ -574,28 +799,63 @@ export function TenantFormScreen() {
                   )}
                 </div>
 
-                {(isPreSelected || isEditMode) && (
+                {lockTenancyFacts && (
+                  <div className='rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300'>
+                    <strong>Note:</strong> Once rent is generated or any payment
+                    exists, Check-in date, Room, and Bed cannot be changed.
+                  </div>
+                )}
+                {!lockTenancyFacts && isPreSelected && (
                   <div className='rounded-md bg-muted/30 p-3 text-xs text-muted-foreground'>
-                    <strong>Note:</strong>{' '}
-                    {isPreSelected
-                      ? 'Room and bed are pre-selected from the bed details page'
-                      : 'Room and bed cannot be changed'}{' '}
-                    in edit mode.
+                    <strong>Note:</strong> Room and bed are pre-selected from
+                    the bed details page.
                   </div>
                 )}
 
                 <div className='grid gap-2'>
-                  <div className='text-sm font-medium'>Check-in Date</div>
+                  <div className='flex items-center justify-between'>
+                    <div className='text-sm font-medium'>
+                      Check-in Date <span className='text-destructive'>*</span>
+                    </div>
+                    {!lockTenancyFacts && !isEditMode && (
+                      <Button
+                        type='button'
+                        size='sm'
+                        variant='outline'
+                        className='h-6 px-2 text-xs'
+                        onClick={() => {
+                          const today = new Date()
+                          const y = today.getFullYear()
+                          const m = String(today.getMonth() + 1).padStart(
+                            2,
+                            '0'
+                          )
+                          const d = String(today.getDate()).padStart(2, '0')
+                          form.setValue('check_in_date', `${y}-${m}-${d}`, {
+                            shouldValidate: true,
+                          })
+                        }}
+                      >
+                        Today
+                      </Button>
+                    )}
+                  </div>
                   <DatePicker
                     selected={selectedDate}
                     onSelect={(date) => {
-                      form.setValue(
-                        'check_in_date',
-                        date ? date.toISOString().split('T')[0] : ''
-                      )
+                      if (!date) {
+                        form.setValue('check_in_date', '')
+                        return
+                      }
+                      const y = date.getFullYear()
+                      const m = String(date.getMonth() + 1).padStart(2, '0')
+                      const d = String(date.getDate()).padStart(2, '0')
+                      form.setValue('check_in_date', `${y}-${m}-${d}`, {
+                        shouldValidate: true,
+                      })
                     }}
                     placeholder='Pick a date'
-                    disabled={!!tenantId}
+                    disabled={lockTenancyFacts}
                   />
                   {form.formState.errors.check_in_date?.message ? (
                     <div className='text-xs text-destructive'>
@@ -682,6 +942,106 @@ export function TenantFormScreen() {
                 />
               </CardContent>
             </Card>
+
+            {/* OTP Dialog */}
+            <Dialog
+              open={showOtpDialog}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setShowOtpDialog(false)
+                  setOtpValue('')
+                  setOtpError('')
+                  setResendCooldown(0)
+                }
+              }}
+            >
+              <DialogContent className='sm:max-w-md'>
+                <DialogHeader className='text-center'>
+                  <DialogTitle className='text-lg'>
+                    Verify Phone Number
+                  </DialogTitle>
+                  <DialogDescription className='text-sm'>
+                    Enter the 4-digit OTP sent to <br />
+                    <strong className='text-base text-foreground'>
+                      {otpPhone}
+                    </strong>
+                  </DialogDescription>
+                </DialogHeader>
+                <div className='grid gap-4 py-4'>
+                  <div className='relative'>
+                    <Input
+                      value={otpValue}
+                      onChange={(e) => {
+                        setOtpValue(
+                          e.target.value.replace(/\D/g, '').slice(0, 4)
+                        )
+                        setOtpError('')
+                      }}
+                      placeholder='----'
+                      inputMode='numeric'
+                      maxLength={4}
+                      className='h-12 border-2 text-center font-mono text-2xl tracking-[0.8em]'
+                      autoFocus
+                    />
+                    {otpError && (
+                      <p className='mt-2 text-center text-sm text-destructive'>
+                        {otpError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className='flex flex-col items-center gap-2 pt-2'>
+                  <div className='text-center text-sm text-muted-foreground'>
+                    Didn't receive OTP?{' '}
+                    <button
+                      type='button'
+                      className='text-sm font-medium text-primary transition-colors hover:text-primary/80 disabled:cursor-not-allowed disabled:text-muted-foreground'
+                      onClick={() => void handleSendOtp(true)}
+                      disabled={sendingOtp || resendCooldown > 0}
+                    >
+                      {sendingOtp
+                        ? 'Sending...'
+                        : resendCooldown > 0
+                          ? `Resend in ${resendCooldown}s`
+                          : 'Resend'}
+                    </button>
+                  </div>
+                </div>
+                <DialogFooter className='gap-3 sm:gap-3'>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={() => {
+                      setShowOtpDialog(false)
+                      setOtpValue('')
+                      setOtpError('')
+                      setResendCooldown(0)
+                    }}
+                    className='h-10 flex-1'
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type='button'
+                    onClick={() => void handleVerifyOtp()}
+                    disabled={verifyingOtp || otpValue.length !== 4}
+                    className='h-10 flex-1'
+                  >
+                    {verifyingOtp ? (
+                      <>
+                        <Loader2 className='mr-2 size-4 animate-spin' />
+                        Verifying...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className='mr-2 size-4' />
+                        Verify OTP
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             <div className='flex items-center justify-end gap-2'>
               <Button

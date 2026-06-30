@@ -80,7 +80,7 @@ export function PhoneInput<TFieldValues extends FieldValues>({
         }
 
         const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-          const number = e.target.value.replace(/\D/g, '') // Remove non-digits
+          const number = e.target.value.replace(/\D/g, '').slice(0, 10) // Remove non-digits, max 10
           field.onChange(number ? `${displayCountryCode}${number}` : '')
         }
 
@@ -120,6 +120,8 @@ export function PhoneInput<TFieldValues extends FieldValues>({
                   placeholder={placeholder}
                   disabled={disabled}
                   type='tel'
+                  inputMode='numeric'
+                  maxLength={10}
                   className='flex-1'
                 />
               </div>

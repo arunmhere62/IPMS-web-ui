@@ -207,6 +207,7 @@ export function AdvancePaymentsScreen() {
     <div className='container mx-auto max-w-6xl px-3 py-6'>
       <PageHeader
         title='Advance Payments'
+        showBack={true}
         subtitle='Manage advances paid by tenants'
       />
 

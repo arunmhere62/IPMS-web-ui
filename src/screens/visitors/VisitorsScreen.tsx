@@ -133,10 +133,10 @@ export function VisitorsScreen() {
 
   return (
     <div className='container mx-auto max-w-6xl px-3 py-6'>
-      <PageHeader title='Visitors' />
+      <PageHeader title='Visitors' showBack={true} />
 
       {fetchErrorMessage ? (
-        <div className='mt-6'>
+        <div className='mt-4'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load visitors</AlertTitle>
@@ -155,9 +155,9 @@ export function VisitorsScreen() {
         </div>
       ) : (
         <>
-          <div className='mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+          <div className='mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
             <div className='relative w-full sm:max-w-xs'>
-              <Search className='pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground' />
+              <Search className='pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground' />
               <Input
                 value={query}
                 onChange={(e) => {
@@ -165,18 +165,18 @@ export function VisitorsScreen() {
                   setPage(1)
                 }}
                 placeholder='Search by name, phone'
-                className='h-8 pl-8 text-sm'
+                className='h-10 pl-10 text-sm'
               />
             </div>
 
-            <Badge variant='secondary' className='h-7 px-2 text-xs'>
+            <Badge variant='secondary' className='h-8 px-3 text-xs font-medium'>
               {countLabel}
             </Badge>
           </div>
 
-          <div className='mt-4'>
+          <div className='mt-6'>
             {isLoading ? (
-              <div className='rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>
+              <div className='rounded-lg border bg-card px-6 py-8 text-center text-sm text-muted-foreground'>
                 Loading...
               </div>
             ) : visitors.length === 0 ? (
@@ -190,7 +190,7 @@ export function VisitorsScreen() {
                 }
               />
             ) : (
-              <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
+              <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
                 {visitors.map((v) => (
                   <Card key={String(v.s_no)} className='h-full'>
                     <CardContent className='flex h-full flex-col gap-3 p-4'>

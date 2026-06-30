@@ -1,4 +1,21 @@
-import { LayoutDashboard, Building2, HelpCircle, Users, Bed, DoorOpen, UserRound, User, Settings, Ticket, CreditCard, Wallet, FileText, Shield, RefreshCcw, MonitorCheck } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Building2,
+  HelpCircle,
+  Users,
+  DoorOpen,
+  UserRound,
+  User,
+  Settings,
+  Ticket,
+  CreditCard,
+  Wallet,
+  FileText,
+  Shield,
+  RefreshCcw,
+  MonitorCheck,
+  Receipt,
+} from 'lucide-react'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
@@ -7,9 +24,7 @@ export const sidebarData: SidebarData = {
     email: '',
     avatar: '',
   },
-  teams: [
-    
-  ],
+  teams: [],
   navGroups: [
     {
       title: 'General',
@@ -45,14 +60,14 @@ export const sidebarData: SidebarData = {
           icon: DoorOpen,
         },
         {
-          title: 'Beds',
-          url: '/beds',
-          icon: Bed,
-        },
-        {
           title: 'Payments',
           url: '/payments',
           icon: Wallet,
+        },
+        {
+          title: 'Expenses',
+          url: '/expenses',
+          icon: Receipt,
         },
         {
           title: 'Subscriptions',

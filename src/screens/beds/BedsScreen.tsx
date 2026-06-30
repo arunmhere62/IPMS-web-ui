@@ -89,6 +89,9 @@ export function BedsScreen() {
 
   const limit = 20
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
+  const [occupancyFilter, setOccupancyFilter] = useState<
+    'all' | 'occupied' | 'available'
+  >('all')
   const [state, dispatch] = useReducer(bedsReducer, {
     page: 1,
     allBeds: [],
@@ -132,6 +135,15 @@ export function BedsScreen() {
   useEffect(() => {
     dispatch({ type: 'RESET' })
   }, [selectedPGLocationId, selectedRoomId])
+
+  // Also reset when occupancy filter changes (client-side but dispatch for consistency)
+  useEffect(() => {
+    dispatch({ type: 'RESET' })
+    if (selectedPGLocationId && queryOptions) {
+      void trigger(queryOptions)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [occupancyFilter])
 
   // Load initial data or when page changes
   useEffect(() => {
@@ -187,7 +199,11 @@ export function BedsScreen() {
     selectedPGLocationId,
   ])
 
-  const beds = state.allBeds
+  const beds = state.allBeds.filter((b) => {
+    if (occupancyFilter === 'occupied') return Boolean(b.is_occupied)
+    if (occupancyFilter === 'available') return !b.is_occupied
+    return true
+  })
 
   const fetchErrorMessage =
     (error as ErrorLike | undefined)?.data?.message ||
@@ -233,13 +249,19 @@ export function BedsScreen() {
     const roomLabel = selectedRoomId
       ? ` • Room ${rooms.find((r) => r.s_no === selectedRoomId)?.room_no}`
       : ''
-    return `${state.allBeds.length} of ${total} Beds${roomLabel}`
+    const occupancyLabel =
+      occupancyFilter !== 'all'
+        ? ` • ${occupancyFilter === 'occupied' ? 'Occupied' : 'Available'}`
+        : ''
+    return `${beds.length} of ${total} Beds${roomLabel}${occupancyLabel}`
   }, [
+    beds.length,
     state.allBeds.length,
     selectedPGLocationId,
     bedsResponse,
     selectedRoomId,
     rooms,
+    occupancyFilter,
   ])
 
   return (
@@ -247,7 +269,7 @@ export function BedsScreen() {
       <PageHeader title='Beds' showBack={true} />
 
       {fetchErrorMessage ? (
-        <div className='mb-3'>
+        <div className='mt-4'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load beds</AlertTitle>
@@ -257,31 +279,43 @@ export function BedsScreen() {
       ) : null}
 
       {!selectedPGLocationId ? (
-        <EmptyState
-          icon={BedIcon}
-          title='Select a PG Location'
-          description='Choose a PG from the top bar.'
-        />
+        <div className='mt-4'>
+          <EmptyState
+            icon={BedIcon}
+            title='Select a PG Location'
+            description='Choose a PG from the top bar.'
+          />
+        </div>
       ) : (
         <>
-          <div className='mb-3 flex items-center justify-between gap-2'>
-            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-              <BedIcon className='size-3.5' />
+          <div className='mt-6 mb-4 flex items-center justify-between gap-4'>
+            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+              <BedIcon className='size-4' />
               <span>{countLabel}</span>
               {selectedRoomId && (
-                <span className='ml-2 rounded-full bg-primary px-2 py-1 text-xs font-medium text-primary-foreground'>
+                <span className='ml-2 rounded-full bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground'>
                   Room {rooms.find((r) => r.s_no === selectedRoomId)?.room_no}
                 </span>
               )}
             </div>
             <Button
-              variant={selectedRoomId !== null ? 'default' : 'outline'}
+              variant={
+                selectedRoomId !== null || occupancyFilter !== 'all'
+                  ? 'default'
+                  : 'outline'
+              }
               size='sm'
               onClick={() => setFilterModalOpen(true)}
-              className='h-8 text-xs'
+              className='h-9 px-4 text-xs'
             >
-              <Filter className='mr-1 size-3' />
+              <Filter className='mr-2 size-4' />
               Filter
+              {(selectedRoomId !== null || occupancyFilter !== 'all') && (
+                <span className='ml-2 rounded-full bg-white/20 px-2 text-[10px] font-bold'>
+                  {(selectedRoomId !== null ? 1 : 0) +
+                    (occupancyFilter !== 'all' ? 1 : 0)}
+                </span>
+              )}
             </Button>
           </div>
 
@@ -382,20 +416,30 @@ export function BedsScreen() {
                                 className='flex justify-end gap-2 border-t pt-2'
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                {!isOccupied && (
+                                {isOccupied && tenant?.s_no ? (
                                   <Button
                                     asChild
                                     variant='outline'
                                     size='sm'
                                     className='text-xs'
                                   >
+                                    <Link to={`/tenants/${tenant.s_no}`}>
+                                      View Tenant
+                                    </Link>
+                                  </Button>
+                                ) : !isOccupied ? (
+                                  <Button
+                                    asChild
+                                    size='sm'
+                                    className='bg-green-600 text-xs text-white hover:bg-green-700'
+                                  >
                                     <Link
                                       to={`/tenants/new?bedId=${b.s_no}&roomId=${b.room_id}`}
                                     >
-                                      Add Tenant
+                                      + Add Tenant
                                     </Link>
                                   </Button>
-                                )}
+                                ) : null}
                                 <ActionButtons
                                   mode='icon'
                                   onEdit={() => openEdit(b)}
@@ -467,20 +511,30 @@ export function BedsScreen() {
                                 className='flex flex-shrink-0 items-center gap-2'
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                {!isOccupied && (
+                                {isOccupied && tenant?.s_no ? (
                                   <Button
                                     asChild
                                     variant='outline'
                                     size='sm'
                                     className='text-xs'
                                   >
+                                    <Link to={`/tenants/${tenant.s_no}`}>
+                                      View Tenant
+                                    </Link>
+                                  </Button>
+                                ) : !isOccupied ? (
+                                  <Button
+                                    asChild
+                                    size='sm'
+                                    className='bg-green-600 text-xs text-white hover:bg-green-700'
+                                  >
                                     <Link
                                       to={`/tenants/new?bedId=${b.s_no}&roomId=${b.room_id}`}
                                     >
-                                      Add Tenant
+                                      + Add Tenant
                                     </Link>
                                   </Button>
-                                )}
+                                ) : null}
                                 <ActionButtons
                                   mode='icon'
                                   onEdit={() => openEdit(b)}
@@ -587,6 +641,8 @@ export function BedsScreen() {
             rooms={rooms}
             selectedRoomId={selectedRoomId}
             onSelectRoom={setSelectedRoomId}
+            occupancyFilter={occupancyFilter}
+            onOccupancyChange={setOccupancyFilter}
           />
 
           <AlertDialog

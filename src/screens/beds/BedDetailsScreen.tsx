@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useGetBedByIdQuery, useDeleteBedMutation } from '@/services/roomsApi'
 import { useAppSelector } from '@/store/hooks'
-import { CircleAlert, Plus, User, Edit, Trash2, ArrowLeft } from 'lucide-react'
+import { CircleAlert, Plus, User, Edit, Trash2 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -17,6 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { PageHeader } from '@/components/form/page-header'
 import { BedFormDialog } from './BedFormDialog'
 
 export function BedDetailsScreen() {
@@ -74,55 +75,43 @@ export function BedDetailsScreen() {
 
   return (
     <div className='min-h-screen bg-background'>
-      {/* Compact Header */}
-      <div className='sticky top-0 z-10 border-b bg-background px-3 py-2'>
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center gap-2'>
-            <Button
-              variant='ghost'
-              size='icon'
-              onClick={() => navigate('/beds')}
-              className='h-7 w-7'
-            >
-              <ArrowLeft className='size-4' />
-            </Button>
-            <div>
-              <h1 className='text-sm font-semibold'>
-                {bed?.bed_no ? `Bed ${bed.bed_no}` : 'Bed Details'}
-              </h1>
-              <p className='text-[10px] text-muted-foreground'>
-                {bed?.rooms?.room_no ? `Room ${bed.rooms.room_no}` : ''}
-              </p>
+      <div className='px-3 py-3'>
+        <PageHeader
+          title={bed?.bed_no ? `Bed ${bed.bed_no}` : 'Bed Details'}
+          showBack={true}
+          subtitle={
+            bed?.rooms?.room_no ? `Room ${bed.rooms.room_no}` : undefined
+          }
+          right={
+            <div className='flex items-center gap-1'>
+              {bed?.s_no ? (
+                <Badge variant='outline' className='px-1.5 py-0 text-[10px]'>
+                  #{bed.s_no}
+                </Badge>
+              ) : null}
+              {bed && (
+                <>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={() => setBedDialogOpen(true)}
+                    className='h-8 w-8'
+                  >
+                    <Edit className='size-3.5' />
+                  </Button>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={() => setDeleteBedOpen(true)}
+                    className='h-8 w-8 text-destructive'
+                  >
+                    <Trash2 className='size-3.5' />
+                  </Button>
+                </>
+              )}
             </div>
-          </div>
-          <div className='flex items-center gap-1'>
-            {bed?.s_no ? (
-              <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
-                #{bed.s_no}
-              </Badge>
-            ) : null}
-            {bed && (
-              <>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  onClick={() => setBedDialogOpen(true)}
-                  className='h-7 w-7'
-                >
-                  <Edit className='size-3.5' />
-                </Button>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  onClick={() => setDeleteBedOpen(true)}
-                  className='h-7 w-7 text-destructive'
-                >
-                  <Trash2 className='size-3.5' />
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
+          }
+        />
       </div>
 
       {fetchErrorMessage ? (
@@ -130,7 +119,9 @@ export function BedDetailsScreen() {
           <Alert variant='destructive' className='py-2'>
             <CircleAlert className='size-3' />
             <AlertTitle className='text-xs'>Error</AlertTitle>
-            <AlertDescription className='text-[10px]'>{fetchErrorMessage}</AlertDescription>
+            <AlertDescription className='text-[10px]'>
+              {fetchErrorMessage}
+            </AlertDescription>
           </Alert>
         </div>
       ) : null}
@@ -172,7 +163,7 @@ export function BedDetailsScreen() {
                 </div>
                 <Badge
                   variant={isOccupied ? 'secondary' : 'outline'}
-                  className='text-[10px] h-5'
+                  className='h-5 text-[10px]'
                 >
                   {isOccupied ? 'Occupied' : 'Available'}
                 </Badge>
@@ -206,7 +197,7 @@ export function BedDetailsScreen() {
                   <Button
                     size='sm'
                     onClick={handleAddTenant}
-                    className='h-6 text-xs bg-black text-white hover:bg-black/90'
+                    className='h-6 bg-black text-xs text-white hover:bg-black/90'
                   >
                     <Plus className='mr-1 size-3' />
                     Add
@@ -228,8 +219,10 @@ export function BedDetailsScreen() {
                   <div className='flex size-6 items-center justify-center rounded-full bg-blue-600 text-white'>
                     <User className='size-3' />
                   </div>
-                  <div className='flex-1 min-w-0'>
-                    <div className='text-xs font-medium truncate'>{tenant.name}</div>
+                  <div className='min-w-0 flex-1'>
+                    <div className='truncate text-xs font-medium'>
+                      {tenant.name}
+                    </div>
                     <div className='text-[10px] text-muted-foreground'>
                       {tenant.phone_no ? tenant.phone_no : 'No phone'}
                     </div>
@@ -239,7 +232,9 @@ export function BedDetailsScreen() {
                 <div className='rounded-md border border-dashed bg-muted/30 p-3 text-center'>
                   <User className='mx-auto size-4 text-muted-foreground' />
                   <div className='mt-1 text-[10px] font-medium'>No Tenant</div>
-                  <div className='text-[9px] text-muted-foreground'>Available</div>
+                  <div className='text-[9px] text-muted-foreground'>
+                    Available
+                  </div>
                 </div>
               )}
             </CardContent>

@@ -215,6 +215,7 @@ export function RoomsScreen() {
     <div className='container mx-auto max-w-7xl px-4 py-4'>
       <PageHeader
         title='Rooms'
+        showBack={true}
         right={
           <Button
             size='sm'
@@ -246,12 +247,12 @@ export function RoomsScreen() {
         />
       ) : (
         <>
-          <div className='mt-3 mb-3 flex items-center justify-between gap-2'>
-            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-              <DoorOpen className='size-3.5' />
+          <div className='mt-6 mb-4 flex items-center justify-between gap-4'>
+            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+              <DoorOpen className='size-4' />
               <span>{countLabel}</span>
               {filter !== 'all' && (
-                <span className='ml-2 rounded-full bg-primary px-2 py-1 text-xs font-medium text-primary-foreground'>
+                <span className='ml-2 rounded-full bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground'>
                   {filter === 'occupied' ? 'Occupied' : 'Available'}
                 </span>
               )}
@@ -260,9 +261,9 @@ export function RoomsScreen() {
               variant={filter !== 'all' ? 'default' : 'outline'}
               size='sm'
               onClick={() => setFilterModalOpen(true)}
-              className='h-8 text-xs'
+              className='h-9 px-4 text-xs'
             >
-              <Filter className='mr-1 size-3' />
+              <Filter className='mr-2 size-4' />
               Filter
             </Button>
           </div>

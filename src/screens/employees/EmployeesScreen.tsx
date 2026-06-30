@@ -221,7 +221,7 @@ export function EmployeesScreen() {
       />
 
       {fetchErrorMessage ? (
-        <div className='mt-3 mb-3'>
+        <div className='mt-4'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load employees</AlertTitle>
@@ -230,9 +230,9 @@ export function EmployeesScreen() {
         </div>
       ) : null}
 
-      <div className='mt-3 mb-3 flex items-center justify-between gap-3'>
+      <div className='mt-6 flex items-center justify-between gap-4'>
         <div className='relative max-w-sm flex-1'>
-          <Search className='pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground' />
+          <Search className='pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground' />
           <Input
             value={query}
             onChange={(e) => {
@@ -240,28 +240,30 @@ export function EmployeesScreen() {
               dispatch({ type: 'RESET' })
             }}
             placeholder='Search employees...'
-            className='h-8 pl-8 text-sm'
+            className='h-10 pl-10 text-sm'
             disabled={!selectedPGLocationId}
           />
         </div>
-        <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-          <Users className='size-3.5' />
+        <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+          <Users className='size-4' />
           <span>{countLabel}</span>
         </div>
       </div>
 
       {!selectedPGLocationId ? (
-        <EmptyState
-          icon={Users}
-          title='Select a PG Location'
-          description='Choose a PG from the top bar.'
-        />
+        <div className='mt-6'>
+          <EmptyState
+            icon={Users}
+            title='Select a PG Location'
+            description='Choose a PG from the top bar.'
+          />
+        </div>
       ) : (
-        <div>
+        <div className='mt-6'>
           {isLoading ? (
-            <div className='rounded-lg border bg-card px-4 py-8 text-center'>
-              <div className='mx-auto size-6 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
-              <p className='mt-2 text-xs text-muted-foreground'>Loading...</p>
+            <div className='rounded-lg border bg-card px-6 py-12 text-center'>
+              <div className='mx-auto size-8 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
+              <p className='mt-4 text-sm text-muted-foreground'>Loading...</p>
             </div>
           ) : employees.length === 0 ? (
             <EmptyState
@@ -274,7 +276,7 @@ export function EmployeesScreen() {
               }
             />
           ) : (
-            <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
+            <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
               {employees.map((e) => (
                 <Card key={e.s_no} className='py-0 hover:border-primary/50'>
                   <CardContent className='p-3'>

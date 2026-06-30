@@ -1,24 +1,28 @@
 import { useMemo, useState } from 'react'
-import { CircleAlert, Plus, Search, Ticket as TicketIcon } from 'lucide-react'
-
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { PageHeader } from '@/components/form/page-header'
-import { AppDialog } from '@/components/form/app-dialog'
-
-import { useAppSelector } from '@/store/hooks'
 import {
   useCreateTicketMutation,
   useGetTicketsQuery,
   type CreateTicketData,
   type Ticket,
 } from '@/services/ticketsApi'
+import { useAppSelector } from '@/store/hooks'
+import { CircleAlert, Plus, Search, Ticket as TicketIcon } from 'lucide-react'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { AppDialog } from '@/components/form/app-dialog'
+import { PageHeader } from '@/components/form/page-header'
 
 type ErrorLike = {
   data?: {
@@ -28,7 +32,9 @@ type ErrorLike = {
 }
 
 export function TicketsScreen() {
-  const selectedPGLocationId = useAppSelector((s) => (s as any).pgLocations?.selectedPGLocationId) as number | null
+  const selectedPGLocationId = useAppSelector(
+    (s) => (s as any).pgLocations?.selectedPGLocationId
+  ) as number | null
 
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
@@ -39,7 +45,8 @@ export function TicketsScreen() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<CreateTicketData['category']>('BUG')
-  const [priority, setPriority] = useState<CreateTicketData['priority']>('MEDIUM')
+  const [priority, setPriority] =
+    useState<CreateTicketData['priority']>('MEDIUM')
 
   const {
     data: ticketsResponse,
@@ -56,7 +63,13 @@ export function TicketsScreen() {
 
   const [createTicket, { isLoading: creating }] = useCreateTicketMutation()
 
-  const tickets: Ticket[] = useMemo(() => (Array.isArray((ticketsResponse as any)?.data) ? ((ticketsResponse as any).data as Ticket[]) : []), [ticketsResponse])
+  const tickets: Ticket[] = useMemo(
+    () =>
+      Array.isArray((ticketsResponse as any)?.data)
+        ? ((ticketsResponse as any).data as Ticket[])
+        : [],
+    [ticketsResponse]
+  )
 
   const pagination = (ticketsResponse as any)?.pagination as
     | {
@@ -69,12 +82,18 @@ export function TicketsScreen() {
     | undefined
 
   const total = Number(pagination?.total ?? tickets.length)
-  const totalPages = Number(pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1))
+  const totalPages = Number(
+    pagination?.totalPages ?? (pagination?.hasMore ? page + 1 : 1)
+  )
 
-  const fetchErrorMessage = (error as ErrorLike | undefined)?.data?.message || (error as ErrorLike | undefined)?.message
+  const fetchErrorMessage =
+    (error as ErrorLike | undefined)?.data?.message ||
+    (error as ErrorLike | undefined)?.message
 
   const canPrev = page > 1
-  const canNext = Boolean(pagination?.hasMore) || (Number.isFinite(totalPages) && page < totalPages)
+  const canNext =
+    Boolean(pagination?.hasMore) ||
+    (Number.isFinite(totalPages) && page < totalPages)
 
   const openCreate = () => {
     setTitle('')
@@ -119,10 +138,17 @@ export function TicketsScreen() {
     <div className='container mx-auto max-w-6xl px-3 py-6'>
       <PageHeader
         title='Tickets'
+        showBack={true}
         subtitle='Report issues and track status'
         right={
           <>
-            <Button type='button' size='icon' onClick={openCreate} aria-label='Create ticket' title='Create ticket'>
+            <Button
+              type='button'
+              size='icon'
+              onClick={openCreate}
+              aria-label='Create ticket'
+              title='Create ticket'
+            >
               <Plus className='size-4' />
             </Button>
             <Button variant='outline' size='sm' onClick={() => refetch()}>
@@ -133,7 +159,7 @@ export function TicketsScreen() {
       />
 
       {fetchErrorMessage ? (
-        <div className='mt-6'>
+        <div className='mt-4'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load tickets</AlertTitle>
@@ -142,9 +168,9 @@ export function TicketsScreen() {
         </div>
       ) : null}
 
-      <div className='mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+      <div className='mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
         <div className='relative w-full sm:max-w-xs'>
-          <Search className='pointer-events-none absolute left-2.5 top-2 size-4 text-muted-foreground' />
+          <Search className='pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground' />
           <Input
             value={query}
             onChange={(e) => {
@@ -152,38 +178,48 @@ export function TicketsScreen() {
               setPage(1)
             }}
             placeholder='Search tickets'
-            className='h-8 pl-8 text-sm'
+            className='h-10 pl-10 text-sm'
           />
         </div>
 
-        <Badge variant='secondary' className='h-7 px-2 text-xs'>
+        <Badge variant='secondary' className='h-8 px-3 text-xs font-medium'>
           {countLabel}
         </Badge>
       </div>
 
-      <div className='mt-4'>
+      <div className='mt-6'>
         {isLoading ? (
-          <div className='rounded-md border bg-card px-3 py-4 text-sm text-muted-foreground'>Loading...</div>
+          <div className='rounded-lg border bg-card px-6 py-8 text-center text-sm text-muted-foreground'>
+            Loading...
+          </div>
         ) : tickets.length === 0 ? (
-          <div className='rounded-md border bg-card px-3 py-8 text-center'>
-            <div className='mx-auto flex size-12 items-center justify-center rounded-full bg-muted'>
-              <TicketIcon className='size-6 text-muted-foreground' />
+          <div className='rounded-lg border bg-card px-6 py-12 text-center'>
+            <div className='mx-auto flex size-16 items-center justify-center rounded-full bg-muted'>
+              <TicketIcon className='size-8 text-muted-foreground' />
             </div>
-            <div className='mt-3 text-base font-semibold'>No Tickets</div>
-            <div className='mt-1 text-xs text-muted-foreground'>Create a ticket to report an issue.</div>
-            <div className='mt-4'>
-              <Button onClick={openCreate}>Create Ticket</Button>
+            <div className='mt-4 text-lg font-semibold'>No Tickets</div>
+            <div className='mt-2 text-sm text-muted-foreground'>
+              Create a ticket to report an issue.
+            </div>
+            <div className='mt-6'>
+              <Button onClick={openCreate} className='px-6'>
+                Create Ticket
+              </Button>
             </div>
           </div>
         ) : (
-          <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
+          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
             {tickets.map((t) => (
-              <Card key={t.s_no} className='h-full'>
-                <CardContent className='flex h-full flex-col gap-2 p-3'>
+              <Card key={t.s_no} className='h-full border shadow-sm'>
+                <CardContent className='flex h-full flex-col gap-3 p-4'>
                   <div className='flex items-start justify-between gap-3'>
                     <div className='min-w-0'>
-                      <div className='truncate text-sm font-semibold'>{t.title}</div>
-                      <div className='mt-0.5 line-clamp-3 text-xs text-muted-foreground'>{t.description}</div>
+                      <div className='truncate text-sm font-semibold'>
+                        {t.title}
+                      </div>
+                      <div className='mt-0.5 line-clamp-3 text-xs text-muted-foreground'>
+                        {t.description}
+                      </div>
                     </div>
                     <Badge variant='outline' className='shrink-0 px-2 text-xs'>
                       #{t.ticket_number || t.s_no}
@@ -212,14 +248,26 @@ export function TicketsScreen() {
         )}
 
         <div className='mt-5 flex items-center justify-between gap-2'>
-          <Button variant='outline' size='sm' disabled={!canPrev} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+          <Button
+            variant='outline'
+            size='sm'
+            disabled={!canPrev}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
             Prev
           </Button>
           <div className='text-xs text-muted-foreground'>
             Page {page}
-            {Number.isFinite(totalPages) && totalPages > 0 ? ` / ${totalPages}` : ''}
+            {Number.isFinite(totalPages) && totalPages > 0
+              ? ` / ${totalPages}`
+              : ''}
           </div>
-          <Button variant='outline' size='sm' disabled={!canNext} onClick={() => setPage((p) => p + 1)}>
+          <Button
+            variant='outline'
+            size='sm'
+            disabled={!canNext}
+            onClick={() => setPage((p) => p + 1)}
+          >
             Next
           </Button>
         </div>
@@ -233,10 +281,19 @@ export function TicketsScreen() {
         size='md'
         footer={
           <div className='flex w-full justify-end gap-2 px-3 pb-3'>
-            <Button type='button' variant='outline' onClick={() => setDialogOpen(false)} disabled={creating}>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => setDialogOpen(false)}
+              disabled={creating}
+            >
               Cancel
             </Button>
-            <Button type='button' onClick={() => void submitCreate()} disabled={creating}>
+            <Button
+              type='button'
+              onClick={() => void submitCreate()}
+              disabled={creating}
+            >
               {creating ? 'Creating...' : 'Create'}
             </Button>
           </div>
@@ -245,24 +302,38 @@ export function TicketsScreen() {
         <div className='grid gap-3'>
           <div className='grid gap-2'>
             <div className='text-sm font-medium'>Title</div>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder='Short summary' />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder='Short summary'
+            />
           </div>
 
           <div className='grid gap-2'>
             <div className='text-sm font-medium'>Description</div>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder='Describe the issue...' />
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder='Describe the issue...'
+            />
           </div>
 
           <div className='grid gap-3 sm:grid-cols-2'>
             <div className='grid gap-2'>
               <div className='text-sm font-medium'>Category</div>
-              <Select value={category} onValueChange={(v) => setCategory(v as any)} disabled={creating}>
+              <Select
+                value={category}
+                onValueChange={(v) => setCategory(v as any)}
+                disabled={creating}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder='Select category' />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value='BUG'>Bug</SelectItem>
-                  <SelectItem value='FEATURE_REQUEST'>Feature Request</SelectItem>
+                  <SelectItem value='FEATURE_REQUEST'>
+                    Feature Request
+                  </SelectItem>
                   <SelectItem value='SUPPORT'>Support</SelectItem>
                   <SelectItem value='OTHER'>Other</SelectItem>
                 </SelectContent>
@@ -271,7 +342,11 @@ export function TicketsScreen() {
 
             <div className='grid gap-2'>
               <div className='text-sm font-medium'>Priority</div>
-              <Select value={priority} onValueChange={(v) => setPriority(v as any)} disabled={creating}>
+              <Select
+                value={priority}
+                onValueChange={(v) => setPriority(v as any)}
+                disabled={creating}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder='Select priority' />
                 </SelectTrigger>

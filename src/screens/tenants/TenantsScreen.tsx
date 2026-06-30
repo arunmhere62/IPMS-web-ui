@@ -279,7 +279,7 @@ export function TenantsScreen() {
       <PageHeader title='Tenants' showBack={true} right={null} />
 
       {fetchErrorMessage ? (
-        <div className='mt-6'>
+        <div className='mt-4'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load tenants</AlertTitle>
@@ -298,9 +298,9 @@ export function TenantsScreen() {
         </div>
       ) : (
         <>
-          <div className='mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2'>
+          <div className='mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4'>
             <div className='relative w-full sm:max-w-xs'>
-              <Search className='pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground' />
+              <Search className='pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground' />
               <Input
                 value={query}
                 onChange={(e) => {
@@ -308,26 +308,27 @@ export function TenantsScreen() {
                   setPage(1)
                 }}
                 placeholder='Search by name, phone'
-                className='h-8 pl-8 text-sm'
+                className='h-10 pl-10 text-sm'
               />
             </div>
 
-            <div className='flex flex-wrap items-center gap-2'>
+            <div className='flex flex-wrap items-center gap-3'>
               <Button
                 variant={filterCount > 0 ? 'default' : 'outline'}
                 size='sm'
                 onClick={() => setFiltersOpen(true)}
+                className='h-9 px-4'
               >
-                <Filter className='me-2 size-4' />
+                <Filter className='mr-2 size-4' />
                 Filters
                 {filterCount > 0 ? (
-                  <span className='ms-2 text-xs font-semibold'>
+                  <span className='ml-2 text-xs font-semibold'>
                     ({filterCount})
                   </span>
                 ) : null}
               </Button>
 
-              <Badge variant='outline' className='h-7 px-2 text-xs'>
+              <Badge variant='outline' className='h-8 px-3 text-xs font-medium'>
                 {activeRoomLabel} · {statusLabel}
               </Badge>
             </div>

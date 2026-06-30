@@ -246,7 +246,11 @@ export function UserProfileScreen() {
 
   return (
     <div className='container mx-auto max-w-4xl px-3 py-6'>
-      <PageHeader title='My Profile' subtitle='Your account details' />
+      <PageHeader
+        title='My Profile'
+        showBack={true}
+        subtitle='Your account details'
+      />
 
       <div className='mt-4 grid gap-4'>
         {showSkeleton ? (

@@ -10,7 +10,7 @@ import {
   useGetRoomByIdQuery,
 } from '@/services/roomsApi'
 import { useAppSelector } from '@/store/hooks'
-import { Bed as BedIcon, CircleAlert, DoorOpen, Plus } from 'lucide-react'
+import { Bed as BedIcon, CircleAlert, DoorOpen, Plus, User } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -24,10 +24,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ActionButtons } from '@/components/form/action-buttons'
+import { PageHeader } from '@/components/form/page-header'
 
 interface ApiResponse<T> {
   data: T
@@ -216,30 +216,27 @@ export function RoomDetailsScreen() {
   }
 
   return (
-    <div className='container mx-auto max-w-5xl px-3 py-3'>
-      <div className='mb-3 flex items-center justify-between border-b pb-2'>
-        <div>
-          <h1 className='text-lg font-bold'>
-            {room?.room_no ? `Room ${room.room_no}` : 'Room Details'}
-          </h1>
-          <p className='text-[10px] text-muted-foreground'>
-            {room?.pg_locations?.location_name
-              ? String(room.pg_locations.location_name)
-              : 'View and manage room information'}
-          </p>
-        </div>
-        <div className='flex items-center gap-1.5'>
-          {room && (
+    <div className='container mx-auto max-w-5xl px-3 py-6'>
+      <PageHeader
+        title={room?.room_no ? `Room ${room.room_no}` : 'Room Details'}
+        showBack={true}
+        subtitle={
+          room?.pg_locations?.location_name
+            ? String(room.pg_locations.location_name)
+            : 'View and manage room information'
+        }
+        right={
+          room ? (
             <ActionButtons
               onEdit={() => setRoomDialogOpen(true)}
               onDelete={() => setDeleteRoomOpen(true)}
             />
-          )}
-        </div>
-      </div>
+          ) : null
+        }
+      />
 
       {fetchErrorMessage ? (
-        <div className='mb-2'>
+        <div className='mt-4'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load room details</AlertTitle>
@@ -249,7 +246,7 @@ export function RoomDetailsScreen() {
       ) : null}
 
       {!selectedPGLocationId ? (
-        <div className='rounded-lg border border-dashed bg-muted/30 px-3 py-6 text-center'>
+        <div className='mt-4 rounded-lg border border-dashed bg-muted/30 px-6 py-8 text-center'>
           <div className='mx-auto flex size-10 items-center justify-center rounded-full bg-primary/10'>
             <DoorOpen className='size-5 text-primary' />
           </div>
@@ -259,12 +256,12 @@ export function RoomDetailsScreen() {
           </div>
         </div>
       ) : roomLoading ? (
-        <div className='rounded-lg border bg-card px-3 py-6 text-center'>
+        <div className='mt-4 rounded-lg border bg-card px-6 py-8 text-center'>
           <div className='mx-auto size-5 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
           <p className='mt-2 text-[10px] text-muted-foreground'>Loading...</p>
         </div>
       ) : !room ? (
-        <div className='rounded-lg border border-dashed bg-muted/30 px-3 py-6 text-center'>
+        <div className='mt-4 rounded-lg border border-dashed bg-muted/30 px-6 py-8 text-center'>
           <div className='mx-auto flex size-10 items-center justify-center rounded-full bg-destructive/10'>
             <DoorOpen className='size-5 text-destructive' />
           </div>
@@ -274,7 +271,7 @@ export function RoomDetailsScreen() {
           </div>
         </div>
       ) : (
-        <div className='space-y-2'>
+        <div className='mt-4 space-y-4'>
           <Card className='border'>
             <CardContent className='p-3'>
               <div className='mb-2 flex items-center justify-between border-b pb-2'>
@@ -380,72 +377,103 @@ export function RoomDetailsScreen() {
                   </div>
                 </div>
               ) : (
-                <div className='space-y-1.5'>
-                  {beds.map((b) => (
-                    <div
-                      key={b.s_no}
-                      className='rounded-lg border p-2 hover:border-blue-500/50'
-                    >
-                      <div className='flex items-center justify-between'>
-                        <div className='flex min-w-0 flex-1 items-center gap-2'>
-                          <div className='flex size-7 items-center justify-center rounded-lg bg-black text-white'>
-                            <BedIcon className='size-3.5' />
-                          </div>
-                          <div className='min-w-0 flex-1'>
-                            <div className='text-xs font-semibold'>
-                              {b.bed_no}
-                            </div>
-                            <div className='truncate text-[10px] text-muted-foreground'>
-                              <Badge
-                                variant={
-                                  (b as ExtendedBed).is_occupied
-                                    ? 'secondary'
-                                    : 'default'
-                                }
-                                className='mr-1 text-[10px]'
-                              >
-                                {String(
-                                  (b as ExtendedBed).is_occupied
-                                    ? 'Occupied'
-                                    : 'Available'
-                                )}
-                              </Badge>
-                              {String(b.bed_price ?? '').length > 0
-                                ? `₹${String(b.bed_price)}`
-                                : ''}
-                              {(b as ExtendedBed).tenants?.[0]?.name
-                                ? ` • ${(b as ExtendedBed).tenants?.[0]?.name ?? ''}`
-                                : ''}
-                              {(b as ExtendedBed).tenants?.[0]?.phone_no
-                                ? ` • ${(b as ExtendedBed).tenants?.[0]?.phone_no ?? ''}`
-                                : ''}
-                            </div>
-                          </div>
-                        </div>
-                        <div className='flex items-center gap-1'>
-                          {!(b as ExtendedBed).is_occupied && (
-                            <Button
-                              asChild
-                              variant='outline'
-                              size='sm'
-                              className='text-xs'
+                <div className='space-y-2'>
+                  {beds.map((b) => {
+                    const eb = b as ExtendedBed
+                    const isOccupied = Boolean(eb.is_occupied)
+                    const tenant = eb.tenants?.[0]
+                    return (
+                      <div
+                        key={b.s_no}
+                        className='rounded-lg border p-3 transition-colors hover:border-blue-500/40'
+                      >
+                        <div className='flex items-center justify-between gap-2'>
+                          <div className='flex min-w-0 flex-1 items-center gap-2.5'>
+                            <div
+                              className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
+                                isOccupied
+                                  ? 'bg-red-100 text-red-600'
+                                  : 'bg-green-100 text-green-600'
+                              }`}
                             >
-                              <Link
-                                to={`/tenants/new?bedId=${b.s_no}&roomId=${room.s_no}`}
+                              <BedIcon className='size-4' />
+                            </div>
+                            <div className='min-w-0 flex-1'>
+                              <div className='flex items-center gap-2'>
+                                <span className='text-sm font-semibold'>
+                                  {b.bed_no}
+                                </span>
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                    isOccupied
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-green-100 text-green-700'
+                                  }`}
+                                >
+                                  {isOccupied ? '🔴 Occupied' : '🟢 Available'}
+                                </span>
+                              </div>
+                              {String(b.bed_price ?? '').length > 0 ? (
+                                <div className='mt-0.5 text-xs font-medium text-primary'>
+                                  ₹{String(b.bed_price)}
+                                </div>
+                              ) : (
+                                <div className='mt-0.5 text-[10px] text-muted-foreground'>
+                                  No price set
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className='flex shrink-0 items-center gap-1.5'>
+                            {isOccupied && tenant?.s_no ? (
+                              <Button
+                                asChild
+                                variant='outline'
+                                size='sm'
+                                className='h-7 text-xs'
                               >
-                                Add Tenant
-                              </Link>
-                            </Button>
-                          )}
-                          <ActionButtons
-                            mode='icon'
-                            onEdit={() => openEditBed(b)}
-                            onDelete={() => askDeleteBed(b)}
-                          />
+                                <Link to={`/tenants/${tenant.s_no}`}>
+                                  View Tenant
+                                </Link>
+                              </Button>
+                            ) : !isOccupied ? (
+                              <Button
+                                asChild
+                                size='sm'
+                                className='h-7 bg-green-600 text-xs text-white hover:bg-green-700'
+                              >
+                                <Link
+                                  to={`/tenants/new?bedId=${b.s_no}&roomId=${room.s_no}`}
+                                >
+                                  + Add Tenant
+                                </Link>
+                              </Button>
+                            ) : null}
+                            <ActionButtons
+                              mode='icon'
+                              onEdit={() => openEditBed(b)}
+                              onDelete={() => askDeleteBed(b)}
+                            />
+                          </div>
                         </div>
+
+                        {isOccupied && tenant?.name ? (
+                          <div className='mt-2 flex items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1.5'>
+                            <User className='size-3 shrink-0 text-amber-500' />
+                            <span className='truncate text-[11px] font-medium text-foreground'>
+                              {tenant.name}
+                            </span>
+                            {tenant.phone_no ? (
+                              <span className='ml-auto shrink-0 text-[10px] text-muted-foreground'>
+                                {tenant.phone_no}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </CardContent>

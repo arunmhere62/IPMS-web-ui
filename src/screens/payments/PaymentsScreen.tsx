@@ -26,7 +26,7 @@ export function PaymentsScreen() {
   ]
 
   return (
-    <div className='container mx-auto max-w-5xl px-3 py-6'>
+    <div className='container mx-auto max-w-6xl px-4 py-4'>
       <PageHeader title='Payments' showBack={true} />
 
       <div className='mt-4 grid gap-3'>

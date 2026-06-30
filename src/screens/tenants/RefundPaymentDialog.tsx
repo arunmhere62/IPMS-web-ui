@@ -1,7 +1,11 @@
+import { useEffect } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useCreateAdvancePaymentMutation } from '@/services/paymentsApi'
+import {
+  useCreateRefundPaymentMutation,
+  type CreateRefundPaymentDto,
+} from '@/services/paymentsApi'
 import { Calendar } from 'lucide-react'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Button } from '@/components/ui/button'
@@ -11,7 +15,10 @@ import { Form } from '@/components/ui/form'
 import { FormDialog } from '@/components/form/form-dialog'
 import { FormTextarea } from '@/components/form/form-fields'
 import { FormNumberInput } from '@/components/form/form-number-input'
-import { OptionSelector, type OptionSelectorOption } from '@/components/form/option-selector'
+import {
+  OptionSelector,
+  type OptionSelectorOption,
+} from '@/components/form/option-selector'
 
 const schema = z.object({
   amount_paid: z.number().min(1, 'Amount is required'),
@@ -34,7 +41,7 @@ const formatDate = (value?: string) => {
   })
 }
 
-type AdvancePaymentDialogProps = {
+type RefundPaymentDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   tenant: {
@@ -43,20 +50,21 @@ type AdvancePaymentDialogProps = {
     pg_id: number
     room_id: number
     bed_id: number
-    rooms?: { rent_price?: number }
+    rooms?: { s_no?: number; rent_price?: number }
+    beds?: { s_no?: number; bed_price?: string | number }
     check_in_date?: string
   }
   onSaved: () => void
 }
 
-export function AdvancePaymentDialog({
+export function RefundPaymentDialog({
   open,
   onOpenChange,
   tenant,
   onSaved,
-}: AdvancePaymentDialogProps) {
-  const [createAdvancePayment, { isLoading: creating }] =
-    useCreateAdvancePaymentMutation()
+}: RefundPaymentDialogProps) {
+  const [createRefundPayment, { isLoading: creating }] =
+    useCreateRefundPaymentMutation()
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -69,35 +77,60 @@ export function AdvancePaymentDialog({
   })
 
   const handleSubmit = async (values: FormValues) => {
+    const roomId = Number(tenant.room_id || tenant.rooms?.s_no || 0)
+    const bedId = Number(tenant.bed_id || tenant.beds?.s_no || 0)
+    if (!roomId || !bedId) {
+      showErrorAlert('Tenant room/bed not found', 'Validation Error')
+      return
+    }
+
     try {
-      await createAdvancePayment({
+      const payload: CreateRefundPaymentDto = {
         tenant_id: tenant.s_no,
         pg_id: tenant.pg_id,
-        room_id: tenant.room_id,
-        bed_id: tenant.bed_id,
+        room_id: roomId,
+        bed_id: bedId,
         amount_paid: values.amount_paid,
-        actual_rent_amount: tenant.rooms?.rent_price || 0,
         payment_date: values.payment_date,
         payment_method: values.payment_method,
         status: 'PAID',
         remarks: values.remarks || undefined,
-      }).unwrap()
+      }
+      await createRefundPayment(payload).unwrap()
 
-      showSuccessAlert('Advance payment recorded successfully')
+      showSuccessAlert('Refund payment added successfully')
       onOpenChange(false)
       form.reset()
       onSaved()
     } catch (error) {
-      showErrorAlert(error, 'Failed to record advance payment')
+      showErrorAlert(error, 'Failed to record refund payment')
     }
   }
+
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        amount_paid: 0,
+        payment_date: new Date().toISOString().split('T')[0],
+        payment_method: 'CASH',
+        remarks: '',
+      })
+    }
+  }, [open, form])
+
+  const paymentMethodOptions: OptionSelectorOption[] = [
+    { label: 'GPay', value: 'GPAY', icon: '📱' },
+    { label: 'PhonePe', value: 'PHONEPE', icon: '📱' },
+    { label: 'Cash', value: 'CASH', icon: '💵' },
+    { label: 'Bank Transfer', value: 'BANK_TRANSFER', icon: '🏦' },
+  ]
 
   return (
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title='Add Advance Payment'
-      description='Record an advance/security payment for this tenant.'
+      title='Add Refund Payment'
+      description='Record a refund payment for this tenant.'
       size='md'
       footer={
         <div className='flex w-full justify-end gap-2'>
@@ -109,7 +142,7 @@ export function AdvancePaymentDialog({
           >
             Cancel
           </Button>
-          <Button type='submit' form='advance-payment-form' disabled={creating}>
+          <Button type='submit' form='refund-payment-form' disabled={creating}>
             {creating ? 'Saving...' : 'Save'}
           </Button>
         </div>
@@ -117,7 +150,7 @@ export function AdvancePaymentDialog({
     >
       <Form {...form}>
         <form
-          id='advance-payment-form'
+          id='refund-payment-form'
           onSubmit={form.handleSubmit(handleSubmit)}
           className='grid gap-4'
         >
@@ -153,14 +186,14 @@ export function AdvancePaymentDialog({
 
           <OptionSelector
             label='Payment Method'
-            options={[
-              { label: 'GPay', value: 'GPAY', icon: '📱' },
-              { label: 'PhonePe', value: 'PHONEPE', icon: '📱' },
-              { label: 'Cash', value: 'CASH', icon: '💵' },
-              { label: 'Bank Transfer', value: 'BANK_TRANSFER', icon: '🏦' },
-            ] satisfies OptionSelectorOption[]}
+            options={paymentMethodOptions}
             selectedValue={form.watch('payment_method')}
-            onSelect={(v) => form.setValue('payment_method', (v ?? 'CASH') as 'GPAY' | 'PHONEPE' | 'CASH' | 'BANK_TRANSFER')}
+            onSelect={(v) =>
+              form.setValue(
+                'payment_method',
+                (v ?? 'CASH') as 'GPAY' | 'PHONEPE' | 'CASH' | 'BANK_TRANSFER'
+              )
+            }
             required
             className='[&>div:last-child]:flex-nowrap [&>div:last-child>button]:flex-1 [&>div:last-child>button]:text-[10px] sm:[&>div:last-child>button]:text-xs'
           />

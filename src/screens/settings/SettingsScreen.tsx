@@ -18,6 +18,11 @@ import {
   AlertCircle,
   Clock,
   Tags,
+  FileText,
+  RefreshCcw,
+  Phone,
+  MonitorCheck,
+  Rocket,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useLogout } from '@/hooks/useLogout'
@@ -91,6 +96,9 @@ export function SettingsScreen() {
 
   const subscriptionErrorMessage = getErrorMessage(subscriptionError)
 
+  const isTrial = subscriptionStatus?.is_trial ?? false
+  const trialDaysRemaining = subscriptionStatus?.days_remaining ?? 0
+
   const userName = String(user?.name ?? 'User')
 
   const userPhone = user?.phone
@@ -104,7 +112,7 @@ export function SettingsScreen() {
   }
 
   return (
-    <div className='container mx-auto max-w-5xl px-3 py-6'>
+    <div className='container mx-auto max-w-4xl px-4 py-4'>
       <PageHeader
         title='Settings'
         showBack={true}
@@ -199,6 +207,58 @@ export function SettingsScreen() {
                     </div>
                   </div>
                 )}
+
+              {/* Trial upgrade banner */}
+              {isTrial && subscriptionStatus?.has_active_subscription && (
+                <Link
+                  to='/subscriptions/manage'
+                  className='mb-3 block overflow-hidden rounded-xl no-underline'
+                  style={{
+                    backgroundColor:
+                      trialDaysRemaining <= 3
+                        ? '#DC2626'
+                        : trialDaysRemaining <= 7
+                          ? '#E11D48'
+                          : '#EF4444',
+                  }}
+                >
+                  <div className='flex items-center gap-3 p-3.5'>
+                    <div className='flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20'>
+                      <Rocket className='size-5 text-white' />
+                    </div>
+                    <div className='flex-1'>
+                      <div className='flex items-center gap-1.5'>
+                        <span className='text-sm font-bold text-white'>
+                          You&apos;re on a Trial Plan
+                        </span>
+                        {trialDaysRemaining <= 7 && (
+                          <span className='rounded-full bg-black/25 px-1.5 py-0.5 text-[10px] font-bold text-white'>
+                            {trialDaysRemaining === 0
+                              ? 'Expires today'
+                              : `${trialDaysRemaining}d left`}
+                          </span>
+                        )}
+                      </div>
+                      <div className='text-[11px] leading-tight text-white/85'>
+                        {trialDaysRemaining <= 3
+                          ? 'Upgrade now to avoid losing access to your data'
+                          : 'Unlock full access — no limits, no interruptions'}
+                      </div>
+                    </div>
+                    <div className='rounded-lg bg-white px-3 py-1.5 text-sm font-bold text-red-500'>
+                      Upgrade
+                    </div>
+                  </div>
+                  <div className='h-0.5 bg-black/15'>
+                    <div
+                      className='h-full bg-white/60'
+                      style={{
+                        width: `${Math.min(100, Math.max(5, (trialDaysRemaining / 30) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                </Link>
+              )}
 
               {/* Subscription action buttons */}
 
@@ -297,7 +357,25 @@ export function SettingsScreen() {
                 variant='ghost'
                 className='h-auto w-full justify-start px-0 py-4 hover:bg-transparent'
               >
-                <Link to='/privacy'>
+                <Link to='/dashboard/terms'>
+                  <div className='flex flex-1 items-center gap-3'>
+                    <div className='flex size-8 items-center justify-center rounded-lg bg-primary/10'>
+                      <FileText className='size-4 text-primary' />
+                    </div>
+
+                    <span className='font-semibold'>Terms and Conditions</span>
+                  </div>
+
+                  <ChevronRight className='size-5 text-muted-foreground' />
+                </Link>
+              </Button>
+
+              <Button
+                asChild
+                variant='ghost'
+                className='h-auto w-full justify-start px-0 py-4 hover:bg-transparent'
+              >
+                <Link to='/dashboard/privacy'>
                   <div className='flex flex-1 items-center gap-3'>
                     <div className='flex size-8 items-center justify-center rounded-lg bg-primary/10'>
                       <Shield className='size-4 text-primary' />
@@ -315,7 +393,61 @@ export function SettingsScreen() {
                 variant='ghost'
                 className='h-auto w-full justify-start px-0 py-4 hover:bg-transparent'
               >
-                <Link to='/faq'>
+                <Link to='/dashboard/refund-policy'>
+                  <div className='flex flex-1 items-center gap-3'>
+                    <div className='flex size-8 items-center justify-center rounded-lg bg-primary/10'>
+                      <RefreshCcw className='size-4 text-primary' />
+                    </div>
+
+                    <span className='font-semibold'>Cancellation & Refund</span>
+                  </div>
+
+                  <ChevronRight className='size-5 text-muted-foreground' />
+                </Link>
+              </Button>
+
+              <Button
+                asChild
+                variant='ghost'
+                className='h-auto w-full justify-start px-0 py-4 hover:bg-transparent'
+              >
+                <Link to='/dashboard/contact'>
+                  <div className='flex flex-1 items-center gap-3'>
+                    <div className='flex size-8 items-center justify-center rounded-lg bg-primary/10'>
+                      <Phone className='size-4 text-primary' />
+                    </div>
+
+                    <span className='font-semibold'>Contact Us</span>
+                  </div>
+
+                  <ChevronRight className='size-5 text-muted-foreground' />
+                </Link>
+              </Button>
+
+              <Button
+                asChild
+                variant='ghost'
+                className='h-auto w-full justify-start px-0 py-4 hover:bg-transparent'
+              >
+                <Link to='/dashboard/software-services'>
+                  <div className='flex flex-1 items-center gap-3'>
+                    <div className='flex size-8 items-center justify-center rounded-lg bg-primary/10'>
+                      <MonitorCheck className='size-4 text-primary' />
+                    </div>
+
+                    <span className='font-semibold'>Software Services</span>
+                  </div>
+
+                  <ChevronRight className='size-5 text-muted-foreground' />
+                </Link>
+              </Button>
+
+              <Button
+                asChild
+                variant='ghost'
+                className='h-auto w-full justify-start px-0 py-4 hover:bg-transparent'
+              >
+                <Link to='/dashboard/faq'>
                   <div className='flex flex-1 items-center gap-3'>
                     <div className='flex size-8 items-center justify-center rounded-lg bg-primary/10'>
                       <HelpCircle className='size-4 text-primary' />

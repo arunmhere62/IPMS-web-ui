@@ -318,7 +318,7 @@ export function HomePage() {
       ?.message || (monthlyError as { message?: string })?.message
 
   return (
-    <div className='container mx-auto max-w-6xl px-3 py-6'>
+    <div className='container mx-auto max-w-6xl px-4 py-4'>
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
         <div>
           <div className='text-xl font-semibold'>Dashboard</div>
@@ -328,7 +328,7 @@ export function HomePage() {
         </div>
       </div>
 
-      <div className='mt-5 grid gap-4 lg:grid-cols-3'>
+      <div className='mt-4 grid gap-4 lg:grid-cols-3'>
         <Card className='py-4 lg:col-span-2'>
           <CardHeader className='pb-2'>
             <CardTitle className='flex items-center gap-2 text-base'>
@@ -461,7 +461,7 @@ export function HomePage() {
         </Card>
       </div>
 
-      <div className='mt-6'>
+      <div className='mt-4'>
         <div className='text-base font-semibold'>Attention Required</div>
         <div className='mt-1 text-sm text-muted-foreground'>
           Quick follow-ups for pending rent and advance

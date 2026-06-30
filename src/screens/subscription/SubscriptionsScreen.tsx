@@ -2,13 +2,7 @@ import { useState } from 'react'
 import { useGetPublicPlansQuery, type SubscriptionPlan } from '@/services/subscriptionApi'
 import { Check, Flame, LogIn, Sparkles, UserPlus, Zap } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { AppDialog } from '@/components/form/app-dialog'
 import { Button } from '@/components/ui/button'
 
 const formatPrice = (price: string | number, currency?: string) => {
@@ -226,37 +220,39 @@ export function SubscriptionsScreen() {
       </div>
 
       {/* Login prompt dialog */}
-      <Dialog open={loginPrompt.open} onOpenChange={(open) => setLoginPrompt(prev => ({ ...prev, open }))}>
-        <DialogContent className='sm:max-w-sm'>
-          <DialogHeader>
-            <DialogTitle className='text-lg font-bold'>Sign in to subscribe</DialogTitle>
-            <DialogDescription className='text-sm text-muted-foreground'>
-              To subscribe to the <span className='font-semibold text-foreground'>{loginPrompt.planName}</span> plan,
-              you need an account. It only takes a minute to get started.
-            </DialogDescription>
-          </DialogHeader>
-          <div className='mt-2 flex flex-col gap-3'>
-            <Button
-              className='w-full'
-              onClick={() => { navigate('/login') }}
-            >
-              <LogIn className='mr-2 size-4' />
-              Login to your account
-            </Button>
-            <Button
-              variant='outline'
-              className='w-full'
-              onClick={() => { navigate('/signup') }}
-            >
-              <UserPlus className='mr-2 size-4' />
-              Create a new account
-            </Button>
-            <p className='text-center text-[11px] text-muted-foreground'>
-              After signing up, download the mobile app to complete your subscription.
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AppDialog
+        open={loginPrompt.open}
+        onOpenChange={(open) => setLoginPrompt(prev => ({ ...prev, open }))}
+        title='Sign in to subscribe'
+        size='sm'
+        description={
+          <>
+            To subscribe to the <span className='font-semibold text-foreground'>{loginPrompt.planName}</span> plan,
+            you need an account. It only takes a minute to get started.
+          </>
+        }
+      >
+        <div className='mt-2 flex flex-col gap-3'>
+          <Button
+            className='w-full'
+            onClick={() => { navigate('/login') }}
+          >
+            <LogIn className='mr-2 size-4' />
+            Login to your account
+          </Button>
+          <Button
+            variant='outline'
+            className='w-full'
+            onClick={() => { navigate('/signup') }}
+          >
+            <UserPlus className='mr-2 size-4' />
+            Create a new account
+          </Button>
+          <p className='text-center text-[11px] text-muted-foreground'>
+            After signing up, download the mobile app to complete your subscription.
+          </p>
+        </div>
+      </AppDialog>
     </div>
   )
 }

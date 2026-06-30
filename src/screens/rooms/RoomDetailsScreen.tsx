@@ -10,7 +10,7 @@ import {
   useGetRoomByIdQuery,
 } from '@/services/roomsApi'
 import { useAppSelector } from '@/store/hooks'
-import { Bed as BedIcon, CircleAlert, DoorOpen, Plus, User } from 'lucide-react'
+import { Bed as BedIcon, CircleAlert, Plus, User, Pencil, Trash2 } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -173,7 +173,6 @@ export function RoomDetailsScreen() {
   const available = Number(
     extendedRoom?.available_beds ?? Math.max(0, total - occupied)
   )
-  const stats = { total, occupied, available }
 
   const openAddBed = () => {
     setEditBed(null)
@@ -216,7 +215,7 @@ export function RoomDetailsScreen() {
   }
 
   return (
-    <div className='container mx-auto max-w-5xl px-3 py-6'>
+    <div className='container mx-auto max-w-4xl px-4 py-4'>
       <PageHeader
         title={room?.room_no ? `Room ${room.room_no}` : 'Room Details'}
         showBack={true}
@@ -246,138 +245,151 @@ export function RoomDetailsScreen() {
       ) : null}
 
       {!selectedPGLocationId ? (
-        <div className='mt-4 rounded-lg border border-dashed bg-muted/30 px-6 py-8 text-center'>
-          <div className='mx-auto flex size-10 items-center justify-center rounded-full bg-primary/10'>
-            <DoorOpen className='size-5 text-primary' />
-          </div>
-          <div className='mt-2 text-xs font-semibold'>Select a PG Location</div>
-          <div className='mt-1 text-[10px] text-muted-foreground'>
+        <div className='mt-4 flex flex-col items-center justify-center py-20'>
+          <span className='text-5xl'>🏠</span>
+          <p className='mt-4 text-lg font-semibold'>Select a PG Location</p>
+          <p className='mt-1 text-sm text-muted-foreground'>
             Choose a PG from the top bar.
-          </div>
+          </p>
         </div>
       ) : roomLoading ? (
-        <div className='mt-4 rounded-lg border bg-card px-6 py-8 text-center'>
-          <div className='mx-auto size-5 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
-          <p className='mt-2 text-[10px] text-muted-foreground'>Loading...</p>
+        <div className='mt-4 flex flex-col items-center justify-center py-20'>
+          <div className='size-8 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
+          <p className='mt-3 text-sm text-muted-foreground'>Loading...</p>
         </div>
       ) : !room ? (
-        <div className='mt-4 rounded-lg border border-dashed bg-muted/30 px-6 py-8 text-center'>
-          <div className='mx-auto flex size-10 items-center justify-center rounded-full bg-destructive/10'>
-            <DoorOpen className='size-5 text-destructive' />
-          </div>
-          <div className='mt-2 text-xs font-semibold'>Room not found</div>
-          <div className='mt-1 text-[10px] text-muted-foreground'>
-            Please check the room ID.
-          </div>
+        <div className='mt-4 flex flex-col items-center justify-center py-20'>
+          <span className='text-5xl'>🏠</span>
+          <p className='mt-4 text-lg font-semibold'>Room Not Found</p>
         </div>
       ) : (
         <div className='mt-4 space-y-4'>
-          <Card className='border'>
-            <CardContent className='p-3'>
-              <div className='mb-2 flex items-center justify-between border-b pb-2'>
-                <div className='flex items-center gap-2'>
-                  <div className='flex size-9 items-center justify-center rounded-lg bg-blue-600 text-white'>
-                    <DoorOpen className='size-4.5' />
+          {/* Header Card */}
+          <Card className='py-0 shadow-sm'>
+            <CardContent className='p-4'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-3'>
+                  <div className='flex size-11 items-center justify-center rounded-2xl bg-blue-600/10'>
+                    <span className='text-xl'>🏠</span>
                   </div>
                   <div>
-                    <div className='text-sm font-bold'>Room {room.room_no}</div>
-                    <div className='text-[10px] text-muted-foreground'>
-                      ID: {room.s_no}
-                    </div>
+                    <h2 className='text-lg font-bold'>Room {room.room_no}</h2>
+                    <p className='text-xs text-muted-foreground'>ID: {room.s_no}</p>
                   </div>
                 </div>
+                <ActionButtons
+                  onEdit={() => setRoomDialogOpen(true)}
+                  onDelete={() => setDeleteRoomOpen(true)}
+                />
               </div>
+            </CardContent>
+          </Card>
 
-              <div className='grid grid-cols-3 gap-2'>
-                <div className='rounded-lg border p-1.5 text-center'>
-                  <div className='text-lg font-bold'>{stats.total}</div>
-                  <div className='text-[10px] text-muted-foreground'>
-                    Total Beds
-                  </div>
+          {/* Room Images */}
+          <Card className='py-0 shadow-sm'>
+            <CardContent className='p-4'>
+              <h3 className='mb-3 text-base font-semibold'>
+                📷 Room Images{images.length > 0 ? ` (${images.length})` : ''}
+              </h3>
+              {images.length > 0 ? (
+                <div className='flex gap-3 overflow-x-auto pb-2'>
+                  {images.map((url, index) => (
+                    <div
+                      key={index}
+                      className='relative h-36 w-52 shrink-0 overflow-hidden rounded-xl shadow-sm'
+                    >
+                      <img
+                        src={url}
+                        alt={`Room ${index + 1}`}
+                        className='h-full w-full object-cover'
+                      />
+                      <div className='absolute bottom-2 left-2 rounded-lg bg-black/70 px-2.5 py-1 text-xs font-semibold text-white'>
+                        {index + 1} / {images.length}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className='rounded-lg border p-1.5 text-center'>
-                  <div className='text-lg font-bold text-blue-600'>
-                    {stats.occupied}
-                  </div>
-                  <div className='text-[10px] text-muted-foreground'>
-                    Occupied
-                  </div>
+              ) : (
+                <div className='flex flex-col items-center py-8'>
+                  <span className='text-4xl'>📷</span>
+                  <p className='mt-2 text-sm text-muted-foreground'>
+                    No images present for this room
+                  </p>
                 </div>
-                <div className='rounded-lg border p-1.5 text-center'>
-                  <div className='text-lg font-bold text-green-600'>
-                    {stats.available}
-                  </div>
-                  <div className='text-[10px] text-muted-foreground'>
-                    Available
-                  </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Room Stats */}
+          <Card className='py-0 shadow-sm'>
+            <CardContent className='px-4 py-3'>
+              <div className='flex items-center justify-between'>
+                <div className='flex flex-1 flex-col items-center'>
+                  <span className='text-xs font-semibold text-muted-foreground'>TOTAL</span>
+                  <span className='mt-1 text-base font-bold'>{total}</span>
+                </div>
+                <div className='h-7 w-px bg-border' />
+                <div className='flex flex-1 flex-col items-center'>
+                  <span className='text-xs font-semibold text-green-600'>AVAILABLE</span>
+                  <span className='mt-1 text-base font-bold text-green-600'>{available}</span>
+                </div>
+                <div className='h-7 w-px bg-border' />
+                <div className='flex flex-1 flex-col items-center'>
+                  <span className='text-xs font-semibold text-red-600'>OCCUPIED</span>
+                  <span className='mt-1 text-base font-bold text-red-600'>{occupied}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {images.length > 0 && (
-            <Card className='border'>
-              <CardContent className='p-3'>
-                <div className='mb-2 border-b pb-2 text-xs font-semibold'>
-                  Room Images
-                </div>
-                <div className='flex flex-wrap gap-1.5'>
-                  {images.map((url) => (
-                    <div
-                      key={url}
-                      className='h-16 w-16 overflow-hidden rounded-lg border'
-                    >
-                      <img
-                        src={url}
-                        alt=''
-                        className='h-full w-full object-cover'
-                      />
-                    </div>
-                  ))}
-                </div>
+          {/* PG Location Info */}
+          {extendedRoom?.pg_locations && (
+            <Card className='py-0 shadow-sm'>
+              <CardContent className='p-4'>
+                <h3 className='mb-3 text-sm font-semibold'>📍 PG Location</h3>
+                <p className='text-base font-semibold'>
+                  {extendedRoom.pg_locations.location_name}
+                </p>
+                <p className='mt-1 text-xs text-muted-foreground'>
+                  Location ID: {extendedRoom.pg_locations.s_no}
+                </p>
               </CardContent>
             </Card>
           )}
 
-          <Card className='border'>
-            <CardContent className='p-3'>
-              <div className='mb-2 flex items-center justify-between border-b pb-2'>
-                <div>
-                  <div className='text-xs font-semibold'>Beds in this Room</div>
-                  <div className='text-[10px] text-muted-foreground'>
-                    {beds.length} bed{beds.length !== 1 ? 's' : ''} total
-                  </div>
-                </div>
+          {/* Beds List */}
+          <Card className='py-0 shadow-sm'>
+            <CardContent className='p-4'>
+              <div className='mb-3 flex items-center justify-between'>
+                <h3 className='text-base font-bold'>
+                  🛏️ Beds ({beds.length})
+                </h3>
                 <Button
                   size='sm'
                   onClick={openAddBed}
                   disabled={!selectedPGLocationId}
-                  className='bg-black text-xs text-white hover:bg-black/90'
+                  className='bg-blue-600 text-xs text-white hover:bg-blue-700'
                 >
-                  <Plus className='me-1 size-3' />
+                  <Plus className='mr-1 size-3.5' />
                   Add Bed
                 </Button>
               </div>
 
               {bedsLoading ? (
-                <div className='rounded-lg border bg-card px-3 py-5 text-center'>
-                  <div className='mx-auto size-5 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
-                  <p className='mt-2 text-[10px] text-muted-foreground'>
-                    Loading beds...
-                  </p>
+                <div className='flex flex-col items-center py-8'>
+                  <div className='size-6 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
+                  <p className='mt-2 text-xs text-muted-foreground'>Loading beds...</p>
                 </div>
               ) : beds.length === 0 ? (
-                <div className='rounded-lg border border-dashed bg-muted/30 px-3 py-6 text-center'>
-                  <div className='mx-auto flex size-8 items-center justify-center rounded-full bg-primary/10'>
-                    <BedIcon className='size-4 text-primary' />
-                  </div>
-                  <div className='mt-2 text-xs font-semibold'>No Beds</div>
-                  <div className='mt-1 text-[10px] text-muted-foreground'>
-                    Add your first bed to this room.
-                  </div>
+                <div className='flex flex-col items-center py-8'>
+                  <BedIcon className='size-10 text-gray-300' />
+                  <p className='mt-3 text-sm font-semibold'>No Beds Yet</p>
+                  <p className='mt-1 text-sm text-muted-foreground'>
+                    Tap "Add Bed" to get started.
+                  </p>
                 </div>
               ) : (
-                <div className='space-y-2'>
+                <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
                   {beds.map((b) => {
                     const eb = b as ExtendedBed
                     const isOccupied = Boolean(eb.is_occupied)
@@ -385,92 +397,83 @@ export function RoomDetailsScreen() {
                     return (
                       <div
                         key={b.s_no}
-                        className='rounded-lg border p-3 transition-colors hover:border-blue-500/40'
+                        className={`rounded-2xl p-4 ${
+                          isOccupied ? 'bg-red-50' : 'bg-green-50'
+                        }`}
                       >
-                        <div className='flex items-center justify-between gap-2'>
-                          <div className='flex min-w-0 flex-1 items-center gap-2.5'>
-                            <div
-                              className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
-                                isOccupied
-                                  ? 'bg-red-100 text-red-600'
-                                  : 'bg-green-100 text-green-600'
+                        {/* Bed icon + number + status */}
+                        <div className='mb-2.5 flex items-center gap-2.5'>
+                          <div className='flex size-10 items-center justify-center rounded-xl bg-white'>
+                            <BedIcon
+                              className={`size-5 ${isOccupied ? 'text-red-600' : 'text-green-600'}`}
+                            />
+                          </div>
+                          <div>
+                            <p className='text-sm font-bold'>{b.bed_no}</p>
+                            <p
+                              className={`text-xs font-medium ${
+                                isOccupied ? 'text-red-600' : 'text-green-600'
                               }`}
                             >
-                              <BedIcon className='size-4' />
-                            </div>
-                            <div className='min-w-0 flex-1'>
-                              <div className='flex items-center gap-2'>
-                                <span className='text-sm font-semibold'>
-                                  {b.bed_no}
-                                </span>
-                                <span
-                                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                    isOccupied
-                                      ? 'bg-red-100 text-red-700'
-                                      : 'bg-green-100 text-green-700'
-                                  }`}
-                                >
-                                  {isOccupied ? '🔴 Occupied' : '🟢 Available'}
-                                </span>
-                              </div>
-                              {String(b.bed_price ?? '').length > 0 ? (
-                                <div className='mt-0.5 text-xs font-medium text-primary'>
-                                  ₹{String(b.bed_price)}
-                                </div>
-                              ) : (
-                                <div className='mt-0.5 text-[10px] text-muted-foreground'>
-                                  No price set
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className='flex shrink-0 items-center gap-1.5'>
-                            {isOccupied && tenant?.s_no ? (
-                              <Button
-                                asChild
-                                variant='outline'
-                                size='sm'
-                                className='h-7 text-xs'
-                              >
-                                <Link to={`/tenants/${tenant.s_no}`}>
-                                  View Tenant
-                                </Link>
-                              </Button>
-                            ) : !isOccupied ? (
-                              <Button
-                                asChild
-                                size='sm'
-                                className='h-7 bg-green-600 text-xs text-white hover:bg-green-700'
-                              >
-                                <Link
-                                  to={`/tenants/new?bedId=${b.s_no}&roomId=${room.s_no}`}
-                                >
-                                  + Add Tenant
-                                </Link>
-                              </Button>
-                            ) : null}
-                            <ActionButtons
-                              mode='icon'
-                              onEdit={() => openEditBed(b)}
-                              onDelete={() => askDeleteBed(b)}
-                            />
+                              {isOccupied ? 'Occupied' : 'Available'}
+                            </p>
                           </div>
                         </div>
 
-                        {isOccupied && tenant?.name ? (
-                          <div className='mt-2 flex items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1.5'>
-                            <User className='size-3 shrink-0 text-amber-500' />
-                            <span className='truncate text-[11px] font-medium text-foreground'>
-                              {tenant.name}
-                            </span>
-                            {tenant.phone_no ? (
-                              <span className='ml-auto shrink-0 text-[10px] text-muted-foreground'>
-                                {tenant.phone_no}
+                        {/* Tenant name or price */}
+                        <div className='mb-3'>
+                          {isOccupied && tenant ? (
+                            <div className='flex items-center gap-1'>
+                              <User className='size-3 shrink-0 text-amber-500' />
+                              <span className='truncate text-xs font-medium text-muted-foreground'>
+                                {tenant.name}
                               </span>
-                            ) : null}
-                          </div>
-                        ) : null}
+                            </div>
+                          ) : (
+                            <p className='text-sm font-bold text-blue-600'>
+                              {b.bed_price
+                                ? `₹${Number(b.bed_price).toLocaleString('en-IN')}/mo`
+                                : '—'}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Add / View tenant button */}
+                        {!isOccupied ? (
+                          <Link
+                            to={`/tenants/new?bedId=${b.s_no}&roomId=${room.s_no}`}
+                            className='mb-2 flex items-center justify-center rounded-lg bg-green-600 py-2 text-xs font-bold text-white transition-colors hover:bg-green-700'
+                          >
+                            + Add Tenant
+                          </Link>
+                        ) : tenant?.s_no ? (
+                          <Link
+                            to={`/tenants/${tenant.s_no}`}
+                            className='mb-2 flex items-center justify-center rounded-lg bg-red-600 py-2 text-xs font-bold text-white transition-colors hover:bg-red-700'
+                          >
+                            View Tenant
+                          </Link>
+                        ) : (
+                          <div className='mb-2' />
+                        )}
+
+                        {/* Edit + Delete buttons */}
+                        <div className='flex gap-1.5'>
+                          <button
+                            onClick={() => openEditBed(b)}
+                            className='flex flex-1 items-center justify-center gap-1 rounded-md border border-gray-300 bg-gray-100 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-200'
+                          >
+                            <Pencil className='size-3' />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => askDeleteBed(b)}
+                            className='flex flex-1 items-center justify-center gap-1 rounded-md border border-red-200 bg-red-50 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100'
+                          >
+                            <Trash2 className='size-3' />
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     )
                   })}

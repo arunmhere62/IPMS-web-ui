@@ -265,7 +265,7 @@ export function BedsScreen() {
   ])
 
   return (
-    <div className='container mx-auto max-w-7xl px-4 py-4'>
+    <div className='container mx-auto max-w-6xl px-4 py-4'>
       <PageHeader title='Beds' showBack={true} />
 
       {fetchErrorMessage ? (
@@ -281,14 +281,14 @@ export function BedsScreen() {
       {!selectedPGLocationId ? (
         <div className='mt-4'>
           <EmptyState
-            icon={BedIcon}
+            emoji='📍'
             title='Select a PG Location'
             description='Choose a PG from the top bar.'
           />
         </div>
       ) : (
         <>
-          <div className='mt-6 mb-4 flex items-center justify-between gap-4'>
+          <div className='mt-4 mb-4 flex items-center justify-between gap-4'>
             <div className='flex items-center gap-2 text-sm text-muted-foreground'>
               <BedIcon className='size-4' />
               <span>{countLabel}</span>

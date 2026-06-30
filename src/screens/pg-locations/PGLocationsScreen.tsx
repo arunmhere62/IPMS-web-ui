@@ -89,7 +89,7 @@ export function PGLocationsScreen() {
   }
 
   return (
-    <div className='container mx-auto max-w-6xl px-3 py-6'>
+    <div className='container mx-auto max-w-6xl px-4 py-4'>
       <PageHeader
         title='PG Locations'
         right={
@@ -108,7 +108,7 @@ export function PGLocationsScreen() {
       />
 
       {fetchErrorMessage ? (
-        <div className='mt-6'>
+        <div className='mt-4'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load PG locations</AlertTitle>
@@ -124,8 +124,8 @@ export function PGLocationsScreen() {
           </div>
         ) : locations.length === 0 ? (
           <EmptyState
-            icon={Building2}
-            title='No PG Locations'
+            emoji='🏢'
+            title='No PG Locations Yet'
             description='Add your first PG location to get started.'
           />
         ) : (

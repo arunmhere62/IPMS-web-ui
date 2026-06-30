@@ -1,17 +1,17 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   useDeleteEmployeeMutation,
-  useGetEmployeesQuery,
+  useLazyGetEmployeesQuery,
   type Employee,
 } from '@/services/employeesApi'
 import { useAppSelector } from '@/store/hooks'
 import {
+  Briefcase,
   CircleAlert,
   Mail,
   Phone,
   Plus,
   Search,
-  User,
   Users,
 } from 'lucide-react'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
@@ -29,7 +29,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Input } from '@/components/ui/input'
 import { ActionButtons } from '@/components/form/action-buttons'
 import { PageHeader } from '@/components/form/page-header'
 import { EmployeeFormDialog } from './EmployeeFormDialog'
@@ -39,48 +38,11 @@ type ErrorLike = {
   message?: string
 }
 
-type EmployeesState = {
-  page: number
+type PaginationState = {
   allEmployees: Employee[]
+  page: number
   hasMore: boolean
-}
-
-type EmployeesAction =
-  | { type: 'RESET' }
-  | { type: 'SET_PAGE'; page: number }
-  | { type: 'ADD_EMPLOYEES'; page: number; data: Employee[]; hasMore: boolean }
-
-function employeesReducer(
-  state: EmployeesState,
-  action: EmployeesAction
-): EmployeesState {
-  switch (action.type) {
-    case 'RESET': {
-      return {
-        page: 1,
-        allEmployees: [],
-        hasMore: true,
-      }
-    }
-    case 'SET_PAGE': {
-      return {
-        ...state,
-        page: action.page,
-      }
-    }
-    case 'ADD_EMPLOYEES': {
-      return {
-        ...state,
-        allEmployees:
-          action.page === 1
-            ? action.data
-            : [...state.allEmployees, ...action.data],
-        hasMore: action.hasMore,
-      }
-    }
-    default:
-      return state
-  }
+  hasLoadedOnce: boolean
 }
 
 export function EmployeesScreen() {
@@ -88,11 +50,14 @@ export function EmployeesScreen() {
     useAppSelector((s) => s.pgLocations.selectedPGLocationId) ?? null
 
   const [query, setQuery] = useState('')
+  const [appliedSearch, setAppliedSearch] = useState('')
   const limit = 20
-  const [state, dispatch] = useReducer(employeesReducer, {
-    page: 1,
+
+  const [paginationState, setPaginationState] = useState<PaginationState>({
     allEmployees: [],
+    page: 1,
     hasMore: true,
+    hasLoadedOnce: false,
   })
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -101,45 +66,74 @@ export function EmployeesScreen() {
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
-  const {
-    data: employeesResponse,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useGetEmployeesQuery(
-    {
-      page: state.page,
-      limit,
-      pg_id: selectedPGLocationId ?? undefined,
-      search: query.trim() ? query.trim() : undefined,
-    },
-    { skip: !selectedPGLocationId }
-  )
-
+  const [trigger, { data: employeesResponse, isLoading, isFetching, error }] =
+    useLazyGetEmployeesQuery()
   const [deleteEmployee, { isLoading: deleting }] = useDeleteEmployeeMutation()
 
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const isLoadingMore = useRef(false)
 
-  // Update all employees when new data is fetched
+  const queryOptions = useMemo(() => {
+    if (!selectedPGLocationId) return undefined
+    return {
+      page: paginationState.page,
+      limit,
+      pg_id: selectedPGLocationId,
+      search: appliedSearch.trim() || undefined,
+    }
+  }, [selectedPGLocationId, paginationState.page, limit, appliedSearch])
+
+  // Reset pagination when search or PG location changes
+  useEffect(() => {
+    setPaginationState({
+      allEmployees: [],
+      page: 1,
+      hasMore: true,
+      hasLoadedOnce: false,
+    })
+  }, [selectedPGLocationId, appliedSearch])
+
+  // Trigger fetch when query options change
+  useEffect(() => {
+    if (selectedPGLocationId && queryOptions) {
+      void trigger(queryOptions)
+    }
+  }, [trigger, queryOptions, selectedPGLocationId])
+
+  // Update employees list when response data arrives
   useEffect(() => {
     if (employeesResponse?.data) {
       const newEmployees = employeesResponse.data as Employee[]
-      dispatch({
-        type: 'ADD_EMPLOYEES',
-        page: state.page,
-        data: newEmployees,
-        hasMore: Boolean(employeesResponse.pagination?.hasMore),
-      })
+      const currentPage = queryOptions?.page ?? 1
+
+      setTimeout(() => {
+        setPaginationState((prev) => {
+          if (currentPage === 1) {
+            return {
+              ...prev,
+              allEmployees: newEmployees,
+              hasMore: Boolean(employeesResponse.pagination?.hasMore),
+              hasLoadedOnce: true,
+            }
+          } else {
+            const existingIds = new Set(prev.allEmployees.map((e) => e.s_no))
+            const uniqueNew = newEmployees.filter(
+              (e) => !existingIds.has(e.s_no)
+            )
+            return {
+              ...prev,
+              allEmployees: [...prev.allEmployees, ...uniqueNew],
+              hasMore: Boolean(employeesResponse.pagination?.hasMore),
+              hasLoadedOnce: true,
+            }
+          }
+        })
+        isLoadingMore.current = false
+      }, 0)
     }
-  }, [employeesResponse, state.page])
+  }, [employeesResponse, queryOptions])
 
-  // Reset when query or location changes
-  useEffect(() => {
-    dispatch({ type: 'RESET' })
-  }, [query, selectedPGLocationId])
-
-  // Intersection Observer for infinite scroll
+  // Infinite scroll - IntersectionObserver
   useEffect(() => {
     const sentinel = sentinelRef.current
     if (!sentinel) return
@@ -148,11 +142,17 @@ export function EmployeesScreen() {
       (entries) => {
         if (
           entries[0].isIntersecting &&
-          state.hasMore &&
+          paginationState.hasMore &&
           !isFetching &&
-          !isLoading
+          !isLoading &&
+          paginationState.hasLoadedOnce &&
+          !isLoadingMore.current
         ) {
-          dispatch({ type: 'SET_PAGE', page: state.page + 1 })
+          isLoadingMore.current = true
+          setPaginationState((prev) => ({
+            ...prev,
+            page: prev.page + 1,
+          }))
         }
       },
       { threshold: 0.1 }
@@ -160,9 +160,9 @@ export function EmployeesScreen() {
 
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [state.hasMore, isFetching, isLoading, state.page])
+  }, [paginationState.hasMore, isFetching, isLoading, paginationState.hasLoadedOnce])
 
-  const employees = state.allEmployees
+  const employees = paginationState.allEmployees
 
   const fetchErrorMessage =
     (error as ErrorLike | undefined)?.data?.message ||
@@ -190,22 +190,25 @@ export function EmployeesScreen() {
       showSuccessAlert('Employee deleted successfully')
       setDeleteDialogOpen(false)
       setDeleteTarget(null)
-      dispatch({ type: 'RESET' })
-      void refetch()
+      setPaginationState({
+        allEmployees: [],
+        page: 1,
+        hasMore: true,
+        hasLoadedOnce: false,
+      })
     } catch (e: unknown) {
       showErrorAlert(e, 'Delete Error')
     }
   }
 
-  const countLabel = useMemo(() => {
-    if (!selectedPGLocationId) return 'Select PG'
-    return `${employees.length} Employees`
-  }, [employees.length, selectedPGLocationId])
+  const totalCount =
+    employeesResponse?.pagination?.total ?? employees.length
 
   return (
-    <div className='container mx-auto max-w-7xl px-4 py-4'>
+    <div className='container mx-auto max-w-6xl px-4 py-4'>
       <PageHeader
         title='Employees'
+        subtitle={`${totalCount} total`}
         showBack={true}
         right={
           <Button
@@ -230,100 +233,139 @@ export function EmployeesScreen() {
         </div>
       ) : null}
 
-      <div className='mt-6 flex items-center justify-between gap-4'>
-        <div className='relative max-w-sm flex-1'>
-          <Search className='pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground' />
-          <Input
+      {/* Search bar */}
+      <div className='mt-4 flex items-center gap-2'>
+        <div className='relative flex-1'>
+          <Search className='absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+          <input
+            type='text'
+            placeholder='Search employees...'
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
-              dispatch({ type: 'RESET' })
+              if (e.target.value === '' && appliedSearch) {
+                setAppliedSearch('')
+              }
             }}
-            placeholder='Search employees...'
-            className='h-10 pl-10 text-sm'
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setAppliedSearch(query)
+              }
+            }}
             disabled={!selectedPGLocationId}
+            className='h-10 w-full rounded-lg border border-border bg-muted pl-10 pr-4 text-sm outline-none focus:border-primary disabled:opacity-50'
           />
         </div>
-        <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-          <Users className='size-4' />
-          <span>{countLabel}</span>
-        </div>
+        <Button
+          size='sm'
+          variant='outline'
+          onClick={() => setAppliedSearch(query)}
+          disabled={!selectedPGLocationId}
+        >
+          <Search className='size-4' />
+        </Button>
+      </div>
+
+      {/* Count */}
+      <div className='mt-4 mb-2 flex items-center gap-2 text-sm text-muted-foreground'>
+        <Users className='size-4' />
+        <span>{employees.length} of {totalCount} Employees</span>
       </div>
 
       {!selectedPGLocationId ? (
-        <div className='mt-6'>
+        <div className='mt-4'>
           <EmptyState
-            icon={Users}
+            emoji='📍'
             title='Select a PG Location'
             description='Choose a PG from the top bar.'
           />
         </div>
       ) : (
-        <div className='mt-6'>
+        <div className='mt-2'>
           {isLoading ? (
-            <div className='rounded-lg border bg-card px-6 py-12 text-center'>
-              <div className='mx-auto size-8 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
-              <p className='mt-4 text-sm text-muted-foreground'>Loading...</p>
+            <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Card key={`skeleton-${index}`} className='py-0'>
+                  <CardContent className='p-4'>
+                    <div className='flex items-center justify-between'>
+                      <div className='flex items-center gap-2'>
+                        <div className='size-10 animate-pulse rounded-xl bg-muted' />
+                        <div className='space-y-1.5'>
+                          <div className='h-4 w-28 animate-pulse rounded bg-muted' />
+                          <div className='h-3 w-16 animate-pulse rounded bg-muted' />
+                        </div>
+                      </div>
+                      <div className='h-6 w-16 animate-pulse rounded bg-muted' />
+                    </div>
+                    <div className='mt-3 space-y-2'>
+                      <div className='h-3 w-full animate-pulse rounded bg-muted' />
+                      <div className='h-3 w-3/4 animate-pulse rounded bg-muted' />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           ) : employees.length === 0 ? (
             <EmptyState
               icon={Users}
               title='No Employees Found'
               description={
-                query
+                appliedSearch
                   ? 'Try adjusting your search.'
                   : 'Add your first employee.'
               }
             />
           ) : (
-            <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+            <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
               {employees.map((e) => (
-                <Card key={e.s_no} className='py-0 hover:border-primary/50'>
-                  <CardContent className='p-3'>
-                    <div className='mb-2 flex items-center gap-2'>
-                      <div className='flex size-9 items-center justify-center rounded-lg bg-black text-white'>
-                        <User className='size-4' />
-                      </div>
-                      <div className='min-w-0 flex-1'>
-                        <div className='truncate text-sm font-semibold'>
-                          {e.name}
-                        </div>
-                        <div className='text-xs text-muted-foreground'>
-                          ID: {e.s_no}
-                        </div>
-                      </div>
+                <Card key={e.s_no} className='py-0 transition-colors hover:border-blue-500/50'>
+                  <CardContent className='p-4'>
+                    {/* Name + status badge */}
+                    <div className='flex items-start justify-between gap-2'>
+                      <h3 className='flex-1 text-base font-bold'>
+                        {e.name}
+                      </h3>
+                      <span
+                        className={`shrink-0 rounded-md px-2 py-1 text-xs font-semibold ${
+                          e.status === 'ACTIVE'
+                            ? 'bg-green-100 text-green-600'
+                            : 'bg-red-100 text-red-600'
+                        }`}
+                      >
+                        {e.status}
+                      </span>
                     </div>
 
-                    <div className='mb-2 flex items-center justify-between border-t pt-2'>
-                      <span className='text-xs text-muted-foreground'>
-                        Role
-                      </span>
-                      <span className='text-xs font-medium'>
+                    {/* Role */}
+                    <div className='mt-2.5 flex items-center gap-1.5'>
+                      <Briefcase className='size-3.5 shrink-0 text-muted-foreground' />
+                      <span className='text-sm text-muted-foreground'>
                         {e.roles?.role_name ?? 'N/A'}
                       </span>
                     </div>
 
-                    {(e.email || e.phone) && (
-                      <div className='mb-2 space-y-1 border-t pt-2'>
-                        {e.email && (
-                          <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                            <Mail className='size-3' />
-                            <span className='truncate'>{e.email}</span>
-                          </div>
-                        )}
-                        {e.phone && (
-                          <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                            <Phone className='size-3' />
-                            <span>{e.phone}</span>
-                          </div>
-                        )}
+                    {/* Email */}
+                    {e.email && (
+                      <div className='mt-1.5 flex items-center gap-1.5'>
+                        <Mail className='size-3.5 shrink-0 text-muted-foreground' />
+                        <span className='truncate text-sm text-muted-foreground'>
+                          {e.email}
+                        </span>
                       </div>
                     )}
 
-                    <div className='flex items-center justify-between border-t pt-2'>
-                      <div className='text-xs font-medium text-primary'>
-                        {String(e.status ?? 'ACTIVE')}
+                    {/* Phone */}
+                    {e.phone && (
+                      <div className='mt-1.5 flex items-center gap-1.5'>
+                        <Phone className='size-3.5 shrink-0 text-muted-foreground' />
+                        <span className='text-sm text-muted-foreground'>
+                          {e.phone}
+                        </span>
                       </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className='mt-3 border-t pt-2.5'>
                       <ActionButtons
                         mode='icon'
                         viewTo={`/employees/${e.s_no}`}
@@ -339,11 +381,9 @@ export function EmployeesScreen() {
 
           {employees.length > 0 && (
             <>
-              {/* Sentinel element for infinite scroll */}
               <div ref={sentinelRef} className='h-4' />
 
-              {/* Loading indicator at the bottom */}
-              {isFetching && state.hasMore && (
+              {isFetching && paginationState.hasMore && (
                 <div className='mt-3 flex items-center justify-center py-4'>
                   <div className='size-5 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
                   <span className='ml-2 text-xs text-muted-foreground'>
@@ -352,8 +392,7 @@ export function EmployeesScreen() {
                 </div>
               )}
 
-              {/* End of list indicator */}
-              {!state.hasMore && employees.length > 0 && (
+              {!paginationState.hasMore && employees.length > 0 && (
                 <div className='mt-3 py-4 text-center text-xs text-muted-foreground'>
                   No more employees to load
                 </div>
@@ -373,8 +412,12 @@ export function EmployeesScreen() {
         onSaved={() => {
           setDialogOpen(false)
           setEditTarget(null)
-          dispatch({ type: 'RESET' })
-          void refetch()
+          setPaginationState({
+            allEmployees: [],
+            page: 1,
+            hasMore: true,
+            hasLoadedOnce: false,
+          })
         }}
       />
 

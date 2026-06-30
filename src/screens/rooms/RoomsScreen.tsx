@@ -6,7 +6,7 @@ import {
 } from '@/services/roomsApi'
 import { useAppSelector } from '@/store/hooks'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CircleAlert, DoorOpen, Plus, Filter } from 'lucide-react'
+import { CircleAlert, DoorOpen, Plus, Filter, Search, BedDouble } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
@@ -21,7 +21,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -44,6 +43,8 @@ export function RoomsScreen() {
   const [page, setPage] = useState(1)
   const limit = 20
   const [filter, setFilter] = useState<'all' | 'occupied' | 'available'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [appliedSearch, setAppliedSearch] = useState('')
   const [paginationState, setPaginationState] = useState({
     allRooms: [] as Room[],
     hasMore: true,
@@ -64,19 +65,14 @@ export function RoomsScreen() {
       page,
       limit,
       occupancy: filter === 'all' ? undefined : filter,
+      search: appliedSearch || undefined,
     }
-  }, [page, limit, selectedPGLocationId, filter])
+  }, [page, limit, selectedPGLocationId, filter, appliedSearch])
 
   const [trigger, { data: roomsResponse, isLoading, isFetching, error }] =
     useLazyGetAllRoomsQuery()
   const [deleteRoom, { isLoading: deleting }] = useDeleteRoomMutation()
 
-  // Reset state when location or filter changes
-  // Note: The original issue (multiple setState calls in one effect) has been fixed
-  // by combining page, allRooms, hasMore, and hasLoadedOnce into paginationState.
-  // This reduces setState calls from 4 to 2, which significantly reduces cascading renders.
-  // The remaining setState calls are for legitimate useEffect patterns (syncing with API
-  // response and infinite scroll) which are acceptable per React documentation.
   useEffect(() => {
     setTimeout(() => {
       setPage(1)
@@ -86,9 +82,8 @@ export function RoomsScreen() {
         hasLoadedOnce: false,
       })
     }, 0)
-  }, [selectedPGLocationId, filter])
+  }, [selectedPGLocationId, filter, appliedSearch])
 
-  // Load initial data or when page changes
   useEffect(() => {
     if (selectedPGLocationId && queryOptions) {
       void trigger(queryOptions)
@@ -100,8 +95,6 @@ export function RoomsScreen() {
     isLoading: isFetching,
   })
 
-  // Accumulate rooms data when response changes
-  // Note: setState in useEffect is acceptable here for syncing with external API response
   useEffect(() => {
     if (roomsResponse?.data) {
       setTimeout(() => {
@@ -128,14 +121,12 @@ export function RoomsScreen() {
         }
       }, 0)
 
-      // Check if we need to load more immediately after data loads
       setTimeout(() => {
         checkScroll()
       }, 100)
     }
   }, [roomsResponse, page, checkScroll])
 
-  // Load more data when infinite scroll triggers
   useEffect(() => {
     if (
       isInfiniteFetching &&
@@ -204,17 +195,19 @@ export function RoomsScreen() {
     }
   }
 
-  const countLabel = useMemo(() => {
-    if (!selectedPGLocationId) return 'Select PG'
-    const total =
-      roomsResponse?.pagination?.total ?? paginationState.allRooms.length
-    return `${paginationState.allRooms.length} of ${total} Rooms`
-  }, [paginationState.allRooms.length, selectedPGLocationId, roomsResponse])
+  const handleSearch = () => {
+    if (!selectedPGLocationId) return
+    setAppliedSearch(searchQuery)
+  }
+
+  const totalCount =
+    roomsResponse?.pagination?.total ?? paginationState.allRooms.length
 
   return (
-    <div className='container mx-auto max-w-7xl px-4 py-4'>
+    <div className='container mx-auto max-w-6xl px-4 py-4'>
       <PageHeader
         title='Rooms'
+        subtitle={`${totalCount} total`}
         showBack={true}
         right={
           <Button
@@ -230,7 +223,7 @@ export function RoomsScreen() {
       />
 
       {fetchErrorMessage ? (
-        <div className='mt-3 mb-3'>
+        <div className='mt-4 mb-3'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load rooms</AlertTitle>
@@ -241,57 +234,77 @@ export function RoomsScreen() {
 
       {!selectedPGLocationId ? (
         <EmptyState
-          icon={DoorOpen}
+          emoji='📍'
           title='Select a PG Location'
           description='Choose a PG from the top bar.'
         />
       ) : (
         <>
-          <div className='mt-6 mb-4 flex items-center justify-between gap-4'>
-            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-              <DoorOpen className='size-4' />
-              <span>{countLabel}</span>
-              {filter !== 'all' && (
-                <span className='ml-2 rounded-full bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground'>
-                  {filter === 'occupied' ? 'Occupied' : 'Available'}
-                </span>
-              )}
+          {/* Search bar + filter */}
+          <div className='mt-4 flex items-center gap-2'>
+            <div className='relative flex-1'>
+              <Search className='absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+              <input
+                type='text'
+                placeholder='Search by room number...'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                className='h-10 w-full rounded-lg border border-border bg-muted pl-10 pr-4 text-sm outline-none focus:border-primary'
+              />
             </div>
             <Button
               variant={filter !== 'all' ? 'default' : 'outline'}
               size='sm'
               onClick={() => setFilterModalOpen(true)}
-              className='h-9 px-4 text-xs'
+              className='h-10 px-4'
             >
               <Filter className='mr-2 size-4' />
               Filter
             </Button>
           </div>
 
+          <div className='mt-4 mb-2 flex items-center gap-2 text-sm text-muted-foreground'>
+            <DoorOpen className='size-4' />
+            <span>
+              {paginationState.allRooms.length} of {totalCount} Rooms
+            </span>
+            {filter !== 'all' && (
+              <span className='ml-1 rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground'>
+                {filter === 'occupied' ? 'Occupied' : 'Available'}
+              </span>
+            )}
+            {appliedSearch && (
+              <span className='ml-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium'>
+                "{appliedSearch}"
+              </span>
+            )}
+          </div>
+
           <div className='pb-16'>
             {isLoading ? (
-              <div className='space-y-2'>
-                {Array.from({ length: 3 }).map((_, index) => (
+              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+                {Array.from({ length: 8 }).map((_, index) => (
                   <RoomSkeleton key={`initial-skeleton-${index}`} />
                 ))}
               </div>
             ) : rooms.length === 0 && paginationState.hasLoadedOnce ? (
               <EmptyState
-                icon={DoorOpen}
+                emoji='🏠'
                 title='No Rooms Found'
-                description='Add your first room.'
+                description={
+                  appliedSearch
+                    ? 'Try a different search term'
+                    : 'Add your first room to get started'
+                }
               />
             ) : (
-              <div className='space-y-2'>
+              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
                 <AnimatePresence>
                   {rooms.map((r, index) => {
                     const totalBeds = Number(r.total_beds ?? 0)
                     const occupiedBeds = Number(r.occupied_beds ?? 0)
                     const availableBeds = Number(r.available_beds ?? 0)
-                    const occupancyPercent =
-                      totalBeds > 0
-                        ? Math.round((occupiedBeds / totalBeds) * 100)
-                        : 0
 
                     return (
                       <motion.div
@@ -301,7 +314,7 @@ export function RoomsScreen() {
                         exit={{ opacity: 0, y: -20 }}
                         transition={{
                           duration: 0.3,
-                          delay: index * 0.05,
+                          delay: Math.min(index * 0.05, 0.3),
                           ease: 'easeOut',
                         }}
                       >
@@ -310,167 +323,23 @@ export function RoomsScreen() {
                           onClick={() => navigate(`/rooms/${r.s_no}`)}
                         >
                           <CardContent className='p-3'>
-                            {/* Mobile Layout (< md) */}
-                            <div className='space-y-3 md:hidden'>
-                              <div className='flex items-center justify-between'>
-                                <div className='flex items-center gap-2'>
-                                  <div className='flex size-9 items-center justify-center rounded-lg bg-blue-600 text-white'>
-                                    <DoorOpen className='size-4' />
-                                  </div>
-                                  <div>
-                                    <h3 className='text-sm font-semibold'>
-                                      Room {r.room_no}
-                                    </h3>
-                                    <div className='text-xs text-muted-foreground'>
-                                      ID: {r.s_no}
-                                    </div>
-                                  </div>
-                                </div>
-                                <Badge
-                                  variant={
-                                    totalBeds === 0
-                                      ? 'outline'
-                                      : availableBeds > 0
-                                        ? 'default'
-                                        : 'secondary'
-                                  }
-                                  className='text-xs'
-                                >
-                                  {totalBeds === 0
-                                    ? 'No Beds'
-                                    : availableBeds > 0
-                                      ? 'Available'
-                                      : 'Full'}
-                                </Badge>
-                              </div>
-
-                              <div className='grid grid-cols-3 gap-2 text-center text-xs'>
-                                <div>
-                                  <div className='text-sm font-bold'>
-                                    {totalBeds}
-                                  </div>
-                                  <div className='text-muted-foreground'>
-                                    Total
-                                  </div>
+                            {/* Top row: room icon + name + action buttons */}
+                            <div className='flex items-center justify-between'>
+                              <div className='flex items-center gap-2'>
+                                <div className='flex size-8 items-center justify-center rounded-full bg-blue-600/10'>
+                                  <span className='text-base'>🏠</span>
                                 </div>
                                 <div>
-                                  <div className='text-sm font-bold text-blue-600'>
-                                    {occupiedBeds}
-                                  </div>
-                                  <div className='text-muted-foreground'>
-                                    Occupied
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className='text-sm font-bold text-green-600'>
-                                    {availableBeds}
-                                  </div>
-                                  <div className='text-muted-foreground'>
-                                    Available
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className='flex items-center justify-between'>
-                                <div className='flex flex-1 items-center gap-2'>
-                                  <div className='h-1.5 flex-1 overflow-hidden rounded-full bg-muted'>
-                                    <div
-                                      className='h-full bg-blue-600 transition-all'
-                                      style={{ width: `${occupancyPercent}%` }}
-                                    />
-                                  </div>
-                                  <span className='text-xs font-medium text-blue-600'>
-                                    {occupancyPercent}%
-                                  </span>
-                                </div>
-                                <div
-                                  className='ml-3'
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ActionButtons
-                                    mode='icon'
-                                    viewTo={`/rooms/${r.s_no}`}
-                                    onEdit={() => openEdit(r)}
-                                    onDelete={() => askDelete(r)}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Desktop Layout (>= md) */}
-                            <div className='hidden items-center gap-3 md:flex'>
-                              <div className='flex size-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white'>
-                                <DoorOpen className='size-4' />
-                              </div>
-
-                              <div className='min-w-0 flex-1'>
-                                <div className='mb-1 flex items-center gap-2'>
-                                  <h3 className='truncate text-sm font-semibold'>
-                                    Room {r.room_no}
+                                  <h3 className='text-sm font-bold'>
+                                    {r.room_no}
                                   </h3>
-                                  <Badge
-                                    variant={
-                                      totalBeds === 0
-                                        ? 'outline'
-                                        : availableBeds > 0
-                                          ? 'default'
-                                          : 'secondary'
-                                    }
-                                    className='text-xs'
-                                  >
-                                    {totalBeds === 0
-                                      ? 'No Beds'
-                                      : availableBeds > 0
-                                        ? 'Available'
-                                        : 'Full'}
-                                  </Badge>
-                                </div>
-                                <div className='text-xs text-muted-foreground'>
-                                  ID: {r.s_no}
-                                </div>
-                              </div>
-
-                              <div className='hidden items-center gap-4 text-xs lg:flex'>
-                                <div className='text-center'>
-                                  <div className='text-sm font-bold'>
-                                    {totalBeds}
-                                  </div>
-                                  <div className='text-muted-foreground'>
-                                    Total
+                                  <div className='text-xs text-muted-foreground'>
+                                    ID: {r.s_no}
                                   </div>
                                 </div>
-                                <div className='text-center'>
-                                  <div className='text-sm font-bold text-blue-600'>
-                                    {occupiedBeds}
-                                  </div>
-                                  <div className='text-muted-foreground'>
-                                    Occupied
-                                  </div>
-                                </div>
-                                <div className='text-center'>
-                                  <div className='text-sm font-bold text-green-600'>
-                                    {availableBeds}
-                                  </div>
-                                  <div className='text-muted-foreground'>
-                                    Available
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className='flex min-w-0 items-center gap-2'>
-                                <div className='h-1.5 w-12 overflow-hidden rounded-full bg-muted lg:w-16'>
-                                  <div
-                                    className='h-full bg-blue-600 transition-all'
-                                    style={{ width: `${occupancyPercent}%` }}
-                                  />
-                                </div>
-                                <span className='w-6 text-right text-xs font-medium text-blue-600 lg:w-8'>
-                                  {occupancyPercent}%
-                                </span>
                               </div>
 
                               <div
-                                className='flex-shrink-0'
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <ActionButtons
@@ -481,6 +350,35 @@ export function RoomsScreen() {
                                 />
                               </div>
                             </div>
+
+                            {/* Bed stat pills */}
+                            <div className='mt-2.5 flex flex-wrap gap-2'>
+                              <div className='flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1'>
+                                <BedDouble className='size-3 text-gray-500' />
+                                <span className='text-xs font-semibold text-gray-600'>
+                                  {totalBeds} Total
+                                </span>
+                              </div>
+                              <div className='flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1'>
+                                <BedDouble className='size-3 text-green-600' />
+                                <span className='text-xs font-semibold text-green-600'>
+                                  {availableBeds} Free
+                                </span>
+                              </div>
+                              <div className='flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1'>
+                                <BedDouble className='size-3 text-red-600' />
+                                <span className='text-xs font-semibold text-red-600'>
+                                  {occupiedBeds} Taken
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* PG location */}
+                            {r.pg_locations && (
+                              <div className='mt-2 border-t pt-2 text-xs text-muted-foreground'>
+                                📍 {r.pg_locations.location_name}
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
                       </motion.div>
@@ -492,7 +390,6 @@ export function RoomsScreen() {
 
             {paginationState.allRooms.length > 0 && (
               <>
-                {/* Skeleton loading at the bottom */}
                 <AnimatePresence>
                   {(isFetching ||
                     (isInfiniteFetching && paginationState.hasMore)) && (
@@ -501,9 +398,9 @@ export function RoomsScreen() {
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.3, ease: 'easeInOut' }}
-                      className='mb-8 space-y-2'
+                      className='mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
                     >
-                      {Array.from({ length: 2 }).map((_, index) => (
+                      {Array.from({ length: 4 }).map((_, index) => (
                         <motion.div
                           key={`skeleton-${index}`}
                           initial={{ opacity: 0, x: -20 }}
@@ -517,7 +414,6 @@ export function RoomsScreen() {
                   )}
                 </AnimatePresence>
 
-                {/* End of data indicator */}
                 <AnimatePresence>
                   {!paginationState.hasMore &&
                     paginationState.allRooms.length > 0 &&

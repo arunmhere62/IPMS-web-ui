@@ -22,12 +22,14 @@ export function FormTextInput<TFieldValues extends FieldValues, TName extends Fi
   description,
   className,
   inputClassName,
+  type,
 }: BaseFieldProps<TFieldValues, TName> & {
   placeholder?: string
   required?: boolean
   description?: ReactNode
   className?: string
   inputClassName?: string
+  type?: string
 }) {
   return (
     <FormField
@@ -40,7 +42,7 @@ export function FormTextInput<TFieldValues extends FieldValues, TName extends Fi
             {required ? <span className='text-destructive'> *</span> : null}
           </FormLabel>
           <FormControl>
-            <Input placeholder={placeholder} {...field} disabled={disabled} className={cn('w-full', inputClassName)} />
+            <Input type={type} placeholder={placeholder} {...field} disabled={disabled} className={cn('w-full', inputClassName)} />
           </FormControl>
           {description ? <div className='text-xs text-muted-foreground'>{description}</div> : null}
           <FormMessage />

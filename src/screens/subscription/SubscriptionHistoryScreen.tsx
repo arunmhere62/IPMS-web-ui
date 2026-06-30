@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, History, RefreshCw } from 'lucide-react'
+import { History, RefreshCw } from 'lucide-react'
 import { useGetSubscriptionHistoryQuery, type UserSubscription } from '@/services/subscriptionApi'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/form/page-header'
 
 type ErrorLike = { data?: { message?: string; error?: string }; message?: string; error?: string }
 
@@ -36,36 +37,24 @@ export function SubscriptionHistoryScreen() {
   }, [error])
 
   return (
-    <div className='container mx-auto max-w-4xl px-4 py-8'>
-
-      {/* Header */}
-      <div className='mb-8 flex items-center justify-between gap-4'>
-        <div className='flex items-center gap-3'>
-          <div className='flex size-10 items-center justify-center rounded-xl bg-primary/10'>
-            <History className='size-5 text-primary' />
+    <div className='container mx-auto max-w-4xl px-4 py-4'>
+      <PageHeader
+        title='Subscription History'
+        subtitle='Your past and current subscriptions'
+        showBack={true}
+        right={
+          <div className='flex items-center gap-2'>
+            <Button variant='outline' size='sm' onClick={() => void refetch()} disabled={isLoading}>
+              <RefreshCw className={`mr-1.5 size-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
-          <div>
-            <h1 className='text-2xl font-bold text-foreground'>Subscription History</h1>
-            <p className='text-sm text-muted-foreground'>Your past and current subscriptions</p>
-          </div>
-        </div>
-        <div className='flex items-center gap-2'>
-          <Button variant='outline' size='sm' onClick={() => void refetch()} disabled={isLoading}>
-            <RefreshCw className={`mr-1.5 size-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button asChild variant='outline' size='sm'>
-            <Link to='/subscriptions/manage'>
-              <ArrowLeft className='mr-1.5 size-3.5' />
-              Back to Plans
-            </Link>
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Error */}
       {fetchError && (
-        <div className='mb-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive'>
+        <div className='mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive'>
           {fetchError}
         </div>
       )}
@@ -84,7 +73,7 @@ export function SubscriptionHistoryScreen() {
           </div>
           <p className='mt-4 text-sm font-semibold text-foreground'>No history yet</p>
           <p className='mt-1 text-xs text-muted-foreground'>Subscribe to a plan to see it here.</p>
-          <Button asChild className='mt-5'>
+          <Button asChild className='mt-4'>
             <Link to='/subscriptions/manage'>View Plans</Link>
           </Button>
         </div>

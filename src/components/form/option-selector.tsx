@@ -50,7 +50,7 @@ export function OptionSelector({
               disabled={disabled}
               onClick={() => onSelect(isSelected ? null : option.value)}
               className={cn(
-                'inline-flex items-center justify-center rounded-md border px-3 py-2 text-xs font-medium transition-colors',
+                'inline-flex items-center justify-center rounded-md border px-2 py-1.5 sm:px-3 sm:py-2 text-xs font-medium transition-colors',
                 'bg-muted/30 hover:bg-accent hover:text-accent-foreground',
                 'disabled:pointer-events-none disabled:opacity-50',
                 isSelected

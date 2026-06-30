@@ -66,7 +66,7 @@ export function SubscriptionConfirmScreen() {
   }
 
   return (
-    <div className='container mx-auto max-w-3xl px-3 py-6'>
+    <div className='container mx-auto max-w-4xl px-4 py-4'>
       <PageHeader
         title={state.title || 'Confirm'}
         subtitle='Review plan details before payment'
@@ -77,7 +77,7 @@ export function SubscriptionConfirmScreen() {
         }
       />
 
-      <div className='mt-6 grid gap-4'>
+      <div className='mt-4 grid gap-4'>
         <Card>
           <CardContent className='p-5'>
             <div className='text-base font-semibold'>Plan Details</div>

@@ -10,23 +10,30 @@ import {
   type UpdateEmployeeDto,
   UserGender,
 } from '@/services/employeesApi'
+import { useUpdatePgUserSalaryMutation } from '@/services/pgUsersApi'
 import {
   useGetStatesQuery,
   useLazyGetCitiesQuery,
 } from '@/services/locationApi'
 import { useGetRolesQuery } from '@/services/rolesApi'
+import { useAppSelector } from '@/store/hooks'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Form } from '@/components/ui/form'
 import { FormDialog } from '@/components/form/form-dialog'
 import { FormSelectField } from '@/components/form/form-select-field'
 import { FormTextInput } from '@/components/form/form-text-input'
 import { FormTextarea } from '@/components/form/form-textarea'
 import { PhoneInput } from '@/components/form/phone-input'
+import { ImageUploadS3 } from '@/components/form/image-upload-s3'
+import { OptionSelector } from '@/components/form/option-selector'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
+  password: z.string().optional().or(z.literal('')),
+  confirmPassword: z.string().optional().or(z.literal('')),
   phone: z.string().min(1, 'Phone is required'),
   roleId: z.number().min(1, 'Role is required'),
   gender: z
@@ -40,6 +47,29 @@ const schema = z.object({
   stateId: z.number().optional().nullable(),
   pincode: z.string().optional(),
   country: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.password || data.confirmPassword) {
+    if (data.password && data.password.length < 6) {
+      ctx.addIssue({
+        path: ['password'],
+        message: 'Password must be at least 6 characters',
+        code: 'custom',
+      })
+    }
+    if (!data.confirmPassword) {
+      ctx.addIssue({
+        path: ['confirmPassword'],
+        message: 'Please confirm your password',
+        code: 'custom',
+      })
+    } else if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        path: ['confirmPassword'],
+        message: 'Passwords do not match',
+        code: 'custom',
+      })
+    }
+  }
 })
 
 type FormValues = z.infer<typeof schema>
@@ -57,10 +87,16 @@ export function EmployeeFormDialog({
   editTarget,
   onSaved,
 }: EmployeeFormDialogProps) {
+  const selectedPGLocationId = useAppSelector(
+    (s) => s.pgLocations.selectedPGLocationId
+  )
+
   const [createEmployee, { isLoading: creating }] = useCreateEmployeeMutation()
   const [updateEmployee, { isLoading: updating }] = useUpdateEmployeeMutation()
+  const [updatePgUserSalary] = useUpdatePgUserSalaryMutation()
   const [profileImages, setProfileImages] = useState<string[]>([])
   const [proofDocuments, setProofDocuments] = useState<string[]>([])
+  const [monthlySalary, setMonthlySalary] = useState('')
   const [loadingCities, setLoadingCities] = useState(false)
   const [getCities] = useLazyGetCitiesQuery()
 
@@ -99,6 +135,8 @@ export function EmployeeFormDialog({
     defaultValues: {
       name: '',
       email: '',
+      password: '',
+      confirmPassword: '',
       phone: '',
       roleId: 0,
       gender: undefined,
@@ -148,7 +186,7 @@ export function EmployeeFormDialog({
         }))
         setCityOptions(options)
       } catch (_error) {
-        // Handle error silently for now
+        // Handle error silently
       } finally {
         setLoadingCities(false)
       }
@@ -163,6 +201,8 @@ export function EmployeeFormDialog({
       form.reset({
         name: String(editTarget.name ?? ''),
         email: String(editTarget.email ?? ''),
+        password: '',
+        confirmPassword: '',
         phone: String(editTarget.phone ?? ''),
         roleId: Number(editTarget.role_id ?? 0),
         gender: editTarget.gender || undefined,
@@ -173,12 +213,10 @@ export function EmployeeFormDialog({
         country: String(editTarget.country ?? 'India'),
       })
 
-      // Load cities if state is selected
       if (editTarget.state_id) {
         void loadCitiesForState(String(editTarget.state_id), true)
       }
 
-      // Load existing images and documents
       const profileImagesRaw = editTarget.profile_images
       if (profileImagesRaw) {
         let images: string[] = []
@@ -193,6 +231,8 @@ export function EmployeeFormDialog({
           images = profileImagesRaw
         }
         setProfileImages(images)
+      } else {
+        setProfileImages([])
       }
 
       const proofDocsRaw = editTarget.proof_documents
@@ -209,14 +249,19 @@ export function EmployeeFormDialog({
           docs = proofDocsRaw
         }
         setProofDocuments(docs)
+      } else {
+        setProofDocuments([])
       }
 
+      setMonthlySalary('')
       return
     }
 
     form.reset({
       name: '',
       email: '',
+      password: '',
+      confirmPassword: '',
       phone: '',
       roleId: 0,
       gender: undefined,
@@ -228,12 +273,12 @@ export function EmployeeFormDialog({
     })
     setProfileImages([])
     setProofDocuments([])
+    setMonthlySalary('')
     setCityOptions([])
   }, [open, editTarget, form, loadCitiesForState])
 
   useEffect(() => {
     if (!open || !editTarget?.state_id || states.length === 0) return
-
     void loadCitiesForState(String(editTarget.state_id), true)
   }, [open, editTarget?.state_id, states, loadCitiesForState])
 
@@ -245,12 +290,19 @@ export function EmployeeFormDialog({
         gender: values.gender,
       }
 
-      const email = values.email?.trim()
-      if (email) base.email = email
+      if (!editTarget) {
+        const email = values.email?.trim()
+        if (email) base.email = email
+      }
 
-      // Phone is already formatted with country code from PhoneInput component
       const phone = values.phone?.trim()
       if (phone) base.phone = phone
+
+      const password = values.password?.trim()
+      const confirmPassword = values.confirmPassword?.trim()
+      if (password && password === confirmPassword) {
+        base.password = password
+      }
 
       const address = values.address?.trim()
       if (address) base.address = address
@@ -264,7 +316,6 @@ export function EmployeeFormDialog({
       if (values.cityId) base.city_id = values.cityId
       if (values.stateId) base.state_id = values.stateId
 
-      // Add images and documents if they exist
       if (profileImages.length > 0) {
         base.profile_images = profileImages
       }
@@ -277,9 +328,32 @@ export function EmployeeFormDialog({
           id: editTarget.s_no,
           data: base as UpdateEmployeeDto,
         }).unwrap()
+
+        if (selectedPGLocationId && monthlySalary) {
+          const amt = Number(monthlySalary)
+          if (Number.isFinite(amt) && amt >= 0) {
+            await updatePgUserSalary({
+              userId: editTarget.s_no,
+              monthly_salary_amount: amt,
+            }).unwrap()
+          }
+        }
+
         showSuccessAlert('Employee updated successfully')
       } else {
-        await createEmployee(base as CreateEmployeeDto).unwrap()
+        const created = await createEmployee(base as CreateEmployeeDto).unwrap()
+        const createdId = (created as any)?.s_no
+
+        if (selectedPGLocationId && createdId && monthlySalary) {
+          const amt = Number(monthlySalary)
+          if (Number.isFinite(amt) && amt >= 0) {
+            await updatePgUserSalary({
+              userId: createdId,
+              monthly_salary_amount: amt,
+            }).unwrap()
+          }
+        }
+
         showSuccessAlert('Employee created successfully')
       }
 
@@ -291,14 +365,14 @@ export function EmployeeFormDialog({
   }
 
   const saving = creating || updating
+  const isEditMode = !!editTarget
 
   return (
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={editTarget ? 'Edit Employee' : 'Add Employee'}
-      description='Enter employee details.'
-      size='md'
+      title={isEditMode ? 'Edit Employee' : 'Add New Employee'}
+      size='lg'
       footer={
         <>
           <Button
@@ -310,7 +384,7 @@ export function EmployeeFormDialog({
             Cancel
           </Button>
           <Button type='submit' form='employee-form' disabled={saving}>
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? 'Saving...' : isEditMode ? 'Update Employee' : 'Create Employee'}
           </Button>
         </>
       }
@@ -319,145 +393,234 @@ export function EmployeeFormDialog({
         <form
           id='employee-form'
           onSubmit={form.handleSubmit(onSubmit)}
-          className='space-y-6'
+          className='space-y-4'
         >
-          {/* Basic Information */}
-          <div className='space-y-4'>
-            <h3 className='text-sm font-semibold tracking-wide text-muted-foreground uppercase'>
-              Basic Information
-            </h3>
+          {/* Personal Information */}
+          <Card className='py-0'>
+            <CardContent className='p-4'>
+              <h3 className='mb-4 text-base font-bold'>
+                👤 Personal Information
+              </h3>
 
-            <div className='grid gap-4 sm:grid-cols-2'>
-              <FormTextInput
-                control={form.control}
-                name='name'
-                label='Name'
-                placeholder='Employee name'
-                required
-              />
+              <div className='grid gap-4 sm:grid-cols-2'>
+                <FormTextInput
+                  control={form.control}
+                  name='name'
+                  label='Full Name'
+                  placeholder='Enter full name'
+                  required
+                />
 
-              <FormTextInput
-                control={form.control}
-                name='email'
-                label='Email'
-                placeholder='name@example.com'
-              />
-            </div>
+                {!isEditMode && (
+                  <FormTextInput
+                    control={form.control}
+                    name='email'
+                    label='Email Address'
+                    placeholder='Enter email address'
+                  />
+                )}
+              </div>
 
-            <PhoneInput
-              control={form.control}
-              name='phone'
-              label='Phone'
-              placeholder='Enter phone number'
-              required
-              defaultCountryCode='+91'
-            />
+              <div className='mt-4 grid gap-4 sm:grid-cols-2'>
+                <FormTextInput
+                  control={form.control}
+                  name='password'
+                  label={isEditMode ? 'New Password' : 'Password'}
+                  placeholder={
+                    isEditMode
+                      ? 'Enter new password (optional)'
+                      : 'Enter password (optional)'
+                  }
+                  type='password'
+                />
 
-            <div className='grid gap-4 sm:grid-cols-3'>
-              <FormSelectField
-                control={form.control}
-                name='gender'
-                label='Gender'
-                required
-                placeholder='Select gender'
-                options={[
-                  { label: 'Male', value: UserGender.MALE },
-                  { label: 'Female', value: UserGender.FEMALE },
-                ]}
-              />
+                <FormTextInput
+                  control={form.control}
+                  name='confirmPassword'
+                  label='Confirm Password'
+                  placeholder='Re-enter password'
+                  type='password'
+                />
+              </div>
+
+              <div className='mt-4'>
+                <PhoneInput
+                  control={form.control}
+                  name='phone'
+                  label='Phone Number'
+                  placeholder='Enter phone number'
+                  required
+                  defaultCountryCode='+91'
+                />
+              </div>
+
+              <div className='mt-4'>
+                <OptionSelector
+                  label='Gender'
+                  options={[
+                    { label: 'Male', value: UserGender.MALE, icon: '👨' },
+                    { label: 'Female', value: UserGender.FEMALE, icon: '👩' },
+                  ]}
+                  selectedValue={form.watch('gender') ?? null}
+                  onSelect={(value) =>
+                    form.setValue(
+                      'gender',
+                      (value as UserGender) || undefined,
+                      { shouldValidate: true }
+                    )
+                  }
+                  required
+                  error={form.formState.errors.gender?.message}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Work Information */}
+          <Card className='py-0'>
+            <CardContent className='p-4'>
+              <h3 className='mb-4 text-base font-bold'>
+                💼 Work Information
+              </h3>
 
               <FormSelectField
                 control={form.control}
                 name='roleId'
                 label='Role'
                 required
-                placeholder='Select role'
+                placeholder='Select a role'
                 options={roleOptions}
                 parse={(v) => Number(v)}
                 searchable
               />
-            </div>
-          </div>
+
+              {selectedPGLocationId && (
+                <div className='mt-4'>
+                  <label className='mb-1.5 block text-sm font-medium'>
+                    Monthly Salary (this PG)
+                  </label>
+                  <input
+                    type='number'
+                    value={monthlySalary}
+                    onChange={(e) => setMonthlySalary(e.target.value)}
+                    placeholder='Enter monthly salary'
+                    disabled={saving}
+                    className='h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary disabled:opacity-50'
+                  />
+                  <p className='mt-1.5 text-xs text-muted-foreground'>
+                    This is saved per employee per selected PG.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Address Information */}
-          <div className='space-y-4'>
-            <h3 className='text-sm font-semibold tracking-wide text-muted-foreground uppercase'>
-              Address Information
-            </h3>
+          <Card className='py-0'>
+            <CardContent className='p-4'>
+              <h3 className='mb-4 text-base font-bold'>
+                📍 Address Information
+              </h3>
 
-            <FormTextarea
-              control={form.control}
-              name='address'
-              label='Address'
-              placeholder='Enter complete address'
-            />
-
-            <div className='grid gap-4 sm:grid-cols-2'>
-              <FormSelectField
+              <FormTextarea
                 control={form.control}
-                name='stateId'
-                label='State'
-                placeholder='Select state'
-                options={stateOptions}
-                parse={(v) => Number(v)}
-                onValueChange={(value) => {
-                  if (value) {
-                    form.setValue('cityId', null)
-                    void loadCitiesForState(value)
-                  } else {
-                    setCityOptions([])
-                    form.setValue('cityId', null)
-                  }
-                }}
-                searchable
+                name='address'
+                label='Address'
+                placeholder='Enter full address (optional)'
               />
 
-              <FormSelectField
-                control={form.control}
-                name='cityId'
-                label='City'
-                placeholder='Select city'
-                options={cityOptions}
-                parse={(v) => Number(v)}
-                disabled={loadingCities}
-                searchable
+              <div className='mt-4 grid gap-4 sm:grid-cols-2'>
+                <FormSelectField
+                  control={form.control}
+                  name='stateId'
+                  label='State'
+                  placeholder='Select a state'
+                  options={stateOptions}
+                  parse={(v) => Number(v)}
+                  onValueChange={(value) => {
+                    if (value) {
+                      form.setValue('cityId', null)
+                      void loadCitiesForState(value)
+                    } else {
+                      setCityOptions([])
+                      form.setValue('cityId', null)
+                    }
+                  }}
+                  searchable
+                />
+
+                <FormSelectField
+                  control={form.control}
+                  name='cityId'
+                  label='City'
+                  placeholder='Select a city'
+                  options={cityOptions}
+                  parse={(v) => Number(v)}
+                  disabled={loadingCities || !form.watch('stateId')}
+                  searchable
+                />
+              </div>
+
+              <div className='mt-4 grid gap-4 sm:grid-cols-2'>
+                <FormTextInput
+                  control={form.control}
+                  name='pincode'
+                  label='Pincode'
+                  placeholder='Enter pincode (optional)'
+                />
+
+                <FormTextInput
+                  control={form.control}
+                  name='country'
+                  label='Country'
+                  placeholder='Country'
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Profile Image */}
+          <Card className='py-0'>
+            <CardContent className='p-4'>
+              <h3 className='mb-4 text-base font-bold'>
+                📷 Profile Image
+              </h3>
+
+              <ImageUploadS3
+                images={profileImages}
+                onImagesChange={setProfileImages}
+                maxImages={1}
+                label='Profile Photo'
+                disabled={saving}
+                useS3={true}
+                entityId={editTarget?.s_no?.toString()}
+                autoSave={false}
               />
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className='grid gap-4 sm:grid-cols-2'>
-              <FormTextInput
-                control={form.control}
-                name='pincode'
-                label='Pincode'
-                placeholder='Enter pincode'
+          {/* Proof Documents */}
+          <Card className='py-0'>
+            <CardContent className='p-4'>
+              <h3 className='mb-4 text-base font-bold'>
+                📄 Proof Documents
+              </h3>
+
+              <ImageUploadS3
+                images={proofDocuments}
+                onImagesChange={setProofDocuments}
+                maxImages={3}
+                label='ID Proof / Documents'
+                disabled={saving}
+                useS3={true}
+                entityId={editTarget?.s_no?.toString()}
+                autoSave={false}
               />
-
-              <FormTextInput
-                control={form.control}
-                name='country'
-                label='Country'
-                placeholder='Country'
-              />
-            </div>
-          </div>
-
-          {/* Documents */}
-          <div className='space-y-4'>
-            <h3 className='text-sm font-semibold tracking-wide text-muted-foreground uppercase'>
-              Documents
-            </h3>
-
-            <div className='text-sm text-muted-foreground'>
-              <p>
-                Profile images and document uploads will be available in the
-                next update.
+              <p className='mt-2 text-xs text-muted-foreground'>
+                Upload Aadhaar, PAN, Driving License, or other ID proofs (max 3 documents)
               </p>
-              <p className='mt-1'>
-                For now, you can manage employee information through the basic
-                fields above.
-              </p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </form>
       </Form>
     </FormDialog>

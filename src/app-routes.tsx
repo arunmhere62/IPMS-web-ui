@@ -5,6 +5,7 @@ import { SignupScreen } from '@/screens/auth/SignupScreen'
 import { BedDetailsScreen } from '@/screens/beds/BedDetailsScreen'
 import { BedsScreen } from '@/screens/beds/BedsScreen'
 import { EmployeeDetailsScreen } from '@/screens/employees/EmployeeDetailsScreen'
+import { EmployeePermissionOverridesScreen } from '@/screens/employees/EmployeePermissionOverridesScreen'
 import { EmployeesScreen } from '@/screens/employees/EmployeesScreen'
 import { ExpensesScreen } from '@/screens/expenses/ExpensesScreen'
 import { FaqScreen } from '@/screens/faq/FaqScreen'
@@ -31,6 +32,7 @@ import { SubscriptionsScreen } from '@/screens/subscription/SubscriptionsScreen'
 import { TenantDetailsScreen } from '@/screens/tenants/TenantDetailsScreen'
 import { TenantFormScreen } from '@/screens/tenants/TenantFormScreen'
 import { TenantsScreen } from '@/screens/tenants/TenantsScreen'
+import { UpcomingVacanciesScreen } from '@/screens/tenants/UpcomingVacanciesScreen'
 import { TicketsScreen } from '@/screens/tickets/TicketsScreen'
 import { VisitorDetailsScreen } from '@/screens/visitors/VisitorDetailsScreen'
 import { VisitorFormScreen } from '@/screens/visitors/VisitorFormScreen'
@@ -49,7 +51,9 @@ export function AppRoutes() {
         <Route path='/pg-locations/:id' element={<PGDetailsScreen />} />
         <Route path='/employees' element={<EmployeesScreen />} />
         <Route path='/employees/:id' element={<EmployeeDetailsScreen />} />
+        <Route path='/employees/:id/permissions' element={<EmployeePermissionOverridesScreen />} />
         <Route path='/tenants' element={<TenantsScreen />} />
+        <Route path='/tenants/upcoming-vacancies' element={<UpcomingVacanciesScreen />} />
         <Route path='/tenants/new' element={<TenantFormScreen />} />
         <Route path='/tenants/:id' element={<TenantDetailsScreen />} />
         <Route path='/tenants/:id/edit' element={<TenantFormScreen />} />

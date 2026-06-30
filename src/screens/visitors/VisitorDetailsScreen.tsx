@@ -94,7 +94,7 @@ export function VisitorDetailsScreen() {
   }
 
   return (
-    <div className='container mx-auto max-w-5xl px-3 py-6'>
+    <div className='container mx-auto max-w-4xl px-4 py-4'>
       <PageHeader
         title={visitor?.visitor_name ? visitor.visitor_name : 'Visitor Details'}
         showBack={true}

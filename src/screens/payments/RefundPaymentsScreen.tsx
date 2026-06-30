@@ -243,7 +243,7 @@ export function RefundPaymentsScreen() {
   }
 
   return (
-    <div className='container mx-auto max-w-6xl px-3 py-6'>
+    <div className='container mx-auto max-w-6xl px-4 py-4'>
       <PageHeader
         title='Refund Payments'
         showBack={true}
@@ -391,7 +391,7 @@ export function RefundPaymentsScreen() {
         )}
       </div>
 
-      <div className='mt-6 flex items-center justify-between gap-2'>
+      <div className='mt-4 flex items-center justify-between gap-2'>
         <Button
           type='button'
           variant='outline'

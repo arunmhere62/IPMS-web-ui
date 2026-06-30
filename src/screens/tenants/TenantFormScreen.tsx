@@ -35,14 +35,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { AppDialog } from '@/components/form/app-dialog'
 import { Form } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/form/date-picker'
@@ -537,7 +530,7 @@ export function TenantFormScreen() {
     (tenantError as ErrorLike | undefined)?.message
 
   return (
-    <div className='container mx-auto max-w-4xl px-3 py-6'>
+    <div className='container mx-auto max-w-4xl px-4 py-4'>
       <PageHeader
         title={isEditMode ? 'Edit Tenant' : 'Add Tenant'}
         showBack={true}
@@ -610,83 +603,81 @@ export function TenantFormScreen() {
                     />
                     {/* OTP verification section */}
                     {!isEditMode && (
-                      <div className='rounded-lg border bg-card p-3'>
-                        {isPhoneVerified ? (
-                          <div className='flex items-center gap-2 text-sm font-medium text-emerald-600'>
-                            <CheckCircle2 className='size-4' />
-                            Phone number verified
+                      isPhoneVerified ? (
+                        <div className='flex items-center gap-2 text-sm font-medium text-emerald-600'>
+                          <CheckCircle2 className='size-4' />
+                          Phone number verified
+                        </div>
+                      ) : phoneSkipped ? (
+                        <div className='space-y-2'>
+                          <div className='text-sm text-muted-foreground'>
+                            Phone verification skipped
                           </div>
-                        ) : phoneSkipped ? (
-                          <div className='space-y-2'>
-                            <div className='text-sm text-muted-foreground'>
-                              Phone verification skipped
-                            </div>
-                            {localPhoneDigits.length === 10 && (
-                              <Button
-                                type='button'
-                                variant='outline'
-                                size='sm'
-                                className='h-7 px-3 text-xs'
-                                onClick={() => {
-                                  setPhoneSkipped(false)
-                                  void handleSendOtp()
-                                }}
-                                disabled={sendingOtp}
-                              >
-                                {sendingOtp ? (
-                                  <>
-                                    <Loader2 className='mr-1 size-3 animate-spin' />
-                                    Sending...
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle2 className='mr-1 size-3' />
-                                    Verify Now
-                                  </>
-                                )}
-                              </Button>
-                            )}
+                          {localPhoneDigits.length === 10 && (
+                            <Button
+                              type='button'
+                              variant='outline'
+                              size='sm'
+                              className='h-7 px-3 text-xs'
+                              onClick={() => {
+                                setPhoneSkipped(false)
+                                void handleSendOtp()
+                              }}
+                              disabled={sendingOtp}
+                            >
+                              {sendingOtp ? (
+                                <>
+                                  <Loader2 className='mr-1 size-3 animate-spin' />
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className='mr-1 size-3' />
+                                  Verify Now
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      ) : localPhoneDigits.length === 10 ? (
+                        <div className='space-y-2'>
+                          <div className='text-sm font-medium'>
+                            Verify this phone number
                           </div>
-                        ) : localPhoneDigits.length === 10 ? (
-                          <div className='space-y-2'>
-                            <div className='text-sm font-medium'>
-                              Verify this phone number
-                            </div>
-                            <div className='flex items-center gap-3'>
-                              <Button
-                                type='button'
-                                variant='default'
-                                className='h-8 px-4 text-sm'
-                                onClick={() => void handleSendOtp()}
-                                disabled={sendingOtp}
-                              >
-                                {sendingOtp ? (
-                                  <>
-                                    <Loader2 className='mr-2 size-4 animate-spin' />
-                                    Sending...
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle2 className='mr-2 size-4' />
-                                    Send OTP
-                                  </>
-                                )}
-                              </Button>
-                              <button
-                                type='button'
-                                className='text-sm text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground'
-                                onClick={() => setPhoneSkipped(true)}
-                              >
-                                Skip verification
-                              </button>
-                            </div>
+                          <div className='flex items-center gap-3'>
+                            <Button
+                              type='button'
+                              variant='default'
+                              className='h-8 px-4 text-sm'
+                              onClick={() => void handleSendOtp()}
+                              disabled={sendingOtp}
+                            >
+                              {sendingOtp ? (
+                                <>
+                                  <Loader2 className='mr-2 size-4 animate-spin' />
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className='mr-2 size-4' />
+                                  Send OTP
+                                </>
+                              )}
+                            </Button>
+                            <button
+                              type='button'
+                              className='text-sm text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground'
+                              onClick={() => setPhoneSkipped(true)}
+                            >
+                              Skip verification
+                            </button>
                           </div>
-                        ) : (
-                          <div className='text-xs text-muted-foreground'>
-                            Enter 10 digits to verify phone number
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <p className='text-xs text-muted-foreground'>
+                          Enter 10 digits to verify phone number
+                        </p>
+                      )
                     )}
                   </div>
                   <PhoneInput
@@ -944,7 +935,7 @@ export function TenantFormScreen() {
             </Card>
 
             {/* OTP Dialog */}
-            <Dialog
+            <AppDialog
               open={showOtpDialog}
               onOpenChange={(open) => {
                 if (!open) {
@@ -954,60 +945,19 @@ export function TenantFormScreen() {
                   setResendCooldown(0)
                 }
               }}
-            >
-              <DialogContent className='sm:max-w-md'>
-                <DialogHeader className='text-center'>
-                  <DialogTitle className='text-lg'>
-                    Verify Phone Number
-                  </DialogTitle>
-                  <DialogDescription className='text-sm'>
-                    Enter the 4-digit OTP sent to <br />
-                    <strong className='text-base text-foreground'>
-                      {otpPhone}
-                    </strong>
-                  </DialogDescription>
-                </DialogHeader>
-                <div className='grid gap-4 py-4'>
-                  <div className='relative'>
-                    <Input
-                      value={otpValue}
-                      onChange={(e) => {
-                        setOtpValue(
-                          e.target.value.replace(/\D/g, '').slice(0, 4)
-                        )
-                        setOtpError('')
-                      }}
-                      placeholder='----'
-                      inputMode='numeric'
-                      maxLength={4}
-                      className='h-12 border-2 text-center font-mono text-2xl tracking-[0.8em]'
-                      autoFocus
-                    />
-                    {otpError && (
-                      <p className='mt-2 text-center text-sm text-destructive'>
-                        {otpError}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className='flex flex-col items-center gap-2 pt-2'>
-                  <div className='text-center text-sm text-muted-foreground'>
-                    Didn't receive OTP?{' '}
-                    <button
-                      type='button'
-                      className='text-sm font-medium text-primary transition-colors hover:text-primary/80 disabled:cursor-not-allowed disabled:text-muted-foreground'
-                      onClick={() => void handleSendOtp(true)}
-                      disabled={sendingOtp || resendCooldown > 0}
-                    >
-                      {sendingOtp
-                        ? 'Sending...'
-                        : resendCooldown > 0
-                          ? `Resend in ${resendCooldown}s`
-                          : 'Resend'}
-                    </button>
-                  </div>
-                </div>
-                <DialogFooter className='gap-3 sm:gap-3'>
+              title='Verify Phone Number'
+              size='sm'
+              headerClassName='text-center items-center'
+              description={
+                <>
+                  Enter the 4-digit OTP sent to <br />
+                  <strong className='text-base text-foreground'>
+                    {otpPhone}
+                  </strong>
+                </>
+              }
+              footer={
+                <>
                   <Button
                     type='button'
                     variant='outline'
@@ -1039,9 +989,50 @@ export function TenantFormScreen() {
                       </>
                     )}
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </>
+              }
+            >
+              <div className='grid gap-4 py-4'>
+                <div className='relative'>
+                  <Input
+                    value={otpValue}
+                    onChange={(e) => {
+                      setOtpValue(
+                        e.target.value.replace(/\D/g, '').slice(0, 4)
+                      )
+                      setOtpError('')
+                    }}
+                    placeholder='----'
+                    inputMode='numeric'
+                    maxLength={4}
+                    className='h-12 border-2 text-center font-mono text-2xl tracking-[0.8em]'
+                    autoFocus
+                  />
+                  {otpError && (
+                    <p className='mt-2 text-center text-sm text-destructive'>
+                      {otpError}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className='flex flex-col items-center gap-2 pt-2'>
+                <div className='text-center text-sm text-muted-foreground'>
+                  Didn't receive OTP?{' '}
+                  <button
+                    type='button'
+                    className='text-sm font-medium text-primary transition-colors hover:text-primary/80 disabled:cursor-not-allowed disabled:text-muted-foreground'
+                    onClick={() => void handleSendOtp(true)}
+                    disabled={sendingOtp || resendCooldown > 0}
+                  >
+                    {sendingOtp
+                      ? 'Sending...'
+                      : resendCooldown > 0
+                        ? `Resend in ${resendCooldown}s`
+                        : 'Resend'}
+                  </button>
+                </div>
+              </div>
+            </AppDialog>
 
             <div className='flex items-center justify-end gap-2'>
               <Button

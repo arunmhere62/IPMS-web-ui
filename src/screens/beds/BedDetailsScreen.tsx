@@ -74,8 +74,7 @@ export function BedDetailsScreen() {
   }
 
   return (
-    <div className='min-h-screen bg-background'>
-      <div className='px-3 py-3'>
+    <div className='container mx-auto max-w-4xl px-4 py-4'>
         <PageHeader
           title={bed?.bed_no ? `Bed ${bed.bed_no}` : 'Bed Details'}
           showBack={true}
@@ -112,10 +111,8 @@ export function BedDetailsScreen() {
             </div>
           }
         />
-      </div>
-
       {fetchErrorMessage ? (
-        <div className='px-3 py-2'>
+        <div className='mt-4'>
           <Alert variant='destructive' className='py-2'>
             <CircleAlert className='size-3' />
             <AlertTitle className='text-xs'>Error</AlertTitle>
@@ -127,25 +124,25 @@ export function BedDetailsScreen() {
       ) : null}
 
       {!selectedPGLocationId ? (
-        <div className='px-3 py-8 text-center'>
-          <div className='text-xs font-medium'>Select a PG Location</div>
-          <div className='text-[10px] text-muted-foreground'>
+        <div className='mt-4 py-8 text-center'>
+          <div className='text-sm font-medium'>Select a PG Location</div>
+          <div className='text-xs text-muted-foreground'>
             Choose a PG from the top bar to view bed details.
           </div>
         </div>
       ) : bedLoading ? (
-        <div className='px-3 py-4 text-center text-[10px] text-muted-foreground'>
+        <div className='mt-4 py-4 text-center text-sm text-muted-foreground'>
           Loading...
         </div>
       ) : !bed ? (
-        <div className='px-3 py-8 text-center'>
-          <div className='text-xs font-medium'>Bed not found</div>
-          <div className='text-[10px] text-muted-foreground'>
+        <div className='mt-4 py-8 text-center'>
+          <div className='text-sm font-medium'>Bed not found</div>
+          <div className='text-xs text-muted-foreground'>
             Please check the bed ID and try again.
           </div>
         </div>
       ) : (
-        <div className='space-y-2 px-3 py-3'>
+        <div className='mt-4 space-y-2'>
           {/* Compact Bed Info Card */}
           <Card>
             <CardContent className='p-3'>

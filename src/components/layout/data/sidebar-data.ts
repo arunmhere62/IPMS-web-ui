@@ -15,6 +15,7 @@ import {
   RefreshCcw,
   MonitorCheck,
   Receipt,
+  BedDouble,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -48,6 +49,11 @@ export const sidebarData: SidebarData = {
           title: 'Tenants',
           url: '/tenants',
           icon: UserRound,
+        },
+        {
+          title: 'Upcoming Vacancies',
+          url: '/tenants/upcoming-vacancies',
+          icon: BedDouble,
         },
         {
           title: 'Visitors',

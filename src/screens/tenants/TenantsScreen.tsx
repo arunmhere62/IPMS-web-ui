@@ -9,12 +9,12 @@ import {
 import { useAppSelector } from '@/store/hooks'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
+  BedDouble,
   ChevronDown,
   ChevronUp,
   CircleAlert,
   Filter,
   Search,
-  Users,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
@@ -275,8 +275,21 @@ export function TenantsScreen() {
   }
 
   return (
-    <div className='container mx-auto max-w-6xl px-3 py-6'>
-      <PageHeader title='Tenants' showBack={true} right={null} />
+    <div className='container mx-auto max-w-6xl px-4 py-4'>
+      <PageHeader
+        title='Tenants'
+        showBack={true}
+        right={
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => navigate('/tenants/upcoming-vacancies')}
+          >
+            <BedDouble className='mr-1 size-3.5' />
+            Upcoming Vacancies
+          </Button>
+        }
+      />
 
       {fetchErrorMessage ? (
         <div className='mt-4'>
@@ -291,14 +304,14 @@ export function TenantsScreen() {
       {!selectedPGLocationId ? (
         <div className='mt-4'>
           <EmptyState
-            icon={Users}
+            emoji='📍'
             title='Select a PG Location'
             description='Choose a PG from the top bar to manage tenants.'
           />
         </div>
       ) : (
         <>
-          <div className='mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4'>
+          <div className='mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4'>
             <div className='relative w-full sm:max-w-xs'>
               <Search className='pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground' />
               <Input
@@ -353,9 +366,13 @@ export function TenantsScreen() {
               </div>
             ) : tenants.length === 0 ? (
               <EmptyState
-                icon={Users}
-                title='No Tenants'
-                description='Tenants can be added from bed details pages.'
+                emoji='👥'
+                title='No Tenants Found'
+                description={
+                  query.trim()
+                    ? `No tenants matching "${query.trim()}"`
+                    : 'Add your first tenant to get started'
+                }
               />
             ) : (
               <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>

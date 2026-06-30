@@ -55,70 +55,70 @@ export function TermsScreen() {
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Warranty Disclaimer" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>This site and the materials and products on this site are provided "as is" and without warranties of any kind. To the fullest extent permissible pursuant to applicable law, IndianPGManagement.com disclaims all warranties, express or implied, including, but not limited to, implied warranties of merchantability and fitness for a particular purpose and non-infringement. IndianPGManagement.com does not represent or warrant that the functions contained in the site will be uninterrupted or error-free, that the defects will be corrected, or that this site or the server that makes the site available are free of viruses or other harmful components. IndianPGManagement.com does not make any warranties or representations regarding the use of the materials in this site in terms of their correctness, accuracy, adequacy, usefulness, timeliness, reliability or otherwise. Some states do not permit limitations or exclusions on warranties, so the above limitations may not apply to you.</p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Limitation of Liability" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>IndianPGManagement.com shall not be liable for any special or consequential damages that result from the use of, or the inability to use, the services and products offered on this site or the performance of it's services and products.</p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Termination" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>These terms and conditions are applicable to you upon your accessing the site and/or completing the registration or shopping process. These terms and conditions, or any part of them, may be terminated by IndianPGManagement.com and Privacy Policy Services without notice at any time, for any reason. The provisions relating to Copyrights, Trademark, Disclaimer, Limitation of Liability, Indemnification and Miscellaneous shall survive any termination.</p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Notice" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>IndianPGManagement.com may deliver notice to you by means of an e-mail, a general notice on the site, or by another reliable method based on the contact information you have provided to IndianPGManagement.com.</p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Guarantees" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>IndianPGManagement.com does not offer any form of data guarantee or 100% up time as this is subject to server statures and availability. However, we will try our best to provide an outstanding and best in class service. Any payments made online will be credited to the means provided by you within 7 working days.</p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Miscellaneous" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>Your use of this site shall be governed in all respects by the laws. You agree that jurisdiction over any venue in any legal proceeding directly or indirectly arising out of or relating to this site (including but not limited to the purchase of IndianPGManagement.com's products or services) shall be in the state or federal courts located in Chennai, India. Any cause of action or claim you may have with respect to the site (including but not limited to the purchase of IndianPGManagement.com products) must be commenced within one (1) year after the claim or cause of action arises. IndianPGManagement.com's failure to insist upon or enforce strict performance of any provision of these terms and conditions shall not be construed as a waiver of any provision or right. Neither the course of conduct between the parties nor trade practice's shall act to modify any of these terms and conditions. IndianPGManagement.com may assign its rights and duties under this Agreement to any party at any time without notice to you.</p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Use of Site" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>Harassment in any manner or form on the site, including via e-mail, chat, or by use of obscene or abusive language is strictly forbidden. Impersonation of others, including a IndianPGManagement.com or other licensed employee, host, or representative, as well as other members or visitors on the site is prohibited. You may not upload, distribute, or otherwise publish through the site any content which is libelous, defamatory, obscene, threatening, invasive of privacy or publicity rights, abusive, illegal, or otherwise objectionable which may constitute or encourage a criminal offense, violate the rights of any party, or which may otherwise give rise to liability or violate any law. You may not upload commercial content on the site or use the site to solicit others to join or become members of any other commercial online service or other organization.</p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Participation Disclaimer" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>IndianPGManagement.com does not and cannot review all communications and materials posted to or created by users accessing the site and is not in any manner responsible for the content of these communications and materials. You acknowledge that by providing you with the ability to view and distribute user-generated content on the site, IndianPGManagement.com is merely acting as a passive conduit for such distribution and is not undertaking any obligation or liability relating to any contents or activities on the site. However, IndianPGManagement.com reserves the right to block or remove communications or materials that it determines to be (a) abusive, defamatory, or obscene, (b) fraudulent, deceptive, or misleading, (c) in violation of a copyright, trademark or other intellectual property right of another, or (d) offensive or otherwise unacceptable to IndianPGManagement.com at its sole discretion.</p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Indemnification" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p>You agree to indemnify, defend, and hold harmless IndianPGManagement.com, its officers, directors, employees, agents, licensors and suppliers (collectively the "Service Providers") from and against all losses, expenses, damages and costs, including reasonable attorney's fees, resulting from any violation of these terms and conditions or any activity related to your account (including negligent or wrongful conduct) by you or any other person accessing the site using your Internet account.</p>
                 </div>
               </section>
 
-              <section className='rounded-2xl border bg-white/70 p-6 shadow-sm backdrop-blur'>
+              <section className='rounded-2xl border bg-white p-6'>
                 <SectionHeader title="Payment Policy" />
                 <div className='mt-3 space-y-2 text-sm text-muted-foreground'>
                   <p><strong>1. Role:</strong> Any registered User of IndianPGManagement.com Cloud may choose to make license payments, feature payments, rent payments, maintenance payments, payment of security deposit/ token amounts and booking amounts through the payment gateway(s) authorized by IndianPGManagement.com. In this regard, the Users are asked to provide customary billing information such as name, mobile number, financial instrument information which shall include the bank account number, IFSC code of the User, the details of the landlord to whom the payment has to be made and the address of the property with regard to which the rent or security deposit is to be paid. Users may also be asked to provide a copy of the rental agreement pursuant to which such rent payments are being made. The Users must provide accurate, current, and complete information while making the payment through the Site and it shall be the User's obligation to keep this information up-to-date at all times. The Users are solely responsible for the accuracy and completeness of the information provided by them and IndianPGManagement.com shall not be responsible for any loss suffered by the User as a result of any incorrect information, including payment information provided by the Users.</p>

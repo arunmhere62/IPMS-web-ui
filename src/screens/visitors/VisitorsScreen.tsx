@@ -5,7 +5,7 @@ import {
   type Visitor,
 } from '@/services/visitorsApi'
 import { useAppSelector } from '@/store/hooks'
-import { CircleAlert, Search, Users } from 'lucide-react'
+import { CircleAlert, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -132,7 +132,7 @@ export function VisitorsScreen() {
   }, [selectedPGLocationId, total, visitors.length])
 
   return (
-    <div className='container mx-auto max-w-6xl px-3 py-6'>
+    <div className='container mx-auto max-w-6xl px-4 py-4'>
       <PageHeader title='Visitors' showBack={true} />
 
       {fetchErrorMessage ? (
@@ -148,14 +148,14 @@ export function VisitorsScreen() {
       {!selectedPGLocationId ? (
         <div className='mt-4'>
           <EmptyState
-            icon={Users}
+            emoji='📍'
             title='Select a PG Location'
             description='Choose a PG from the top bar to manage visitors.'
           />
         </div>
       ) : (
         <>
-          <div className='mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+          <div className='mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
             <div className='relative w-full sm:max-w-xs'>
               <Search className='pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground' />
               <Input
@@ -174,15 +174,15 @@ export function VisitorsScreen() {
             </Badge>
           </div>
 
-          <div className='mt-6'>
+          <div className='mt-4'>
             {isLoading ? (
               <div className='rounded-lg border bg-card px-6 py-8 text-center text-sm text-muted-foreground'>
                 Loading...
               </div>
             ) : visitors.length === 0 ? (
               <EmptyState
-                icon={Users}
-                title='No Visitors'
+                emoji='👥'
+                title='No Visitors Found'
                 description={
                   query
                     ? 'Try adjusting your search.'
@@ -254,7 +254,7 @@ export function VisitorsScreen() {
               </div>
             )}
 
-            <div className='mt-5 flex items-center justify-between gap-2'>
+            <div className='mt-4 flex items-center justify-between gap-2'>
               <Button
                 variant='outline'
                 size='sm'

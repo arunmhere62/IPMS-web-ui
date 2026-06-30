@@ -195,6 +195,17 @@ export interface Tenant {
   pending_due_amount?: number
   is_advance_paid?: boolean
   pending_months?: number
+  expected_vacate_date?: string
+}
+
+export interface UpcomingVacancy {
+  s_no: number
+  name: string
+  phone_no?: string
+  expected_vacate_date: string
+  check_in_date: string
+  rooms?: { s_no: number; room_no: string }
+  beds?: { s_no: number; bed_no: string }
 }
 
 export interface CreateTenantDto {
@@ -214,6 +225,7 @@ export interface CreateTenantDto {
   state_id?: number
   images?: string[]
   proof_documents?: ProofDocument[]
+  expected_vacate_date?: string | null
 }
 
 export interface CreateCurrentBillDto {
@@ -607,6 +619,24 @@ export const tenantsApi = baseApi.injectEndpoints({
         { type: 'Dashboard' as const, id: 'MONTHLY_METRICS' },
       ],
     }),
+
+    getUpcomingVacancies: build.query<
+      { success: boolean; data: UpcomingVacancy[] },
+      { days?: number } | void
+    >({
+      query: (params) => ({
+        url: '/tenants/upcoming-vacancies',
+        method: 'GET',
+        params: params?.days ? { days: params.days } : undefined,
+      }),
+      transformResponse: (response: ApiEnvelope<any> | any) => {
+        const unwrapped =
+          response?.data ?? response ?? []
+        const data = unwrapped?.data ?? unwrapped ?? []
+        return { success: true, data: Array.isArray(data) ? data : [] }
+      },
+      providesTags: [{ type: 'Tenants' as const, id: 'UPCOMING_VACANCIES' }],
+    }),
   }),
   overrideExisting: false,
 })
@@ -623,4 +653,6 @@ export const {
   useCheckoutTenantWithDateMutation,
   useUpdateTenantCheckoutDateMutation,
   useTransferTenantMutation,
+  useGetUpcomingVacanciesQuery,
+  useLazyGetUpcomingVacanciesQuery,
 } = tenantsApi

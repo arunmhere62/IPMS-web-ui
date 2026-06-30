@@ -11,6 +11,7 @@ import { Check, CheckCircle2, Clock, Crown, History, Sparkles, Zap, Flame } from
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/form/page-header'
 
 const formatPrice = (price: string | number, currency?: string) => {
   const n = typeof price === 'string' ? parseFloat(price) : price
@@ -249,20 +250,16 @@ export function AuthSubscriptionsScreen() {
   }
 
   return (
-    <div className='container mx-auto max-w-5xl px-4 py-8'>
-
-      {/* Header */}
-      <div className='mb-8'>
-        <div className='flex items-center gap-2'>
-          <Sparkles className='size-5 text-primary' />
-          <h1 className='text-2xl font-bold text-foreground'>Subscription Plans</h1>
-        </div>
-        <p className='mt-1 text-sm text-muted-foreground'>Choose the plan that fits your PG. Billing is managed in the mobile app.</p>
-      </div>
+    <div className='container mx-auto max-w-6xl px-4 py-4'>
+      <PageHeader
+        title='Subscription Plans'
+        subtitle='Choose the plan that fits your PG. Billing is managed in the mobile app.'
+        showBack={true}
+      />
 
       {/* Active subscription banner */}
       {!statusLoading && hasActive && (
-        <div className='mb-6 flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='mt-4 flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between'>
           <div className='flex items-center gap-3'>
             <div className='flex size-9 items-center justify-center rounded-lg bg-emerald-100'>
               <Crown className='size-4 text-emerald-600' />
@@ -288,7 +285,7 @@ export function AuthSubscriptionsScreen() {
 
       {/* No active banner */}
       {!statusLoading && !hasActive && (
-        <div className='mb-6 flex items-center justify-between rounded-xl border bg-muted/40 p-4'>
+        <div className='mt-4 flex items-center justify-between rounded-xl border bg-muted/40 p-4'>
           <p className='text-sm text-muted-foreground'>No active subscription</p>
           <Button asChild variant='ghost' size='sm'>
             <Link to='/subscriptions/history'>

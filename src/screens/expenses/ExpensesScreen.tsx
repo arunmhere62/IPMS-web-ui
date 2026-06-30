@@ -298,7 +298,7 @@ export function ExpensesScreen() {
     .join(', ')
 
   return (
-    <div className='container mx-auto max-w-4xl px-3 py-6'>
+    <div className='container mx-auto max-w-6xl px-4 py-4'>
       <PageHeader
         title='Expenses'
         showBack={true}
@@ -443,7 +443,7 @@ export function ExpensesScreen() {
         </div>
       ) : null}
 
-      <div className='mt-6 pb-16'>
+      <div className='mt-4 pb-16'>
         {isLoading ? (
           <div className='space-y-3'>
             {Array.from({ length: 5 }).map((_, index) => (

@@ -1,7 +1,6 @@
 import { Eye, Pencil, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 
 export type ActionButtonsVariant =
   | 'default'
@@ -51,91 +50,76 @@ export function ActionButtons({
   viewLabel = 'View',
   editLabel = 'Edit',
   deleteLabel = 'Delete',
-  viewVariant = 'outline',
-  editVariant = 'outline',
-  deleteVariant = 'outline',
-  size,
 }: ActionButtonsProps) {
-  const effectiveSize: ActionButtonsSize =
-    size ?? (mode === 'icon' ? 'icon' : mode === 'compact' ? 'sm' : 'default')
-
   const showText = mode !== 'icon'
 
   return (
-    <div className={cn('flex items-center justify-end gap-1', className)}>
+    <div className={cn('flex items-center justify-end gap-2', className)}>
       {viewTo || onView ? (
-        <Button
+        <button
           type='button'
-          size={effectiveSize}
-          variant={viewVariant}
-           className={cn(
-            mode === 'icon'
-              ? 'flex h-7 w-7 items-center justify-center rounded-md p-0'
-              : undefined,
-            // Neutral grayscale hover
-            'text-foreground hover:bg-muted'
+          className={cn(
+            'flex items-center justify-center rounded-lg p-2 transition-colors',
+            'bg-sky-50 text-primary hover:bg-sky-100',
+            disabled && 'opacity-45',
+            mode !== 'icon' && 'gap-2 px-3 text-xs font-bold',
+            className
           )}
           aria-label={viewLabel}
           title={viewLabel}
           disabled={disabled}
           onClick={onView}
-          asChild={Boolean(viewTo)}
         >
           {viewTo ? (
             <Link to={viewTo} className='flex items-center justify-center'>
-              <Eye className={cn('size-3', showText ? 'me-2' : '')} />
+              <Eye className={cn('size-4', showText ? 'me-2' : '')} />
               {showText ? viewLabel : null}
             </Link>
           ) : (
             <>
-              <Eye className={cn('size-3', showText ? 'me-2' : '')} />
+              <Eye className={cn('size-4', showText ? 'me-2' : '')} />
               {showText ? viewLabel : null}
             </>
           )}
-        </Button>
+        </button>
       ) : null}
 
       {onEdit ? (
-        <Button
+        <button
           type='button'
-          size={effectiveSize}
-          variant={editVariant}
           className={cn(
-            mode === 'icon'
-              ? 'flex h-7 w-7 items-center justify-center rounded-md p-0'
-              : undefined,
-            // Neutral grayscale hover
-            'text-foreground hover:bg-muted'
+            'flex items-center justify-center rounded-lg p-2 transition-colors',
+            'bg-indigo-50 text-primary hover:bg-indigo-100',
+            (disabled || editDisabled) && 'opacity-45',
+            mode !== 'icon' && 'gap-2 px-3 text-xs font-bold',
           )}
           aria-label={editLabel}
           title={editLabel}
           disabled={disabled || editDisabled}
           onClick={onEdit}
         >
-          <Pencil className={cn('size-3', showText ? 'me-2' : '')} />
+          <Pencil className={cn('size-4', showText ? 'me-2' : '')} />
           {showText ? editLabel : null}
-        </Button>
+        </button>
       ) : null}
 
       {onDelete ? (
-        <Button
+        <button
           type='button'
-          size={effectiveSize}
-          variant={deleteVariant}
           className={cn(
-            mode === 'icon'
-              ? 'flex h-7 w-7 items-center justify-center rounded-md p-0'
-              : undefined,
-            'border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700'
+            'flex items-center justify-center rounded-lg p-2 transition-colors',
+            'bg-red-50 text-red-600 hover:bg-red-100',
+            (disabled || deleteDisabled) && 'opacity-45',
+            mode !== 'icon' && 'gap-2 px-3 text-xs font-bold',
           )}
           aria-label={deleteLabel}
           title={deleteLabel}
           disabled={disabled || deleteDisabled}
           onClick={onDelete}
         >
-          <Trash2 className={cn('size-3', showText ? 'me-2' : '')} />
+          <Trash2 className={cn('size-4', showText ? 'me-2' : '')} />
           {showText ? deleteLabel : null}
-        </Button>
+        </button>
       ) : null}
     </div>
   )

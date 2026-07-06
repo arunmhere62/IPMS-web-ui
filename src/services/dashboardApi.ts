@@ -74,6 +74,50 @@ export type DashboardSummaryResponse<TTenant = unknown> = {
   data: DashboardSummaryData<TTenant>
 }
 
+export type TicketOverview = {
+  total: number
+  open: number
+  inProgress: number
+  resolved: number
+  closed: number
+  highPriority: number
+}
+
+export type DashboardTicket = {
+  s_no: number
+  title: string
+  status: string
+  priority: string
+  category: string
+  created_at: string
+  tenants?: {
+    s_no: number
+    name: string
+  }
+  _count: {
+    tenant_ticket_comments: number
+  }
+}
+
+export type UnreadTickets = {
+  count: number
+  tickets: DashboardTicket[]
+}
+
+export type DashboardTicketStatsData = {
+  overview: TicketOverview
+  recentTickets: DashboardTicket[]
+  unreadTickets: UnreadTickets
+}
+
+export type DashboardTicketStatsResponse = {
+  success: boolean
+  statusCode?: number
+  message?: string
+  timestamp?: string
+  data: DashboardTicketStatsData
+}
+
 type ApiEnvelope<T> = {
   data?: T
 }
@@ -145,6 +189,29 @@ export const dashboardApi = baseApi.injectEndpoints({
       },
       providesTags: () => [{ type: 'Dashboard' as const, id: 'MONTHLY_METRICS' }],
     }),
+    getDashboardTicketStats: build.query<DashboardTicketStatsResponse, void>({
+      query: () => ({
+        url: '/dashboard/ticket-stats',
+        method: 'GET',
+      }),
+      keepUnusedDataFor: 60,
+      transformResponse: (response: unknown): DashboardTicketStatsResponse => {
+        const env = response as ApiEnvelope<unknown> | null | undefined
+        const maybeNested = env?.data
+        const r = maybeNested ?? response
+
+        if (r && typeof r === 'object' && 'success' in r && 'statusCode' in r && 'data' in r) {
+          return r as DashboardTicketStatsResponse
+        }
+
+        const unwrapped = unwrapCentralData<DashboardTicketStatsData>(r)
+        return {
+          success: true,
+          data: unwrapped,
+        } as DashboardTicketStatsResponse
+      },
+      providesTags: () => [{ type: 'Dashboard' as const, id: 'TICKET_STATS' }],
+    }),
   }),
   overrideExisting: false,
 })
@@ -154,4 +221,6 @@ export const {
   useLazyGetDashboardSummaryQuery,
   useGetDashboardMonthlyMetricsQuery,
   useLazyGetDashboardMonthlyMetricsQuery,
+  useGetDashboardTicketStatsQuery,
+  useLazyGetDashboardTicketStatsQuery,
 } = dashboardApi

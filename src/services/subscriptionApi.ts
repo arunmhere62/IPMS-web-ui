@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import { baseApi } from './baseApi'
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined || '/api/v1'
 
 export const publicSubscriptionApi = createApi({
   reducerPath: 'publicSubscriptionApi',

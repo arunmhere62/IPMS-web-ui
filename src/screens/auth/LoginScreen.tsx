@@ -360,19 +360,19 @@ export function LoginScreen() {
 
       <div className='order-1 flex h-full w-full items-center justify-center overflow-y-auto bg-white lg:order-2 lg:w-1/2'>
 
-        <div className='w-full max-w-[420px] px-8 py-12'>
+        <div className='w-full max-w-[380px] px-6 py-8'>
 
           {phase === 'phone' ? (
 
             <>
 
-              <h1 className='mb-2 text-center text-4xl font-bold text-slate-900'>
+              <h1 className='mb-1 text-center text-2xl font-bold text-slate-900'>
 
                 Welcome Back
 
               </h1>
 
-              <p className='mb-8 text-center text-slate-500'>
+              <p className='mb-6 text-center text-sm text-slate-500'>
 
                 Enter your phone to receive OTP
 
@@ -386,7 +386,7 @@ export function LoginScreen() {
 
                   onSubmit={phoneForm.handleSubmit(onSendOtp)}
 
-                  className='space-y-5'
+                  className='space-y-4'
 
                 >
 
@@ -414,7 +414,7 @@ export function LoginScreen() {
 
                             {...field}
 
-                            className='h-12 rounded-lg border-slate-200 focus:border-slate-400'
+                            className='h-10 rounded-lg border-slate-200 focus:border-slate-400'
 
                           />
 
@@ -464,7 +464,7 @@ export function LoginScreen() {
 
                     variant='outline'
 
-                    className='h-12 w-full rounded-lg border-slate-200 text-base font-normal'
+                    className='h-10 w-full rounded-lg border-slate-200 text-sm font-normal'
 
                     onClick={() => navigate('/signup')}
 
@@ -504,13 +504,13 @@ export function LoginScreen() {
 
             <>
 
-              <h1 className='mb-2 text-center text-4xl font-bold text-slate-900'>
+              <h1 className='mb-1 text-center text-2xl font-bold text-slate-900'>
 
                 Verify OTP
 
               </h1>
 
-              <p className='mb-8 text-center text-slate-500'>
+              <p className='mb-6 text-center text-sm text-slate-500'>
 
                 Enter the code sent to {fullPhone}
 
@@ -524,7 +524,7 @@ export function LoginScreen() {
 
                   onSubmit={otpForm.handleSubmit(onVerifyOtp)}
 
-                  className='space-y-5'
+                  className='space-y-4'
 
                 >
 
@@ -574,7 +574,7 @@ export function LoginScreen() {
 
                   <div className='flex items-center justify-center gap-2 pt-2'>
 
-                    <span className='text-sm text-slate-500'>Didn&apos;t receive code?</span>
+                    <span className='text-xs text-slate-500'>Didn&apos;t receive code?</span>
 
                     <button
 
@@ -594,7 +594,7 @@ export function LoginScreen() {
 
                       disabled={sending}
 
-                      className='text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                      className='text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
 
                     >
 
@@ -612,7 +612,7 @@ export function LoginScreen() {
 
                     onClick={() => setPhase('phone')}
 
-                    className='h-12 w-full gap-2 rounded-full border-2 border-blue-600 bg-white text-sm font-medium text-blue-600 shadow-none hover:bg-blue-50'
+                    className='h-10 w-full gap-2 rounded-full border-2 border-blue-600 bg-white text-xs font-medium text-blue-600 shadow-none hover:bg-blue-50'
 
                   >
 
@@ -646,17 +646,17 @@ export function LoginScreen() {
 
         <div className='flex flex-col items-center justify-center p-12'>
 
-          <div className='mb-8 text-6xl'>🏠</div>
+          <div className='mb-6 text-5xl'>🏠</div>
 
-          <h1 className='mb-4 text-4xl font-bold'>IPMS</h1>
+          <h1 className='mb-3 text-3xl font-bold'>IPMS</h1>
 
-          <p className='text-center text-lg text-white/80'>
+          <p className='text-center text-base text-white/80'>
 
             Indian PG Management System
 
           </p>
 
-          <div className='mt-12 text-sm text-white/60'>
+          <div className='mt-8 text-xs text-white/60'>
 
             Manage your PG properties efficiently
 

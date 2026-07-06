@@ -15,6 +15,9 @@ import {
   CircleAlert,
   Filter,
   Search,
+  Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
@@ -38,6 +41,8 @@ import { Input } from '@/components/ui/input'
 import { RoomSkeleton } from '@/components/ui/room-skeleton'
 import { PageHeader } from '@/components/form/page-header'
 import { TenantFilterModal } from '@/components/tenants/TenantFilterModal'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'CHECKED_OUT'
 
@@ -74,6 +79,11 @@ type ErrorLike = {
 
 export function TenantsScreen() {
   const navigate = useNavigate()
+  const { can } = usePermissions()
+  const canCreate = can(Permission.CREATE_TENANT)
+  const canEdit = can(Permission.EDIT_TENANT)
+  const canDelete = can(Permission.DELETE_TENANT)
+
   const selectedPGLocationId = useAppSelector(
     (s) => s.pgLocations.selectedPGLocationId
   )
@@ -225,6 +235,11 @@ export function TenantsScreen() {
   const [deleteTarget, setDeleteTarget] = useState<Tenant | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
+  const askDelete = (t: Tenant) => {
+    setDeleteTarget(t)
+    setDeleteDialogOpen(true)
+  }
+
   const confirmDelete = async () => {
     if (!deleteTarget) return
     try {
@@ -280,14 +295,25 @@ export function TenantsScreen() {
         title='Tenants'
         showBack={true}
         right={
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={() => navigate('/tenants/upcoming-vacancies')}
-          >
-            <BedDouble className='mr-1 size-3.5' />
-            Upcoming Vacancies
-          </Button>
+          <div className='flex items-center gap-2'>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => navigate('/tenants/upcoming-vacancies')}
+            >
+              <BedDouble className='mr-1 size-3.5' />
+              Upcoming Vacancies
+            </Button>
+            <Button
+              size='sm'
+              disabled={!selectedPGLocationId || !canCreate}
+              onClick={() => navigate('/tenants/new')}
+              className='bg-black text-white hover:bg-black/90'
+            >
+              <Plus className='mr-1 size-3.5' />
+              Add Tenant
+            </Button>
+          </div>
         }
       />
 
@@ -649,6 +675,28 @@ export function TenantsScreen() {
                               >
                                 View Details
                               </Button>
+                              <div className='flex gap-2'>
+                                <Button
+                                  variant='outline'
+                                  size='sm'
+                                  className='flex-1'
+                                  disabled={!canEdit}
+                                  onClick={() => navigate(`/tenants/${t.s_no}/edit`)}
+                                >
+                                  <Pencil className='mr-1 size-3.5' />
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant='outline'
+                                  size='sm'
+                                  className='flex-1 text-red-600 hover:bg-red-50'
+                                  disabled={!canDelete}
+                                  onClick={() => askDelete(t)}
+                                >
+                                  <Trash2 className='mr-1 size-3.5' />
+                                  Delete
+                                </Button>
+                              </div>
                             </div>
                           </CardContent>
                         </Card>

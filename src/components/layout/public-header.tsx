@@ -62,6 +62,8 @@ export function PublicHeader({ className }: PublicHeaderProps) {
       { title: 'Subscriptions', href: '/subscriptions', isActive: location.pathname === '/subscriptions' },
       { title: 'FAQ', href: '/faq', isActive: location.pathname === '/faq' },
       { title: 'Contact Us', href: '/contact', isActive: location.pathname === '/contact' },
+      { title: 'Signup', href: '/signup', isActive: location.pathname === '/signup' },
+      { title: 'Login', href: '/login', isActive: location.pathname === '/login' },
       ...legalLinks.map(l => ({ title: l.title, href: l.href, isActive: location.pathname === l.href })),
     ],
     [location.pathname]
@@ -108,6 +110,17 @@ export function PublicHeader({ className }: PublicHeaderProps) {
         </div>
 
         <div className='ms-auto flex items-center gap-2'>
+          {/* Mobile: Show Signup and Login buttons prominently */}
+          <div className='flex items-center gap-2 lg:hidden'>
+            <Button asChild variant='outline' size='sm'>
+              <Link to='/signup'>Signup</Link>
+            </Button>
+            <Button asChild size='sm'>
+              <Link to='/login'>Login</Link>
+            </Button>
+          </div>
+
+          {/* Desktop: Show Signup and Login buttons */}
           <div className='hidden items-center gap-2 lg:flex'>
             <Button asChild variant='outline' size='lg'>
               <Link to='/signup'>Signup</Link>
@@ -117,8 +130,8 @@ export function PublicHeader({ className }: PublicHeaderProps) {
             </Button>
           </div>
 
-          {/* Mobile menu includes all links including legal */}
-          <TopNav links={links} showDesktopNav={false} />
+          {/* Mobile menu for navigation links only */}
+          <TopNav links={links.filter(l => !['Signup', 'Login'].includes(l.title))} showDesktopNav={false} />
         </div>
       </div>
     </header>

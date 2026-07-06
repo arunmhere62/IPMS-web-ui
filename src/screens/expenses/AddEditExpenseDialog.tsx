@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import {
   type Expense,
   PaymentMethod,
@@ -8,14 +8,7 @@ import {
 } from '@/services/expensesApi'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog'
+import { FormDialog } from '@/components/form/form-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -48,16 +41,26 @@ interface AddEditExpenseDialogProps {
   onSave: () => void
 }
 
+type ExpenseFormProps = Omit<AddEditExpenseDialogProps, 'open'> & {
+  onLoadingChange?: (loading: boolean) => void
+}
+
 // Inner form is mounted fresh each open via key, so useState initializers run on every open
-function ExpenseForm({
-  expense,
-  onClose,
-  onSave,
-}: Omit<AddEditExpenseDialogProps, 'open'>) {
+const ExpenseForm = forwardRef<{ submit: () => void }, ExpenseFormProps>(
+  function ExpenseForm({
+    expense,
+    onClose,
+    onSave,
+    onLoadingChange,
+  }, ref) {
   const [createExpense, { isLoading: creating }] = useCreateExpenseMutation()
   const [updateExpense, { isLoading: updating }] = useUpdateExpenseMutation()
 
   const isLoading = creating || updating
+
+  useEffect(() => {
+    onLoadingChange?.(isLoading)
+  }, [isLoading, onLoadingChange])
 
   const isCustomType = expense
     ? !EXPENSE_TYPES.includes(expense.expense_type)
@@ -125,16 +128,12 @@ function ExpenseForm({
     }
   }
 
-  return (
-    <>
-      <DialogHeader>
-        <DialogTitle>{expense ? 'Edit Expense' : 'Add Expense'}</DialogTitle>
-        <DialogDescription>
-          {expense ? 'Update expense details' : 'Record a new expense'}
-        </DialogDescription>
-      </DialogHeader>
+  useImperativeHandle(ref, () => ({
+    submit: handleSave,
+  }))
 
-      <div className='flex flex-col gap-5 py-2'>
+  return (
+    <div className='flex flex-col gap-5 py-2'>
         {/* Expense Type */}
         <div className='flex flex-col gap-2'>
           <Label>
@@ -281,19 +280,9 @@ function ExpenseForm({
             rows={3}
           />
         </div>
-      </div>
-
-      <DialogFooter>
-        <Button variant='outline' onClick={onClose} disabled={isLoading}>
-          Cancel
-        </Button>
-        <Button onClick={handleSave} disabled={isLoading}>
-          {isLoading ? 'Saving…' : expense ? 'Update Expense' : 'Add Expense'}
-        </Button>
-      </DialogFooter>
-    </>
+    </div>
   )
-}
+})
 
 export function AddEditExpenseDialog({
   open,
@@ -301,18 +290,46 @@ export function AddEditExpenseDialog({
   onClose,
   onSave,
 }: AddEditExpenseDialogProps) {
+  const [isSaving, setIsSaving] = useState(false)
+  const formRef = useRef<{ submit: () => void }>(null)
+
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className='max-h-[90vh] max-w-lg overflow-y-auto'>
-        {open ? (
-          <ExpenseForm
-            key={`${expense?.s_no ?? 'new'}-${open}`}
-            expense={expense}
-            onClose={onClose}
-            onSave={onSave}
-          />
-        ) : null}
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      open={open}
+      onOpenChange={(v: boolean) => !v && onClose()}
+      title={expense ? 'Edit Expense' : 'Add Expense'}
+      description={
+        expense ? 'Update expense details' : 'Record a new expense'
+      }
+      size='lg'
+      footer={
+        <>
+          <Button variant='outline' onClick={onClose} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => formRef.current?.submit()}
+            disabled={isSaving}
+          >
+            {isSaving
+              ? 'Saving…'
+              : expense
+                ? 'Update Expense'
+                : 'Add Expense'}
+          </Button>
+        </>
+      }
+    >
+      {open ? (
+        <ExpenseForm
+          key={`${expense?.s_no ?? 'new'}-${open}`}
+          ref={formRef}
+          expense={expense}
+          onClose={onClose}
+          onSave={onSave}
+          onLoadingChange={setIsSaving}
+        />
+      ) : null}
+    </FormDialog>
   )
 }

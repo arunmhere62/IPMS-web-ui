@@ -5,7 +5,7 @@ import {
   type Visitor,
 } from '@/services/visitorsApi'
 import { useAppSelector } from '@/store/hooks'
-import { CircleAlert, Search } from 'lucide-react'
+import { CircleAlert, Plus, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -26,6 +26,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { ActionButtons } from '@/components/form/action-buttons'
 import { PageHeader } from '@/components/form/page-header'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
 
 type ErrorLike = {
   data?: {
@@ -45,6 +47,11 @@ const toDateOnly = (value?: string) => {
 
 export function VisitorsScreen() {
   const navigate = useNavigate()
+  const { can } = usePermissions()
+  const canCreate = can(Permission.CREATE_VISITOR)
+  const canEdit = can(Permission.EDIT_VISITOR)
+  const canDelete = can(Permission.DELETE_VISITOR)
+
   const selectedPGLocationId = useAppSelector(
     (s) => s.pgLocations.selectedPGLocationId
   )
@@ -133,7 +140,21 @@ export function VisitorsScreen() {
 
   return (
     <div className='container mx-auto max-w-6xl px-4 py-4'>
-      <PageHeader title='Visitors' showBack={true} />
+      <PageHeader
+        title='Visitors'
+        showBack={true}
+        right={
+          <Button
+            size='sm'
+            disabled={!selectedPGLocationId || !canCreate}
+            onClick={() => navigate('/visitors/new')}
+            className='bg-black text-white hover:bg-black/90'
+          >
+            <Plus className='mr-1 size-3.5' />
+            Add Visitor
+          </Button>
+        }
+      />
 
       {fetchErrorMessage ? (
         <div className='mt-4'>
@@ -245,6 +266,8 @@ export function VisitorsScreen() {
                           viewTo={undefined}
                           onEdit={() => navigate(`/visitors/${v.s_no}/edit`)}
                           onDelete={() => askDelete(v)}
+                          editDisabled={!canEdit}
+                          deleteDisabled={!canDelete}
                           disabled={deleting}
                         />
                       </div>

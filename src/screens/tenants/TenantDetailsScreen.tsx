@@ -58,6 +58,8 @@ import { PageHeader } from '@/components/form/page-header'
 import { AdvancePaymentDialog } from './AdvancePaymentDialog'
 import { RentPaymentDialog } from './RentPaymentDialog'
 import { RefundPaymentDialog } from './RefundPaymentDialog'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
 
 type ErrorLike = {
   data?: {
@@ -90,6 +92,10 @@ export function TenantDetailsScreen() {
   const navigate = useNavigate()
   const params = useParams()
   const tenantId = Number(params.id)
+
+  const { can } = usePermissions()
+  const canEdit = can(Permission.EDIT_TENANT)
+  const canDelete = can(Permission.DELETE_TENANT)
 
   const {
     data: tenantResponse,
@@ -125,9 +131,6 @@ export function TenantDetailsScreen() {
   const [vacateDialogOpen, setVacateDialogOpen] = useState(false)
   const [vacateDate, setVacateDate] = useState('')
 
-  const [rentOpen, setRentOpen] = useState(false)
-  const [advanceOpen, setAdvanceOpen] = useState(false)
-  const [refundOpen, setRefundOpen] = useState(false)
   const [transferHistoryOpen, setTransferHistoryOpen] = useState(false)
 
   const [deleteAdvanceDialogOpen, setDeleteAdvanceDialogOpen] = useState(false)
@@ -227,6 +230,27 @@ export function TenantDetailsScreen() {
     () => asArray<RefundPayment>(refundPaymentsResponse?.data),
     [refundPaymentsResponse]
   )
+
+  // Calculate advance and refund summary
+  const totalAdvancePaid = useMemo(() => {
+    const summaryTotal = (tenant as any)?.advance_payment_summary?.total_advance_paid
+    if (typeof summaryTotal === 'number') return summaryTotal
+    return advancePayments.reduce((sum, p) => sum + safeNum(p.amount_paid), 0)
+  }, [tenant, advancePayments])
+
+  const totalRefundGiven = useMemo(() => {
+    const summaryTotal = (tenant as any)?.refund_payment_summary?.total_refund_given
+    if (typeof summaryTotal === 'number') return summaryTotal
+    return refundPayments.reduce((sum, p) => sum + safeNum(p.amount_paid), 0)
+  }, [tenant, refundPayments])
+
+  const netAdvanceRemaining = useMemo(() => {
+    const netRemaining = (tenant as any)?.net_advance_remaining
+    if (typeof netRemaining === 'number') return netRemaining
+    return totalAdvancePaid - totalRefundGiven
+  }, [tenant, totalAdvancePaid, totalRefundGiven])
+
+  const hasAdvanceOrRefundData = totalAdvancePaid > 0 || totalRefundGiven > 0
 
   const dueLabel = useMemo(() => {
     const due =
@@ -414,6 +438,7 @@ export function TenantDetailsScreen() {
                     variant='ghost'
                     size='icon'
                     className='h-7 w-7'
+                    disabled={!canEdit}
                     asChild
                   >
                     <Link to={`/tenants/${tenant.s_no}/edit`}>
@@ -424,6 +449,7 @@ export function TenantDetailsScreen() {
                     variant='ghost'
                     size='icon'
                     onClick={() => setDeleteOpen(true)}
+                    disabled={!canDelete}
                     className='h-7 w-7 text-destructive'
                   >
                     <Trash2 className='size-3.5' />
@@ -457,7 +483,7 @@ export function TenantDetailsScreen() {
           </div>
         </div>
       ) : (
-        <div className='mt-4 space-y-3'>
+        <div className='mt-4 space-y-3 max-w-4xl mx-auto'>
           <Card className='border border-gray-300 bg-gradient-to-br from-blue-50 to-white'>
             <CardContent className='p-4'>
               <div className='flex items-start justify-between gap-3'>
@@ -647,7 +673,182 @@ export function TenantDetailsScreen() {
             </CardContent>
           </Card>
 
-          <Card className='border-slate-200'>
+          {/* Advance & Refund Summary Card */}
+          {hasAdvanceOrRefundData && (
+            <Card className='border-amber-200 bg-gradient-to-br from-amber-50 to-white'>
+              <CardContent className='p-4'>
+                <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-amber-800'>
+                  <Wallet className='size-4 text-amber-600' />
+                  Advance & Refund Summary
+                </h3>
+                <div className='space-y-2'>
+                  <div className='flex items-center justify-between'>
+                    <span className='text-xs font-medium text-amber-700'>Total Advance Paid:</span>
+                    <span className='text-sm font-bold text-amber-800'>
+                      ₹{totalAdvancePaid.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <div className='flex items-center justify-between'>
+                    <span className='text-xs font-medium text-amber-700'>Total Refund Given:</span>
+                    <span className='text-sm font-bold text-amber-800'>
+                      ₹{totalRefundGiven.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <div className='h-px bg-amber-300 my-2' />
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm font-semibold text-amber-900'>Net Advance Remaining:</span>
+                    <span className='text-base font-extrabold text-amber-900'>
+                      ₹{netAdvanceRemaining.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+   {/* Payment Navigation Cards - Always Show */}
+          <div className='grid grid-cols-1 gap-2'>
+            {/* Rent Payments */}
+            <Card 
+              className='border-slate-200 cursor-pointer hover:border-blue-300 transition-colors'
+              onClick={() => navigate(`/tenants/${tenantId}/rent-payments`)}
+            >
+              <CardContent className='p-3'>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-2'>
+                    <div className='flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-blue-50 text-blue-600'>
+                      <Wallet className='size-4' />
+                    </div>
+                    <div>
+                      <div className='text-sm font-bold text-slate-900'>
+                        Rent Payments
+                      </div>
+                      <div className='text-[10px] text-slate-500'>
+                        {rentPayments.length} payment(s)
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className='size-4 text-slate-400' />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Advance Payments */}
+            <Card 
+              className='border-slate-200 cursor-pointer hover:border-emerald-300 transition-colors'
+              onClick={() => navigate(`/tenants/${tenantId}/advance-payments`)}
+            >
+              <CardContent className='p-3'>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-2'>
+                    <div className='flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-emerald-50 text-emerald-600'>
+                      <CreditCard className='size-4' />
+                    </div>
+                    <div>
+                      <div className='text-sm font-bold text-slate-900'>
+                        Advance Payments
+                      </div>
+                      <div className='text-[10px] text-slate-500'>
+                        {advancePayments.length} payment(s)
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className='size-4 text-slate-400' />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Refund Payments */}
+            <Card 
+              className='border-slate-200 cursor-pointer hover:border-amber-300 transition-colors'
+              onClick={() => navigate(`/tenants/${tenantId}/refund-payments`)}
+            >
+              <CardContent className='p-3'>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-2'>
+                    <div className='flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-amber-50 text-amber-600'>
+                      <Undo2 className='size-4' />
+                    </div>
+                    <div>
+                      <div className='text-sm font-bold text-slate-900'>
+                        Refund Payments
+                      </div>
+                      <div className='text-[10px] text-slate-500'>
+                        {refundPayments.length} payment(s)
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className='size-4 text-slate-400' />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Transfer History - Only show if exists */}
+            {transferHistory.length > 0 && (
+              <Card 
+                className='border-slate-200 cursor-pointer hover:border-purple-300 transition-colors'
+                onClick={() => setTransferHistoryOpen(!transferHistoryOpen)}
+              >
+                <CardContent className='p-3'>
+                  <div className='flex items-center justify-between'>
+                    <div className='flex items-center gap-2'>
+                      <div className='flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-purple-50 text-purple-600'>
+                        <RotateCcw className='size-4' />
+                      </div>
+                      <div>
+                        <div className='text-sm font-bold text-slate-900'>
+                          Transfer History
+                        </div>
+                        <div className='text-[10px] text-slate-500'>
+                          {transferHistory.length} record(s)
+                        </div>
+                      </div>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      {transferHistoryOpen ? (
+                        <ChevronDown className='size-4 text-slate-400' />
+                      ) : (
+                        <ChevronRight className='size-4 text-slate-400' />
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Transfer History Accordion - Collapsible content */}
+          {transferHistory.length > 0 && transferHistoryOpen && (
+            <Card className='border-slate-200'>
+              <CardContent className='p-3 pt-2'>
+                <div className='space-y-2 max-h-40 overflow-y-auto'>
+                  {transferHistory.slice(0, 3).map((alloc) => (
+                    <div
+                      key={alloc.s_no}
+                      className='rounded-lg border border-slate-200 bg-slate-50 p-2'
+                    >
+                      <div className='text-xs font-bold text-slate-900'>
+                        {alloc.pg_locations?.location_name}
+                      </div>
+                      <div className='text-[10px] text-slate-500'>
+                        Room {alloc.rooms?.room_no} • Bed {alloc.beds?.bed_no}
+                      </div>
+                      <div className='text-[10px] text-slate-500'>
+                        {toDateOnly(alloc.effective_from)}
+                      </div>
+                    </div>
+                  ))}
+                  {transferHistory.length > 3 && (
+                    <div className='text-center text-[10px] text-slate-500'>
+                      +{transferHistory.length - 3} more
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+           <Card className='border-slate-200'>
             <CardContent className='p-4'>
               <h3 className='mb-3 flex items-center gap-2 text-sm font-bold text-slate-900'>
                 <Phone className='size-4 text-blue-600' />
@@ -981,298 +1182,7 @@ export function TenantDetailsScreen() {
             </Card>
           )}
 
-          {/* Rent Payments Accordion */}
-          <Collapsible open={rentOpen} onOpenChange={setRentOpen}>
-            <Card className='border-slate-200'>
-              <CollapsibleTrigger asChild>
-                <CardContent className='flex cursor-pointer items-center justify-between p-4'>
-                  <div className='flex items-center gap-3'>
-                    <div className='flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600'>
-                      <Wallet className='size-4' />
-                    </div>
-                    <div>
-                      <div className='text-sm font-bold text-slate-900'>
-                        Rent Payments
-                      </div>
-                      <div className='text-[10px] text-slate-500'>
-                        {rentPayments.length} payment(s)
-                      </div>
-                    </div>
-                  </div>
-                  <div className='flex items-center gap-2'>
-                    {rentOpen ? (
-                      <ChevronDown className='size-4 text-slate-400' />
-                    ) : (
-                      <ChevronRight className='size-4 text-slate-400' />
-                    )}
-                  </div>
-                </CardContent>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className='border-t border-slate-100 p-4 pt-3'>
-                  {/* Rent Status Summary */}
-                  <div className='mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3'>
-                    <div className='flex items-center justify-between'>
-                      <div className='text-xs font-bold text-slate-700'>
-                        {derivedRentStatus.label}
-                      </div>
-                      {isRentPaid ? (
-                        <CheckCircle className='size-4 text-emerald-600' />
-                      ) : (
-                        <CircleAlert className='size-4 text-red-500' />
-                      )}
-                    </div>
-                    <div className='mt-2 grid grid-cols-3 gap-2'>
-                      <div className='rounded-lg border border-slate-200 bg-white p-2'>
-                        <div className='text-[9px] font-medium text-slate-500'>
-                          Due
-                        </div>
-                        <div className='text-xs font-bold text-slate-900'>
-                          ₹{derivedRentStatus.rentDue}
-                        </div>
-                      </div>
-                      <div className='rounded-lg border border-slate-200 bg-white p-2'>
-                        <div className='text-[9px] font-medium text-slate-500'>
-                          Partial
-                        </div>
-                        <div className='text-xs font-bold text-slate-900'>
-                          ₹{derivedRentStatus.partialDue}
-                        </div>
-                      </div>
-                      <div className='rounded-lg border border-slate-200 bg-white p-2'>
-                        <div className='text-[9px] font-medium text-slate-500'>
-                          Pending
-                        </div>
-                        <div className='text-xs font-bold text-slate-900'>
-                          ₹{derivedRentStatus.pendingDue}
-                        </div>
-                      </div>
-                    </div>
-                    {!hasOutstandingAmount && (
-                      <div className='mt-2 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2'>
-                        <CheckCircle className='size-3.5 text-emerald-600' />
-                        <span className='text-[11px] font-medium text-emerald-700'>
-                          No pending rent payments
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Recent Rent Payments */}
-                  {rentPayments.length > 0 ? (
-                    <div className='space-y-2'>
-                      {rentPayments.slice(0, 5).map((payment) => (
-                        <div
-                          key={payment.s_no}
-                          className='flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-2.5'
-                        >
-                          <div>
-                            <div className='text-xs font-bold text-slate-900'>
-                              ₹{payment.amount_paid}
-                            </div>
-                            <div className='text-[10px] text-slate-500'>
-                              {toDateOnly(payment.payment_date)} •{' '}
-                              {payment.payment_method}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className='py-4 text-center text-xs text-slate-500'>
-                      No rent payments found
-                    </div>
-                  )}
-                </div>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-
-          {/* Advance Payments Accordion */}
-          <Collapsible open={advanceOpen} onOpenChange={setAdvanceOpen}>
-            <Card className='border-slate-200'>
-              <CollapsibleTrigger asChild>
-                <CardContent className='flex cursor-pointer items-center justify-between p-4'>
-                  <div className='flex items-center gap-3'>
-                    <div className='flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600'>
-                      <CreditCard className='size-4' />
-                    </div>
-                    <div>
-                      <div className='text-sm font-bold text-slate-900'>
-                        Advance Payments
-                      </div>
-                      <div className='text-[10px] text-slate-500'>
-                        {advancePayments.length} payment(s)
-                      </div>
-                    </div>
-                  </div>
-                  <div className='flex items-center gap-2'>
-                    {advanceOpen ? (
-                      <ChevronDown className='size-4 text-slate-400' />
-                    ) : (
-                      <ChevronRight className='size-4 text-slate-400' />
-                    )}
-                  </div>
-                </CardContent>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className='border-t border-slate-100 p-4 pt-3'>
-                  {advancePayments.length > 0 ? (
-                    <div className='space-y-2'>
-                      {advancePayments.map((payment) => (
-                        <div
-                          key={payment.s_no}
-                          className='flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-2.5'
-                        >
-                          <div>
-                            <div className='text-xs font-bold text-slate-900'>
-                              ₹{payment.amount_paid}
-                            </div>
-                            <div className='text-[10px] text-slate-500'>
-                              {toDateOnly(payment.payment_date)} •{' '}
-                              {payment.payment_method}
-                            </div>
-                          </div>
-                          <Button
-                            variant='ghost'
-                            size='icon'
-                            onClick={() =>
-                              handleDeleteAdvancePayment(payment)
-                            }
-                            className='h-7 w-7 text-destructive'
-                          >
-                            <Trash2 className='size-3' />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className='py-4 text-center text-xs text-slate-500'>
-                      No advance payments found
-                    </div>
-                  )}
-                </div>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-
-          {/* Refund Payments Accordion */}
-          <Collapsible open={refundOpen} onOpenChange={setRefundOpen}>
-            <Card className='border-slate-200'>
-              <CollapsibleTrigger asChild>
-                <CardContent className='flex cursor-pointer items-center justify-between p-4'>
-                  <div className='flex items-center gap-3'>
-                    <div className='flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600'>
-                      <Undo2 className='size-4' />
-                    </div>
-                    <div>
-                      <div className='text-sm font-bold text-slate-900'>
-                        Refund Payments
-                      </div>
-                      <div className='text-[10px] text-slate-500'>
-                        {refundPayments.length} payment(s)
-                      </div>
-                    </div>
-                  </div>
-                  <div className='flex items-center gap-2'>
-                    {refundOpen ? (
-                      <ChevronDown className='size-4 text-slate-400' />
-                    ) : (
-                      <ChevronRight className='size-4 text-slate-400' />
-                    )}
-                  </div>
-                </CardContent>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className='border-t border-slate-100 p-4 pt-3'>
-                  {refundPayments.length > 0 ? (
-                    <div className='space-y-2'>
-                      {refundPayments.map((payment) => (
-                        <div
-                          key={payment.s_no}
-                          className='rounded-xl border border-slate-200 bg-slate-50 p-2.5'
-                        >
-                          <div className='flex items-center justify-between'>
-                            <div className='text-xs font-bold text-slate-900'>
-                              ₹{payment.amount_paid}
-                            </div>
-                          </div>
-                          <div className='text-[10px] text-slate-500'>
-                            {toDateOnly(payment.payment_date)} •{' '}
-                            {payment.payment_method}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className='py-4 text-center text-xs text-slate-500'>
-                      No refund payments found
-                    </div>
-                  )}
-                </div>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-
-          {/* Transfer History Accordion */}
-          {transferHistory.length > 0 && (
-            <Collapsible
-              open={transferHistoryOpen}
-              onOpenChange={setTransferHistoryOpen}
-            >
-              <Card className='border-slate-200'>
-                <CollapsibleTrigger asChild>
-                  <CardContent className='flex cursor-pointer items-center justify-between p-4'>
-                    <div className='flex items-center gap-3'>
-                      <div className='flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600'>
-                        <Home className='size-4' />
-                      </div>
-                      <div>
-                        <div className='text-sm font-bold text-slate-900'>
-                          Transfer History
-                        </div>
-                        <div className='text-[10px] text-slate-500'>
-                          {transferHistory.length} allocation(s)
-                        </div>
-                      </div>
-                    </div>
-                    {transferHistoryOpen ? (
-                      <ChevronDown className='size-4 text-slate-400' />
-                    ) : (
-                      <ChevronRight className='size-4 text-slate-400' />
-                    )}
-                  </CardContent>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className='border-t border-slate-100 p-4 pt-3'>
-                    <div className='space-y-2'>
-                      {transferHistory.map((alloc) => (
-                        <div
-                          key={alloc.s_no}
-                          className='rounded-xl border border-slate-200 bg-slate-50 p-3'
-                        >
-                          <div className='text-xs font-bold text-slate-900'>
-                            {alloc.pg_locations?.location_name} • Room{' '}
-                            {alloc.rooms?.room_no} • Bed {alloc.beds?.bed_no}
-                          </div>
-                          <div className='mt-1 text-[10px] text-slate-500'>
-                            {toDateOnly(alloc.effective_from)} -{' '}
-                            {toDateOnly(alloc.effective_to || undefined) ||
-                              'Present'}
-                          </div>
-                          {alloc.bed_price_snapshot !== undefined && (
-                            <div className='text-[10px] text-slate-500'>
-                              Price: ₹{alloc.bed_price_snapshot}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
-          )}
+       
         </div>
       )}
 

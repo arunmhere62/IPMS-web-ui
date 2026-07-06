@@ -13,10 +13,10 @@ import {
 export type AppDialogSize = 'sm' | 'md' | 'lg' | 'xl'
 
 const sizeClass: Record<AppDialogSize, string> = {
-  sm: 'sm:max-w-sm',
-  md: 'sm:max-w-md',
-  lg: 'sm:max-w-lg',
-  xl: 'sm:max-w-xl',
+  sm: '!w-[95vw] !sm:max-w-sm',
+  md: '!w-[95vw] !sm:max-w-md',
+  lg: '!w-[95vw] !sm:max-w-lg',
+  xl: '!w-[95vw] !sm:max-w-xl',
 }
 
 export type AppDialogProps = {
@@ -49,7 +49,7 @@ export function AppDialog({
       <DialogContent
         className={cn(
           sizeClass[size],
-          'flex max-h-[90vh] flex-col overflow-hidden',
+          'flex max-h-[90dvh] flex-col overflow-hidden p-0 sm:p-6',
           contentClassName
         )}
       >

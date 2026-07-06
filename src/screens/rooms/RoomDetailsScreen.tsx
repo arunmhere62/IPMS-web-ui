@@ -1,16 +1,27 @@
 import { useState } from 'react'
-import { BedFormDialog } from '@/screens/beds/BedFormDialog'
 import { RoomFormDialog } from '@/screens/rooms/RoomFormDialog'
+import { BedFormDialog } from '@/screens/rooms/BedFormDialog'
+import { BulkAddBedsDialog } from '@/screens/rooms/BulkAddBedsDialog'
 import {
-  type Bed,
   type Room,
-  useDeleteBedMutation,
+  type Bed,
   useDeleteRoomMutation,
-  useGetBedsByRoomIdQuery,
   useGetRoomByIdQuery,
+  useGetBedsByRoomIdQuery,
+  useDeleteBedMutation,
 } from '@/services/roomsApi'
 import { useAppSelector } from '@/store/hooks'
-import { Bed as BedIcon, CircleAlert, Plus, User, Pencil, Trash2 } from 'lucide-react'
+import {
+  CircleAlert,
+  Zap,
+  ChevronRight,
+  Bed as BedIcon,
+  Plus,
+  Layers,
+  User,
+  Pencil,
+  Trash2,
+} from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -24,10 +35,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ActionButtons } from '@/components/form/action-buttons'
 import { PageHeader } from '@/components/form/page-header'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
+import { Button } from '@/components/ui/button'
 
 interface ApiResponse<T> {
   data: T
@@ -50,18 +63,6 @@ interface RootState {
   }
 }
 
-interface ExtendedBed {
-  s_no: number
-  bed_no: string
-  bed_price?: number | string
-  is_occupied?: boolean
-  tenants?: Array<{
-    s_no?: number
-    name?: string
-    phone_no?: string
-    status?: string
-  }>
-}
 
 interface ExtendedRoom {
   s_no: number
@@ -91,43 +92,30 @@ const unwrapRoom = (
   return nested as Room | null
 }
 
-const unwrapBeds = (
-  response:
-    | ApiResponse<Bed[]>
-    | NestedApiResponse<Bed[]>
-    | Bed[]
-    | null
-    | undefined
-): Bed[] => {
-  if (!response) return []
-  const root =
-    'data' in response ? (response as ApiResponse<Bed[]>).data : response
-  const nested = 'data' in root ? (root as ApiResponse<Bed[]>).data : root
-  const data = Array.isArray(nested)
-    ? nested
-    : Array.isArray((nested as ApiResponse<Bed[]>)?.data)
-      ? (nested as ApiResponse<Bed[]>).data
-      : []
-  return Array.isArray(data) ? data : []
-}
 
 export function RoomDetailsScreen() {
   const navigate = useNavigate()
   const params = useParams()
   const roomId = Number(params.id)
 
+  const { can } = usePermissions()
+  const canEditRoom = can(Permission.EDIT_ROOM)
+  const canDeleteRoom = can(Permission.DELETE_ROOM)
+  const canCreateBed = can(Permission.CREATE_BED)
+  const canEditBed = can(Permission.EDIT_BED)
+  const canDeleteBed = can(Permission.DELETE_BED)
+
   const selectedPGLocationId = useAppSelector(
     (s: RootState) => s.pgLocations?.selectedPGLocationId
   )
 
-  const [bedDialogOpen, setBedDialogOpen] = useState(false)
-  const [editBed, setEditBed] = useState<Bed | null>(null)
-
   const [roomDialogOpen, setRoomDialogOpen] = useState(false)
-
   const [deleteRoomOpen, setDeleteRoomOpen] = useState(false)
   const [deleteBedOpen, setDeleteBedOpen] = useState(false)
-  const [deleteBedTarget, setDeleteBedTarget] = useState<Bed | null>(null)
+  const [bedToDelete, setBedToDelete] = useState<Bed | null>(null)
+  const [bedFormOpen, setBedFormOpen] = useState(false)
+  const [bedToEdit, setBedToEdit] = useState<Bed | null>(null)
+  const [bulkAddOpen, setBulkAddOpen] = useState(false)
 
   const {
     data: roomResponse,
@@ -140,8 +128,6 @@ export function RoomDetailsScreen() {
 
   const {
     data: bedsResponse,
-    isLoading: bedsLoading,
-    error: bedsError,
     refetch: refetchBeds,
   } = useGetBedsByRoomIdQuery(Number.isFinite(roomId) ? roomId : 0, {
     skip: !Number.isFinite(roomId) || roomId <= 0,
@@ -151,57 +137,22 @@ export function RoomDetailsScreen() {
   const [deleteBed, { isLoading: deletingBed }] = useDeleteBedMutation()
 
   const room = unwrapRoom(roomResponse)
-  const beds = unwrapBeds(bedsResponse)
+  const beds = bedsResponse?.data || []
+  const existingBedNumbers = beds.map((b) => b.bed_no)
 
   const extendedRoom = room as ExtendedRoom
 
   const fetchErrorMessage =
     (roomError as ApiError)?.data?.message ||
-    (roomError as ApiError)?.message ||
-    (bedsError as ApiError)?.data?.message ||
-    (bedsError as ApiError)?.message
+    (roomError as ApiError)?.message
 
   const images: string[] = Array.isArray(extendedRoom?.images)
     ? (extendedRoom.images ?? [])
     : []
 
-  const total = Number(extendedRoom?.total_beds ?? beds.length)
-  const occupied = Number(
-    extendedRoom?.occupied_beds ??
-      beds.filter((b) => Boolean((b as ExtendedBed)?.is_occupied)).length
-  )
-  const available = Number(
-    extendedRoom?.available_beds ?? Math.max(0, total - occupied)
-  )
-
-  const openAddBed = () => {
-    setEditBed(null)
-    setBedDialogOpen(true)
-  }
-
-  const openEditBed = (b: Bed) => {
-    setEditBed(b)
-    setBedDialogOpen(true)
-  }
-
-  const askDeleteBed = (b: Bed) => {
-    setDeleteBedTarget(b)
-    setDeleteBedOpen(true)
-  }
-
-  const confirmDeleteBed = async () => {
-    if (!deleteBedTarget) return
-    try {
-      await deleteBed(deleteBedTarget.s_no).unwrap()
-      showSuccessAlert('Bed deleted successfully')
-      setDeleteBedOpen(false)
-      setDeleteBedTarget(null)
-      void refetchBeds()
-      void refetchRoom()
-    } catch (e: unknown) {
-      showErrorAlert(e as Error, 'Delete Error')
-    }
-  }
+  const total = Number(extendedRoom?.total_beds ?? 0)
+  const occupied = Number(extendedRoom?.occupied_beds ?? 0)
+  const available = Number(extendedRoom?.available_beds ?? Math.max(0, total - occupied))
 
   const confirmDeleteRoom = async () => {
     if (!Number.isFinite(roomId) || roomId <= 0) return
@@ -212,6 +163,29 @@ export function RoomDetailsScreen() {
     } catch (e: unknown) {
       showErrorAlert(e as Error, 'Delete Error')
     }
+  }
+
+  const handleDeleteBed = async () => {
+    if (!bedToDelete) return
+    try {
+      await deleteBed(bedToDelete.s_no).unwrap()
+      showSuccessAlert('Bed deleted successfully')
+      setDeleteBedOpen(false)
+      setBedToDelete(null)
+      void refetchBeds()
+      void refetchRoom()
+    } catch (e: unknown) {
+      showErrorAlert(e as Error, 'Delete Error')
+    }
+  }
+
+  const formatCurrency = (amount?: number | string) => {
+    const n = Number(amount ?? 0)
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(n)
   }
 
   return (
@@ -229,6 +203,8 @@ export function RoomDetailsScreen() {
             <ActionButtons
               onEdit={() => setRoomDialogOpen(true)}
               onDelete={() => setDeleteRoomOpen(true)}
+              editDisabled={!canEditRoom}
+              deleteDisabled={!canDeleteRoom}
             />
           ) : null
         }
@@ -264,27 +240,6 @@ export function RoomDetailsScreen() {
         </div>
       ) : (
         <div className='mt-4 space-y-4'>
-          {/* Header Card */}
-          <Card className='py-0 shadow-sm'>
-            <CardContent className='p-4'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center gap-3'>
-                  <div className='flex size-11 items-center justify-center rounded-2xl bg-blue-600/10'>
-                    <span className='text-xl'>🏠</span>
-                  </div>
-                  <div>
-                    <h2 className='text-lg font-bold'>Room {room.room_no}</h2>
-                    <p className='text-xs text-muted-foreground'>ID: {room.s_no}</p>
-                  </div>
-                </div>
-                <ActionButtons
-                  onEdit={() => setRoomDialogOpen(true)}
-                  onDelete={() => setDeleteRoomOpen(true)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Room Images */}
           <Card className='py-0 shadow-sm'>
             <CardContent className='p-4'>
@@ -357,148 +312,171 @@ export function RoomDetailsScreen() {
             </Card>
           )}
 
+          {/* Electricity Bills */}
+          <Card className='py-0 shadow-sm'>
+            <CardContent className='p-4'>
+              <Link
+                to={`/rooms/${roomId}/electricity-bills`}
+                className='flex items-center justify-between transition-colors hover:text-primary'
+              >
+                <div className='flex items-center gap-3'>
+                  <div className='flex size-11 items-center justify-center rounded-xl bg-amber-500/10'>
+                    <Zap className='size-5 text-amber-500' />
+                  </div>
+                  <div>
+                    <h3 className='text-sm font-semibold'>Electricity Bills</h3>
+                    <p className='text-xs text-muted-foreground'>
+                      View & manage room bills
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className='size-5 text-muted-foreground' />
+              </Link>
+
+            </CardContent>
+          </Card>
+
           {/* Beds List */}
           <Card className='py-0 shadow-sm'>
             <CardContent className='p-4'>
               <div className='mb-3 flex items-center justify-between'>
-                <h3 className='text-base font-bold'>
+                <h3 className='text-base font-semibold'>
                   🛏️ Beds ({beds.length})
                 </h3>
-                <Button
-                  size='sm'
-                  onClick={openAddBed}
-                  disabled={!selectedPGLocationId}
-                  className='bg-blue-600 text-xs text-white hover:bg-blue-700'
-                >
-                  <Plus className='mr-1 size-3.5' />
-                  Add Bed
-                </Button>
+                <div className='flex gap-2'>
+                  <Button
+                    size='sm'
+                    disabled={!canCreateBed}
+                    className='gap-1.5'
+                    onClick={() => {
+                      setBedToEdit(null)
+                      setBedFormOpen(true)
+                    }}
+                  >
+                    <Plus className='size-4' />
+                    Add Bed
+                  </Button>
+                  <Button
+                    size='sm'
+                    variant='secondary'
+                    disabled={!canCreateBed}
+                    className='gap-1.5'
+                    onClick={() => setBulkAddOpen(true)}
+                  >
+                    <Layers className='size-4' />
+                    Bulk Add
+                  </Button>
+                </div>
               </div>
 
-              {bedsLoading ? (
-                <div className='flex flex-col items-center py-8'>
-                  <div className='size-6 animate-spin rounded-full border-2 border-primary border-t-transparent'></div>
-                  <p className='mt-2 text-xs text-muted-foreground'>Loading beds...</p>
-                </div>
-              ) : beds.length === 0 ? (
-                <div className='flex flex-col items-center py-8'>
-                  <BedIcon className='size-10 text-gray-300' />
-                  <p className='mt-3 text-sm font-semibold'>No Beds Yet</p>
-                  <p className='mt-1 text-sm text-muted-foreground'>
-                    Tap "Add Bed" to get started.
-                  </p>
-                </div>
-              ) : (
-                <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
-                  {beds.map((b) => {
-                    const eb = b as ExtendedBed
-                    const isOccupied = Boolean(eb.is_occupied)
-                    const tenant = eb.tenants?.[0]
+              {beds.length > 0 ? (
+                <div className='grid grid-cols-2 gap-3'>
+                  {beds.map((bed) => {
+                    const occupied = bed.is_occupied
+                    const tenant = bed.tenants?.[0]
                     return (
                       <div
-                        key={b.s_no}
-                        className={`rounded-2xl p-4 ${
-                          isOccupied ? 'bg-red-50' : 'bg-green-50'
+                        key={bed.s_no}
+                        className={`w-full rounded-xl p-4 ${
+                          occupied ? 'bg-red-50' : 'bg-green-50'
                         }`}
                       >
-                        {/* Bed icon + number + status */}
-                        <div className='mb-2.5 flex items-center gap-2.5'>
-                          <div className='flex size-10 items-center justify-center rounded-xl bg-white'>
+                        <div className='mb-3 flex items-center gap-3'>
+                          <div className='flex size-9 items-center justify-center rounded-lg bg-white'>
                             <BedIcon
-                              className={`size-5 ${isOccupied ? 'text-red-600' : 'text-green-600'}`}
+                              className='size-5'
+                              style={{ color: occupied ? '#DC2626' : '#16A34A' }}
                             />
                           </div>
                           <div>
-                            <p className='text-sm font-bold'>{b.bed_no}</p>
-                            <p
-                              className={`text-xs font-medium ${
-                                isOccupied ? 'text-red-600' : 'text-green-600'
+                            <div className='text-sm font-semibold'>{bed.bed_no}</div>
+                            <div
+                              className={`text-xs ${
+                                occupied ? 'text-red-600' : 'text-green-600'
                               }`}
                             >
-                              {isOccupied ? 'Occupied' : 'Available'}
-                            </p>
+                              {occupied ? 'Occupied' : 'Available'}
+                            </div>
                           </div>
                         </div>
 
-                        {/* Tenant name or price */}
                         <div className='mb-3'>
-                          {isOccupied && tenant ? (
-                            <div className='flex items-center gap-1'>
-                              <User className='size-3 shrink-0 text-amber-500' />
-                              <span className='truncate text-xs font-medium text-muted-foreground'>
-                                {tenant.name}
-                              </span>
+                          {occupied && tenant ? (
+                            <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+                              <User className='size-3' />
+                              <span className='font-medium'>{tenant.name}</span>
                             </div>
                           ) : (
-                            <p className='text-sm font-bold text-blue-600'>
-                              {b.bed_price
-                                ? `₹${Number(b.bed_price).toLocaleString('en-IN')}/mo`
+                            <div className='text-sm font-semibold text-primary'>
+                              {bed.bed_price
+                                ? formatCurrency(bed.bed_price) + '/mo'
                                 : '—'}
-                            </p>
+                            </div>
                           )}
                         </div>
 
-                        {/* Add / View tenant button */}
-                        {!isOccupied ? (
-                          <Link
-                            to={`/tenants/new?bedId=${b.s_no}&roomId=${room.s_no}`}
-                            className='mb-2 flex items-center justify-center rounded-lg bg-green-600 py-2 text-xs font-bold text-white transition-colors hover:bg-green-700'
+                        {!occupied ? (
+                          <Button
+                            size='sm'
+                            className='w-full bg-green-600 hover:bg-green-700'
                           >
                             + Add Tenant
-                          </Link>
+                          </Button>
                         ) : tenant?.s_no ? (
-                          <Link
-                            to={`/tenants/${tenant.s_no}`}
-                            className='mb-2 flex items-center justify-center rounded-lg bg-red-600 py-2 text-xs font-bold text-white transition-colors hover:bg-red-700'
+                          <Button
+                            size='sm'
+                            variant='destructive'
+                            className='w-full'
+                            onClick={() => navigate(`/tenants/${tenant.s_no}`)}
                           >
                             View Tenant
-                          </Link>
-                        ) : (
-                          <div className='mb-2' />
-                        )}
+                          </Button>
+                        ) : null}
 
-                        {/* Edit + Delete buttons */}
-                        <div className='flex gap-1.5'>
-                          <button
-                            onClick={() => openEditBed(b)}
-                            className='flex flex-1 items-center justify-center gap-1 rounded-md border border-gray-300 bg-gray-100 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-200'
-                          >
-                            <Pencil className='size-3' />
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => askDeleteBed(b)}
-                            className='flex flex-1 items-center justify-center gap-1 rounded-md border border-red-200 bg-red-50 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100'
-                          >
-                            <Trash2 className='size-3' />
-                            Delete
-                          </button>
+                        <div className='mt-3 flex gap-2'>
+                          {canEditBed && (
+                            <Button
+                              size='sm'
+                              variant='outline'
+                              className='flex-1 gap-1.5 text-xs'
+                              onClick={() => {
+                                setBedToEdit(bed)
+                                setBedFormOpen(true)
+                              }}
+                            >
+                              <Pencil className='size-3' />
+                              Edit
+                            </Button>
+                          )}
+                          {canDeleteBed && (
+                            <Button
+                              size='sm'
+                              variant='outline'
+                              className='flex-1 gap-1.5 text-xs'
+                              onClick={() => {
+                                setBedToDelete(bed)
+                                setDeleteBedOpen(true)
+                              }}
+                            >
+                              <Trash2 className='size-3' />
+                              Delete
+                            </Button>
+                          )}
                         </div>
                       </div>
                     )
                   })}
                 </div>
+              ) : (
+                <div className='flex flex-col items-center py-8'>
+                  <span className='text-4xl'>🛏️</span>
+                  <p className='mt-2 text-sm text-muted-foreground'>
+                    No beds in this room
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
-
-          <BedFormDialog
-            open={bedDialogOpen}
-            onOpenChange={(open: boolean) => {
-              setBedDialogOpen(open)
-              if (!open) setEditBed(null)
-            }}
-            editTarget={editBed}
-            rooms={[room]}
-            defaultRoomId={room.s_no}
-            pgId={selectedPGLocationId}
-            onSaved={() => {
-              setBedDialogOpen(false)
-              setEditBed(null)
-              void refetchBeds()
-              void refetchRoom()
-            }}
-          />
 
           <RoomFormDialog
             open={roomDialogOpen}
@@ -508,40 +486,8 @@ export function RoomDetailsScreen() {
             onSaved={() => {
               setRoomDialogOpen(false)
               void refetchRoom()
-              void refetchBeds()
             }}
           />
-
-          <AlertDialog open={deleteBedOpen} onOpenChange={setDeleteBedOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Bed</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete{' '}
-                  <span className='font-semibold'>
-                    {deleteBedTarget?.bed_no}
-                  </span>
-                  ? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel
-                  onClick={() => {
-                    setDeleteBedOpen(false)
-                    setDeleteBedTarget(null)
-                  }}
-                >
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={confirmDeleteBed}
-                  disabled={deletingBed}
-                >
-                  {deletingBed ? 'Deleting...' : 'Delete'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
 
           <AlertDialog open={deleteRoomOpen} onOpenChange={setDeleteRoomOpen}>
             <AlertDialogContent>
@@ -566,6 +512,60 @@ export function RoomDetailsScreen() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          <AlertDialog open={deleteBedOpen} onOpenChange={setDeleteBedOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Bed</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete{' '}
+                  <span className='font-semibold'>Bed {bedToDelete?.bed_no}</span>?
+                  This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setDeleteBedOpen(false)}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteBed}
+                  disabled={deletingBed}
+                >
+                  {deletingBed ? 'Deleting...' : 'Delete'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <BedFormDialog
+            open={bedFormOpen}
+            onOpenChange={setBedFormOpen}
+            roomId={roomId}
+            roomNo={room?.room_no || ''}
+            pgId={selectedPGLocationId || 0}
+            editTarget={bedToEdit}
+            defaultPrice={bedToEdit ? undefined : beds[0]?.bed_price?.toString() || ''}
+            existingBedNumbers={existingBedNumbers}
+            onSaved={() => {
+              void refetchBeds()
+              void refetchRoom()
+            }}
+          />
+
+          <BulkAddBedsDialog
+            open={bulkAddOpen}
+            onOpenChange={setBulkAddOpen}
+            roomId={roomId}
+            roomNo={room?.room_no || ''}
+            pgId={selectedPGLocationId || 0}
+            existingBedCount={beds.length}
+            defaultPrice={beds[0]?.bed_price?.toString() || ''}
+            existingBedNumbers={existingBedNumbers}
+            onSaved={() => {
+              void refetchBeds()
+              void refetchRoom()
+            }}
+          />
         </div>
       )}
     </div>

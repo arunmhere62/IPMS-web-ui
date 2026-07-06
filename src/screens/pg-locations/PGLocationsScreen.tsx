@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { PGLocationFormDialog } from '@/screens/pg-locations/PGLocationFormDialog'
 import {
   useDeletePGLocationMutation,
@@ -31,12 +32,20 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ActionButtons } from '@/components/form/action-buttons'
 import { PageHeader } from '@/components/form/page-header'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
 
 export function PGLocationsScreen() {
+  const location = useLocation()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<PGLocation | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<PGLocation | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
+  const { can } = usePermissions()
+  const canCreate = can(Permission.CREATE_PG_LOCATION)
+  const canEdit = can(Permission.EDIT_PG_LOCATION)
+  const canDelete = can(Permission.DELETE_PG_LOCATION)
 
   const {
     data: pgLocationsResponse,
@@ -55,6 +64,15 @@ export function PGLocationsScreen() {
     : Array.isArray(pgLocationsResponse)
       ? (pgLocationsResponse as PGLocation[])
       : []
+
+  const editPgId = (location.state as { editPgId?: number })?.editPgId
+  useEffect(() => {
+    if (!editPgId) return
+    const target = locations.find((l) => l.s_no === Number(editPgId))
+    if (!target) return
+    openEdit(target)
+    window.history.replaceState({}, document.title)
+  }, [editPgId, locations])
 
   const fetchErrorMessage =
     (error as { data?: { message?: string }; message?: string })?.data
@@ -97,6 +115,7 @@ export function PGLocationsScreen() {
             type='button'
             size='sm'
             onClick={openCreate}
+            disabled={!canCreate}
             aria-label='Add location'
             title='Add location'
             className='bg-black text-white hover:bg-black/90'
@@ -261,6 +280,8 @@ export function PGLocationsScreen() {
                           viewTo={`/pg-locations/${l.s_no}`}
                           onEdit={() => openEdit(l)}
                           onDelete={() => askDelete(l)}
+                          editDisabled={!canEdit}
+                          deleteDisabled={!canDelete}
                         />
                       </div>
                     </div>

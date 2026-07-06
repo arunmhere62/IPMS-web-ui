@@ -29,6 +29,8 @@ import { ActionButtons } from '@/components/form/action-buttons'
 import { PageHeader } from '@/components/form/page-header'
 import { FilterModal } from '@/components/rooms/FilterModal'
 import { RoomFormDialog } from './RoomFormDialog'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
 
 type ErrorLike = {
   data?: { message?: string }
@@ -57,6 +59,11 @@ export function RoomsScreen() {
 
   const [deleteTarget, setDeleteTarget] = useState<Room | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
+  const { can } = usePermissions()
+  const canCreate = can(Permission.CREATE_ROOM)
+  const canEdit = can(Permission.EDIT_ROOM)
+  const canDelete = can(Permission.DELETE_ROOM)
 
   const queryOptions = useMemo(() => {
     if (!selectedPGLocationId) return undefined
@@ -213,7 +220,7 @@ export function RoomsScreen() {
           <Button
             size='sm'
             onClick={openCreate}
-            disabled={!selectedPGLocationId}
+            disabled={!selectedPGLocationId || !canCreate}
             className='bg-black text-white hover:bg-black/90'
           >
             <Plus className='mr-1 size-3.5' />
@@ -283,7 +290,7 @@ export function RoomsScreen() {
 
           <div className='pb-16'>
             {isLoading ? (
-              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
                 {Array.from({ length: 8 }).map((_, index) => (
                   <RoomSkeleton key={`initial-skeleton-${index}`} />
                 ))}
@@ -299,7 +306,7 @@ export function RoomsScreen() {
                 }
               />
             ) : (
-              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
                 <AnimatePresence>
                   {rooms.map((r, index) => {
                     const totalBeds = Number(r.total_beds ?? 0)
@@ -347,6 +354,8 @@ export function RoomsScreen() {
                                   viewTo={`/rooms/${r.s_no}`}
                                   onEdit={() => openEdit(r)}
                                   onDelete={() => askDelete(r)}
+                                  editDisabled={!canEdit}
+                                  deleteDisabled={!canDelete}
                                 />
                               </div>
                             </div>
@@ -398,7 +407,7 @@ export function RoomsScreen() {
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.3, ease: 'easeInOut' }}
-                      className='mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                      className='mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2'
                     >
                       {Array.from({ length: 4 }).map((_, index) => (
                         <motion.div

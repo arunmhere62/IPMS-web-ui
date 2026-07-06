@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 import { useLogout } from '@/hooks/useLogout'
+import { useTenantLogout } from '@/hooks/useTenantLogout'
+import { useAppSelector } from '@/store/hooks'
 
 import {
 
@@ -31,7 +33,6 @@ import {
   useSidebar,
 
 } from '@/components/ui/sidebar'
-
 
 
 
@@ -76,7 +77,15 @@ export function NavUser({ user }: NavUserProps) {
 
   const { isMobile } = useSidebar()
 
-  const handleLogout = useLogout()
+  const ownerLogout = useLogout()
+  const tenantLogout = useTenantLogout()
+  
+  const ownerAuth = useAppSelector((s) => s.auth)
+  const tenantAuth = useAppSelector((s) => s.tenantAuth)
+  
+  const isTenant = tenantAuth.isAuthenticated
+  
+  const handleLogout = isTenant ? tenantLogout : ownerLogout
 
   const initials = getInitials(user.name)
 

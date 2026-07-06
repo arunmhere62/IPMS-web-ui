@@ -23,6 +23,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { PageHeader } from '@/components/form/page-header'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
 
 type ErrorLike = {
   data?: {
@@ -58,6 +60,10 @@ export function VisitorDetailsScreen() {
   const navigate = useNavigate()
   const params = useParams()
   const visitorId = Number(params.id)
+
+  const { can } = usePermissions()
+  const canEdit = can(Permission.EDIT_VISITOR)
+  const canDelete = can(Permission.DELETE_VISITOR)
 
   const selectedPGLocationId = useAppSelector(
     (s) => s.pgLocations.selectedPGLocationId
@@ -164,7 +170,7 @@ export function VisitorDetailsScreen() {
                 </div>
 
                 <div className='flex flex-wrap items-center justify-end gap-2'>
-                  <Button asChild size='sm'>
+                  <Button asChild size='sm' disabled={!canEdit}>
                     <Link to={`/visitors/${visitor.s_no}/edit`}>
                       <Pencil className='me-2 size-4' />
                       Edit
@@ -175,7 +181,7 @@ export function VisitorDetailsScreen() {
                     size='sm'
                     variant='destructive'
                     onClick={() => setDeleteDialogOpen(true)}
-                    disabled={deleting}
+                    disabled={deleting || !canDelete}
                   >
                     <Trash2 className='me-2 size-4' />
                     Delete

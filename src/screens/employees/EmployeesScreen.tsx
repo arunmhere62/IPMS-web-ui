@@ -32,6 +32,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ActionButtons } from '@/components/form/action-buttons'
 import { PageHeader } from '@/components/form/page-header'
 import { EmployeeFormDialog } from './EmployeeFormDialog'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
 
 type ErrorLike = {
   data?: { message?: string }
@@ -46,6 +48,11 @@ type PaginationState = {
 }
 
 export function EmployeesScreen() {
+  const { can } = usePermissions()
+  const canCreate = can(Permission.CREATE_EMPLOYEE)
+  const canEdit = can(Permission.EDIT_EMPLOYEE)
+  const canDelete = can(Permission.DELETE_EMPLOYEE)
+
   const selectedPGLocationId =
     useAppSelector((s) => s.pgLocations.selectedPGLocationId) ?? null
 
@@ -214,7 +221,7 @@ export function EmployeesScreen() {
           <Button
             size='sm'
             onClick={openCreate}
-            disabled={!selectedPGLocationId}
+            disabled={!selectedPGLocationId || !canCreate}
             className='bg-black text-white hover:bg-black/90'
           >
             <Plus className='mr-1 size-3.5' />
@@ -371,6 +378,8 @@ export function EmployeesScreen() {
                         viewTo={`/employees/${e.s_no}`}
                         onEdit={() => openEdit(e)}
                         onDelete={() => askDelete(e)}
+                        editDisabled={!canEdit}
+                        deleteDisabled={!canDelete}
                       />
                     </div>
                   </CardContent>

@@ -1,13 +1,17 @@
 import { useMemo, useState } from 'react'
 import {
   useGetPGLocationDetailsQuery,
+  useDeletePGLocationMutation,
   type BedDetail,
   type PGLocationDetails,
   type RoomDetail,
 } from '@/services/pgLocationsApi'
-import { CircleAlert, Search } from 'lucide-react'
-import { useParams } from 'react-router-dom'
+import { CircleAlert, Search, Pencil, Trash2 } from 'lucide-react'
+import { showErrorAlert, showSuccessAlert } from '@/utils/toast'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -36,7 +40,12 @@ const formatCurrency = (value: unknown) => {
 
 export function PGDetailsScreen() {
   const params = useParams()
+  const navigate = useNavigate()
   const pgId = Number(params.id)
+
+  const { can } = usePermissions()
+  const canEdit = can(Permission.EDIT_PG_LOCATION)
+  const canDelete = can(Permission.DELETE_PG_LOCATION)
 
   const [tab, setTab] = useState<'summary' | 'detailed'>('summary')
   const [search, setSearch] = useState('')
@@ -48,6 +57,25 @@ export function PGDetailsScreen() {
   } = useGetPGLocationDetailsQuery(Number.isFinite(pgId) ? pgId : 0, {
     skip: !Number.isFinite(pgId) || pgId <= 0,
   })
+
+  const [deletePGLocation, { isLoading: deleting }] = useDeletePGLocationMutation()
+
+  const handleEdit = () => {
+    if (!canEdit) return
+    navigate('/pg-locations', { state: { editPgId: pgId } })
+  }
+
+  const handleDelete = async () => {
+    if (!canDelete || !Number.isFinite(pgId)) return
+    if (!window.confirm('Are you sure you want to delete this PG location?')) return
+    try {
+      await deletePGLocation(pgId).unwrap()
+      showSuccessAlert('PG location deleted successfully')
+      navigate('/pg-locations')
+    } catch (e) {
+      showErrorAlert(e, 'Delete Error')
+    }
+  }
 
   const details = unwrapDetails(pgDetailsResponse)
 
@@ -99,7 +127,29 @@ export function PGDetailsScreen() {
         title={details?.location_name || 'PG Details'}
         showBack={true}
         right={
-          <Badge variant='outline'>#{Number.isFinite(pgId) ? pgId : '-'}</Badge>
+          <div className='flex items-center gap-2'>
+            <Badge variant='outline'>#{Number.isFinite(pgId) ? pgId : '-'}</Badge>
+            <Button
+              type='button'
+              variant='outline'
+              size='sm'
+              disabled={!canEdit}
+              onClick={handleEdit}
+            >
+              <Pencil className='mr-1 size-3.5' />
+              Edit
+            </Button>
+            <Button
+              type='button'
+              variant='destructive'
+              size='sm'
+              disabled={!canDelete || deleting}
+              onClick={handleDelete}
+            >
+              <Trash2 className='mr-1 size-3.5' />
+              {deleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
         }
       />
 

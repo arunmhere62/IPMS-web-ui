@@ -12,11 +12,11 @@ import {
 export type FormDialogSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl'
 
 const sizeClass: Record<FormDialogSize, string> = {
-  sm: 'w-[90vw] max-w-sm',
-  md: 'w-[95vw] max-w-md',
-  lg: 'w-[95vw] max-w-lg',
-  xl: 'w-[95vw] max-w-xl',
-  '2xl': 'w-[95vw] max-w-2xl',
+  sm: '!w-[95vw] !sm:max-w-sm',
+  md: '!w-[95vw] !sm:max-w-md',
+  lg: '!w-[95vw] !sm:max-w-lg',
+  xl: '!w-[95vw] !sm:max-w-xl',
+  '2xl': '!w-[95vw] !sm:max-w-2xl',
 }
 
 export type FormDialogProps = {
@@ -51,7 +51,7 @@ export function FormDialog({
       <DialogContent
         className={cn(
           sizeClass[size],
-          'mx-auto flex max-h-[90vh] flex-col overflow-hidden',
+          'mx-auto flex max-h-[90dvh] flex-col overflow-hidden',
           contentClassName
         )}
       >

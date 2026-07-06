@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -13,11 +14,24 @@ import { FormTextarea } from '@/components/form/form-fields'
 import { FormNumberInput } from '@/components/form/form-number-input'
 import { OptionSelector, type OptionSelectorOption } from '@/components/form/option-selector'
 
+// Constants
+const MIN_PAYMENT_AMOUNT = 1
+const MAX_PAYMENT_AMOUNT = 10_00_000
+const MAX_DECIMAL_PLACES = 2
+
 const schema = z.object({
-  amount_paid: z.number().min(1, 'Amount is required'),
+  amount_paid: z
+    .number()
+    .min(MIN_PAYMENT_AMOUNT, `Amount must be at least ₹${MIN_PAYMENT_AMOUNT}`)
+    .max(MAX_PAYMENT_AMOUNT, `Amount cannot exceed ₹${MAX_PAYMENT_AMOUNT.toLocaleString('en-IN')}`)
+    .refine((val) => val >= 0, 'Amount cannot be negative')
+    .refine((val) => {
+      const decimalStr = val.toString().split('.')[1]
+      return !decimalStr || decimalStr.length <= MAX_DECIMAL_PLACES
+    }, `Amount can have maximum ${MAX_DECIMAL_PLACES} decimal places`),
   payment_date: z.string().min(1, 'Payment date is required'),
   payment_method: z.enum(['GPAY', 'PHONEPE', 'CASH', 'BANK_TRANSFER']),
-  remarks: z.string().optional(),
+  remarks: z.string().trim().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -55,8 +69,8 @@ export function AdvancePaymentDialog({
   tenant,
   onSaved,
 }: AdvancePaymentDialogProps) {
-  const [createAdvancePayment, { isLoading: creating }] =
-    useCreateAdvancePaymentMutation()
+  const [createAdvancePayment] = useCreateAdvancePaymentMutation()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -66,9 +80,13 @@ export function AdvancePaymentDialog({
       payment_method: 'CASH',
       remarks: '',
     },
+    mode: 'onBlur',
   })
 
   const handleSubmit = async (values: FormValues) => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+
     try {
       await createAdvancePayment({
         tenant_id: tenant.s_no,
@@ -89,8 +107,18 @@ export function AdvancePaymentDialog({
       onSaved()
     } catch (error) {
       showErrorAlert(error, 'Failed to record advance payment')
+      // Don't reset form on error so user can fix it
+    } finally {
+      setIsSubmitting(false)
     }
   }
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      form.handleSubmit(handleSubmit)()
+    }
+  }, [form, handleSubmit])
 
   return (
     <FormDialog
@@ -105,12 +133,12 @@ export function AdvancePaymentDialog({
             type='button'
             variant='outline'
             onClick={() => onOpenChange(false)}
-            disabled={creating}
+            disabled={isSubmitting}
           >
             Cancel
           </Button>
-          <Button type='submit' form='advance-payment-form' disabled={creating}>
-            {creating ? 'Saving...' : 'Save'}
+          <Button type='submit' form='advance-payment-form' disabled={isSubmitting}>
+            {isSubmitting ? 'Saving...' : 'Save'}
           </Button>
         </div>
       }
@@ -120,6 +148,7 @@ export function AdvancePaymentDialog({
           id='advance-payment-form'
           onSubmit={form.handleSubmit(handleSubmit)}
           className='grid gap-4'
+          onKeyDown={handleKeyDown}
         >
           {tenant.check_in_date && (
             <Card className='border-slate-200 bg-slate-50 p-0 shadow-none'>
@@ -141,7 +170,11 @@ export function AdvancePaymentDialog({
             label='Amount'
             placeholder='e.g. 5000'
             required
+            disabled={isSubmitting}
           />
+          <p className='text-xs text-muted-foreground'>
+            Amount range: ₹{MIN_PAYMENT_AMOUNT} - ₹{MAX_PAYMENT_AMOUNT.toLocaleString('en-IN')}
+          </p>
 
           <FormDatePicker
             control={form.control}
@@ -149,6 +182,7 @@ export function AdvancePaymentDialog({
             label='Payment Date'
             placeholder='Select payment date'
             required
+            disabled={isSubmitting}
           />
 
           <OptionSelector
@@ -162,6 +196,7 @@ export function AdvancePaymentDialog({
             selectedValue={form.watch('payment_method')}
             onSelect={(v) => form.setValue('payment_method', (v ?? 'CASH') as 'GPAY' | 'PHONEPE' | 'CASH' | 'BANK_TRANSFER')}
             required
+            disabled={isSubmitting}
             className='[&>div:last-child]:flex-nowrap [&>div:last-child>button]:flex-1 [&>div:last-child>button]:text-[10px] sm:[&>div:last-child>button]:text-xs'
           />
 
@@ -170,6 +205,7 @@ export function AdvancePaymentDialog({
             name='remarks'
             label='Remarks (optional)'
             placeholder='Add any additional notes...'
+            disabled={isSubmitting}
           />
         </form>
       </Form>

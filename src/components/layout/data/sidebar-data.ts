@@ -41,9 +41,9 @@ export const sidebarData: SidebarData = {
           icon: Building2,
         },
         {
-          title: 'Employees',
-          url: '/employees',
-          icon: Users,
+          title: 'Rooms',
+          url: '/rooms',
+          icon: DoorOpen,
         },
         {
           title: 'Tenants',
@@ -56,16 +56,6 @@ export const sidebarData: SidebarData = {
           icon: BedDouble,
         },
         {
-          title: 'Visitors',
-          url: '/visitors',
-          icon: User,
-        },
-        {
-          title: 'Rooms',
-          url: '/rooms',
-          icon: DoorOpen,
-        },
-        {
           title: 'Payments',
           url: '/payments',
           icon: Wallet,
@@ -76,14 +66,24 @@ export const sidebarData: SidebarData = {
           icon: Receipt,
         },
         {
-          title: 'Subscriptions',
-          url: '/subscriptions/manage',
-          icon: CreditCard,
+          title: 'Visitors',
+          url: '/visitors',
+          icon: User,
         },
         {
           title: 'Tickets',
           url: '/tickets',
           icon: Ticket,
+        },
+        {
+          title: 'Employees',
+          url: '/employees',
+          icon: Users,
+        },
+        {
+          title: 'Subscriptions',
+          url: '/subscriptions/manage',
+          icon: CreditCard,
         },
         {
           title: 'Settings',

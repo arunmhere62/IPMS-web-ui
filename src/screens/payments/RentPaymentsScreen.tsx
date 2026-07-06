@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import {
   useLazyGetTenantPaymentsQuery,
   useUpdatePaymentStatusMutation,
@@ -34,6 +35,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { PageHeader } from '@/components/form/page-header'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
 
 type PaymentWithCycle = Payment & {
   tenant_rent_cycles?: {
@@ -132,6 +135,9 @@ const statusBadgeVariant = (status?: string) => {
 
 export function RentPaymentsScreen() {
   const navigate = useNavigate()
+  const { id: tenantId } = useParams<{ id: string }>()
+  const { can } = usePermissions()
+  const canEditPayment = can(Permission.EDIT_PAYMENT)
   const selectedPGLocationId = useAppSelector(
     (s: RootState) => s.pgLocations?.selectedPGLocationId
   )
@@ -145,14 +151,24 @@ export function RentPaymentsScreen() {
   })
 
   const queryArgs = useMemo(() => {
+    if (tenantId) {
+      // Filter by specific tenant
+      return {
+        page: state.page,
+        limit,
+        tenant_id: Number(tenantId),
+      }
+    }
+    
     if (!selectedPGLocationId) return undefined
 
+    // Filter by PG location (default behavior)
     return {
       page: state.page,
       limit,
       pg_id: selectedPGLocationId,
     }
-  }, [state.page, limit, selectedPGLocationId])
+  }, [state.page, limit, selectedPGLocationId, tenantId])
 
   const [trigger, { data: paymentsResponse, isLoading, isFetching, error }] =
     useLazyGetTenantPaymentsQuery()
@@ -160,17 +176,17 @@ export function RentPaymentsScreen() {
   const [updateStatus, { isLoading: updatingStatus }] =
     useUpdatePaymentStatusMutation()
 
-  // Reset state when location changes
+  // Reset state when location or tenant changes
   useEffect(() => {
     dispatch({ type: 'RESET' })
-  }, [selectedPGLocationId])
+  }, [selectedPGLocationId, tenantId])
 
   // Load initial data or when page changes
   useEffect(() => {
-    if (selectedPGLocationId && queryArgs) {
+    if (queryArgs) {
       void trigger(queryArgs)
     }
-  }, [trigger, selectedPGLocationId, queryArgs])
+  }, [trigger, queryArgs])
 
   const { isFetching: isInfiniteFetching, checkScroll } = useInfiniteScroll({
     hasMore: state.hasMore,
@@ -446,7 +462,7 @@ export function RentPaymentsScreen() {
                                   e.stopPropagation()
                                   askMarkAsPaid(p)
                                 }}
-                                disabled={updatingStatus}
+                                disabled={updatingStatus || !canEditPayment}
                                 className='bg-slate-700 hover:bg-slate-800'
                               >
                                 Mark Paid

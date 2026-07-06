@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import {
   type GetRefundPaymentsParams,
   type RefundPayment,
@@ -108,6 +109,7 @@ const readPagination = (value: unknown): unknown => {
 }
 
 export function RefundPaymentsScreen() {
+  const { id: tenantId } = useParams<{ id: string }>()
   const selectedPGLocationId = useAppSelector(
     (s) => (s as any).pgLocations?.selectedPGLocationId
   ) as number | null
@@ -148,6 +150,11 @@ export function RefundPaymentsScreen() {
       limit,
     }
 
+    if (tenantId) {
+      // Filter by specific tenant
+      params.tenant_id = Number(tenantId)
+    }
+
     if (statusFilter !== 'ALL') params.status = statusFilter
 
     if (selectedMonth && selectedYear) {
@@ -167,6 +174,7 @@ export function RefundPaymentsScreen() {
     selectedMonth,
     selectedYear,
     statusFilter,
+    tenantId,
   ])
 
   const {
@@ -174,7 +182,7 @@ export function RefundPaymentsScreen() {
     isLoading,
     error,
     refetch,
-  } = useGetRefundPaymentsQuery(queryArgs, { skip: !selectedPGLocationId })
+  } = useGetRefundPaymentsQuery(queryArgs, { skip: !selectedPGLocationId && !tenantId })
 
   const items = useMemo(() => {
     return asArray<RefundPayment>(readListData(listResponse))

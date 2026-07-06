@@ -23,6 +23,8 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { AppDialog } from '@/components/form/app-dialog'
 import { PageHeader } from '@/components/form/page-header'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
 
 type ErrorLike = {
   data?: {
@@ -32,6 +34,9 @@ type ErrorLike = {
 }
 
 export function TicketsScreen() {
+  const { can } = usePermissions()
+  const canCreateTicket = can(Permission.CREATE_TICKET)
+
   const selectedPGLocationId = useAppSelector(
     (s) => (s as any).pgLocations?.selectedPGLocationId
   ) as number | null
@@ -135,17 +140,19 @@ export function TicketsScreen() {
   }, [tickets.length, total])
 
   return (
-    <div className='container mx-auto max-w-6xl px-4 py-4'>
+    <div className='container mx-auto max-w-6xl px-4 py-6'>
       <PageHeader
         title='Tickets'
         showBack={true}
         subtitle='Report issues and track status'
+        className='mb-6'
         right={
           <>
             <Button
               type='button'
               size='icon'
               onClick={openCreate}
+              disabled={!canCreateTicket}
               aria-label='Create ticket'
               title='Create ticket'
             >
@@ -159,7 +166,7 @@ export function TicketsScreen() {
       />
 
       {fetchErrorMessage ? (
-        <div className='mt-4'>
+        <div className='mt-6'>
           <Alert variant='destructive'>
             <CircleAlert />
             <AlertTitle>Failed to load tickets</AlertTitle>
@@ -168,7 +175,7 @@ export function TicketsScreen() {
         </div>
       ) : null}
 
-      <div className='mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+      <div className='mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
         <div className='relative w-full sm:max-w-xs'>
           <Search className='pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground' />
           <Input
@@ -187,9 +194,9 @@ export function TicketsScreen() {
         </Badge>
       </div>
 
-      <div className='mt-4'>
+      <div className='mt-6'>
         {isLoading ? (
-          <div className='rounded-lg border bg-card px-6 py-8 text-center text-sm text-muted-foreground'>
+          <div className='rounded-lg border bg-card px-6 py-12 text-center text-sm text-muted-foreground'>
             Loading...
           </div>
         ) : tickets.length === 0 ? (
@@ -201,8 +208,12 @@ export function TicketsScreen() {
             <div className='mt-2 text-sm text-muted-foreground'>
               Create a ticket to report an issue.
             </div>
-            <div className='mt-4'>
-              <Button onClick={openCreate} className='px-6'>
+            <div className='mt-6'>
+              <Button
+                onClick={openCreate}
+                disabled={!canCreateTicket}
+                className='px-6'
+              >
                 Create Ticket
               </Button>
             </div>
@@ -210,30 +221,30 @@ export function TicketsScreen() {
         ) : (
           <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
             {tickets.map((t) => (
-              <Card key={t.s_no} className='h-full border shadow-sm'>
-                <CardContent className='flex h-full flex-col gap-3 p-4'>
+              <Card key={t.s_no} className='h-full border'>
+                <CardContent className='flex h-full flex-col gap-4 p-5'>
                   <div className='flex items-start justify-between gap-3'>
-                    <div className='min-w-0'>
+                    <div className='min-w-0 flex-1'>
                       <div className='truncate text-sm font-semibold'>
                         {t.title}
                       </div>
-                      <div className='mt-0.5 line-clamp-3 text-xs text-muted-foreground'>
+                      <div className='mt-1 line-clamp-2 text-xs text-muted-foreground'>
                         {t.description}
                       </div>
                     </div>
-                    <Badge variant='outline' className='shrink-0 px-2 text-xs'>
+                    <Badge variant='outline' className='shrink-0 px-2.5 py-1 text-xs'>
                       #{t.ticket_number || t.s_no}
                     </Badge>
                   </div>
 
                   <div className='flex flex-wrap items-center gap-2'>
-                    <Badge variant='secondary' className='h-6 px-2 text-[10px]'>
+                    <Badge variant='secondary' className='h-7 px-2.5 text-xs font-medium'>
                       {String(t.status || 'OPEN')}
                     </Badge>
-                    <Badge variant='outline' className='h-6 px-2 text-[10px]'>
+                    <Badge variant='outline' className='h-7 px-2.5 text-xs font-medium'>
                       {String(t.priority || '')}
                     </Badge>
-                    <Badge variant='outline' className='h-6 px-2 text-[10px]'>
+                    <Badge variant='outline' className='h-7 px-2.5 text-xs font-medium'>
                       {String(t.category || '')}
                     </Badge>
                   </div>
@@ -247,7 +258,7 @@ export function TicketsScreen() {
           </div>
         )}
 
-        <div className='mt-4 flex items-center justify-between gap-2'>
+        <div className='mt-6 flex items-center justify-center gap-4'>
           <Button
             variant='outline'
             size='sm'
@@ -256,7 +267,7 @@ export function TicketsScreen() {
           >
             Prev
           </Button>
-          <div className='text-xs text-muted-foreground'>
+          <div className='text-sm text-muted-foreground'>
             Page {page}
             {Number.isFinite(totalPages) && totalPages > 0
               ? ` / ${totalPages}`
@@ -299,7 +310,7 @@ export function TicketsScreen() {
           </div>
         }
       >
-        <div className='grid gap-3'>
+        <div className='grid gap-4'>
           <div className='grid gap-2'>
             <div className='text-sm font-medium'>Title</div>
             <Input
@@ -315,10 +326,11 @@ export function TicketsScreen() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder='Describe the issue...'
+              rows={4}
             />
           </div>
 
-          <div className='grid gap-3 sm:grid-cols-2'>
+          <div className='grid gap-4 sm:grid-cols-2'>
             <div className='grid gap-2'>
               <div className='text-sm font-medium'>Category</div>
               <Select

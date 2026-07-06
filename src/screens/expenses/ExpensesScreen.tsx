@@ -40,6 +40,8 @@ import {
 import { ActionButtons } from '@/components/form/action-buttons'
 import { PageHeader } from '@/components/form/page-header'
 import { AddEditExpenseDialog } from './AddEditExpenseDialog'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
 
 type ErrorLike = {
   data?: { message?: string }
@@ -150,6 +152,11 @@ const paymentMethodLabel = (method: PaymentMethod) => {
 }
 
 export function ExpensesScreen() {
+  const { can } = usePermissions()
+  const canCreate = can(Permission.CREATE_EXPENSE)
+  const canEdit = can(Permission.EDIT_EXPENSE)
+  const canDelete = can(Permission.DELETE_EXPENSE)
+
   const selectedPGLocationId = useAppSelector(
     (s: RootState) => s.pgLocations?.selectedPGLocationId
   )
@@ -419,7 +426,11 @@ export function ExpensesScreen() {
               </PopoverContent>
             </Popover>
 
-            <Button size='sm' onClick={() => setShowAddDialog(true)}>
+            <Button
+              size='sm'
+              disabled={!selectedPGLocationId || !canCreate}
+              onClick={() => setShowAddDialog(true)}
+            >
               <Plus className='mr-1.5 size-4' />
               Add Expense
             </Button>
@@ -529,6 +540,8 @@ export function ExpensesScreen() {
                             onEdit={() => setEditExpense(expense)}
                             onDelete={() => setDeleteTarget(expense)}
                             mode='icon'
+                            editDisabled={!canEdit}
+                            deleteDisabled={!canDelete}
                           />
                         </div>
                       </div>

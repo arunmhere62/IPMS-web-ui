@@ -41,6 +41,8 @@ import { Input } from '@/components/ui/input'
 import { ActionButtons } from '@/components/form/action-buttons'
 import { PageHeader } from '@/components/form/page-header'
 import { EmployeeFormDialog } from './EmployeeFormDialog'
+import { usePermissions } from '@/hooks/usePermissions'
+import { Permission } from '@/config/rbac.config'
 
 const isSuperAdminUser = (user: AuthUser): boolean => {
   const roleNameRaw = (user as any)?.role_name ?? (user as any)?.roles?.role_name
@@ -82,6 +84,10 @@ export function EmployeeDetailsScreen() {
   const navigate = useNavigate()
   const id = Number(params.id)
   const validId = Number.isFinite(id) && id > 0 ? id : 0
+
+  const { can } = usePermissions()
+  const canEdit = can(Permission.EDIT_EMPLOYEE)
+  const canDelete = can(Permission.DELETE_EMPLOYEE)
 
   const user = useAppSelector((s: RootState) => s.auth.user)
   const isSuperAdmin = useMemo(() => isSuperAdminUser(user), [user])
@@ -317,7 +323,7 @@ export function EmployeeDetailsScreen() {
               <div className='mt-3.5 flex items-center justify-between border-t border-border/30 pt-3.5'>
                 <button
                   onClick={() => setToggleDialogOpen(true)}
-                  disabled={isTogglingStatus}
+                  disabled={isTogglingStatus || !canEdit}
                   className={`inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[13px] font-bold transition-colors disabled:opacity-50 ${
                     isActive
                       ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
@@ -334,6 +340,8 @@ export function EmployeeDetailsScreen() {
                 <ActionButtons
                   onEdit={() => setDialogOpen(true)}
                   onDelete={() => setDeleteDialogOpen(true)}
+                  editDisabled={!canEdit}
+                  deleteDisabled={!canDelete}
                 />
               </div>
             </CardContent>

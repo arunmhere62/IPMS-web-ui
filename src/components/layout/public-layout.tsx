@@ -7,7 +7,7 @@ export function PublicLayout() {
   const location = useLocation()
   const isEmbedded = new URLSearchParams(location.search).get('embed') === '1'
   const isHome = location.pathname === '/home'
-  const isAuthScreen = location.pathname === '/login' || location.pathname === '/signup'
+  const isAuthScreen = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/owner-login' || location.pathname === '/tenant-login'
 
   const accessToken = getCookie('access_token')
 

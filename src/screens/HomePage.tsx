@@ -1,11 +1,21 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   useGetDashboardMonthlyMetricsQuery,
   useGetDashboardSummaryQuery,
+  useGetDashboardTicketStatsQuery,
 } from '@/services/dashboardApi'
 import type { Tenant } from '@/services/tenantsApi'
 import { useAppSelector } from '@/store/hooks'
 import { Phone, MessageCircle, TrendingUp } from 'lucide-react'
+import {
+  AnnouncementBanner,
+  DashboardSkeleton,
+  QuickActions,
+  TicketStatsCard,
+  TrialBanner,
+  type QuickActionItem,
+} from '@/components/dashboard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -51,10 +61,47 @@ const getLast6Months = () => {
   return months
 }
 
+const dashboardQuickActions: QuickActionItem[] = [
+  { title: 'Quick Setup', icon: 'flash', screen: 'QuickSetup' },
+  { title: 'Rooms', icon: 'bed', screen: 'Rooms' },
+  { title: 'Tenants', icon: 'people', screen: 'Tenants' },
+  { title: 'Payments', icon: 'wallet', screen: 'Payments' },
+  { title: 'Tickets', icon: 'ticket', screen: 'Tickets' },
+  { title: 'Visitors', icon: 'building', screen: 'Visitors' },
+  { title: 'Employees', icon: 'grid', screen: 'Employees' },
+  { title: 'Expenses', icon: 'wrench', screen: 'Expenses' },
+  { title: 'Upcoming Vacancies', icon: 'calendar', screen: 'UpcomingVacancies' },
+  { title: 'Settings', icon: 'settings', screen: 'Settings' },
+]
+
+const SCREEN_ROUTE_MAP: Record<string, string> = {
+  QuickSetup: '/quick-setup',
+  Rooms: '/rooms',
+  Beds: '/beds',
+  Tenants: '/tenants',
+  Payments: '/payments',
+  RentPayments: '/payments/rent',
+  AdvancePayments: '/payments/advance',
+  RefundPayments: '/payments/refund',
+  Tickets: '/tickets',
+  Visitors: '/visitors',
+  Employees: '/employees',
+  Expenses: '/expenses',
+  UpcomingVacancies: '/tenants/upcoming-vacancies',
+  Settings: '/settings',
+}
+
 export function HomePage() {
+  const navigate = useNavigate()
   const selectedPGLocationId = useAppSelector(
     (s) => s.pgLocations?.selectedPGLocationId
   ) as number | null
+  const appStatus = useAppSelector(
+    (s) => (s as any).appSettings?.appSettings
+  )
+  const subscription = useAppSelector(
+    (s) => (s as any).rbac?.subscription
+  )
 
   const [attentionTab, setAttentionTab] = useState<AttentionKey>('pending_rent')
   const months = useMemo(() => getLast6Months(), [])
@@ -82,6 +129,26 @@ export function HomePage() {
     { monthStart: activeMonth?.monthStart, monthEnd: activeMonth?.monthEnd },
     { skip: !selectedPGLocationId }
   )
+
+  const {
+    data: ticketStatsResponse,
+    isFetching: ticketStatsFetching,
+  } = useGetDashboardTicketStatsQuery(undefined, {
+    skip: !selectedPGLocationId,
+  })
+
+  const ticketStats = (ticketStatsResponse as unknown as { data?: unknown })?.data as
+    | {
+        overview?: import('@/services/dashboardApi').TicketOverview
+        recentTickets?: import('@/services/dashboardApi').DashboardTicket[]
+        unreadTickets?: import('@/services/dashboardApi').UnreadTickets
+      }
+    | undefined
+
+  const handleNavigate = (screen: string) => {
+    const route = SCREEN_ROUTE_MAP[screen]
+    if (route) navigate(route)
+  }
 
   const dashboardSummary = (summaryResponse as unknown as { data?: unknown })
     ?.data as
@@ -317,8 +384,24 @@ export function HomePage() {
     (monthlyError as { data?: { message?: string }; message?: string })?.data
       ?.message || (monthlyError as { message?: string })?.message
 
+  const isLoading = summaryFetching && !bedMetrics
+
   return (
     <div className='container mx-auto max-w-6xl px-4 py-4'>
+      {appStatus?.show_announcement && appStatus.announcement_title ? (
+        <AnnouncementBanner
+          title={appStatus.announcement_title}
+          message={appStatus.announcement_message}
+          className='-mx-4 mb-4'
+        />
+      ) : null}
+
+      <TrialBanner
+        subscription={subscription}
+        onUpgrade={() => navigate('/subscriptions/manage')}
+        className='-mx-4 mb-4'
+      />
+
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
         <div>
           <div className='text-xl font-semibold'>Dashboard</div>
@@ -328,7 +411,19 @@ export function HomePage() {
         </div>
       </div>
 
-      <div className='mt-4 grid gap-4 lg:grid-cols-3'>
+      <div className='mt-4'>
+        <QuickActions
+          menuItems={dashboardQuickActions}
+          onNavigate={handleNavigate}
+          className='mb-4'
+        />
+      </div>
+
+      {isLoading ? (
+        <DashboardSkeleton />
+      ) : (
+        <>
+          <div className='mt-4 grid gap-4 lg:grid-cols-3'>
         <Card className='py-4 lg:col-span-2'>
           <CardHeader className='pb-2'>
             <CardTitle className='flex items-center gap-2 text-base'>
@@ -584,6 +679,16 @@ export function HomePage() {
           </div>
         </CardContent>
       </Card>
+
+      <TicketStatsCard
+        overview={ticketStats?.overview ?? { total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0, highPriority: 0 }}
+        recentTickets={ticketStats?.recentTickets ?? []}
+        unreadTickets={ticketStats?.unreadTickets ?? { count: 0, tickets: [] }}
+        isLoading={ticketStatsFetching}
+        className='mt-4'
+      />
+        </>
+      )}
     </div>
   )
 }

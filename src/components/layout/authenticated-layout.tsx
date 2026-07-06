@@ -7,6 +7,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { getCookie, setCookie } from '@/lib/cookies'
 import { cn } from '@/lib/utils'
 import { LayoutProvider } from '@/context/layout-provider'
+import { useRefreshMyPermissions } from '@/hooks/useRefreshMyPermissions'
 import {
   Select,
   SelectContent,
@@ -24,8 +25,16 @@ type AuthenticatedLayoutProps = {
 }
 
 export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
+  useRefreshMyPermissions()
   const location = useLocation()
   const accessToken = getCookie('access_token')
+  
+  // Check both auth states
+  const ownerAuth = useAppSelector((s) => s.auth)
+  const tenantAuth = useAppSelector((s) => s.tenantAuth)
+  
+  const isOwner = ownerAuth.isAuthenticated
+  const isTenant = tenantAuth.isAuthenticated
 
   const dispatch = useAppDispatch()
   const selectedPGLocationId = useAppSelector(
@@ -51,15 +60,26 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
     if (id) setCookie('x_pg_location_id', String(id))
   }
 
-  if (!accessToken) {
-    return <Navigate to='/login' replace state={{ from: location.pathname }} />
-  }
-
   useEffect(() => {
     if (!selectedPGLocationId && pgLocations.length > 0) {
       ensureSelectedPg(pgLocations[0].s_no)
     }
   }, [pgLocations.length, selectedPGLocationId])
+
+  // Early returns after all hooks are called
+  if (!accessToken) {
+    return <Navigate to='/login' replace state={{ from: location.pathname }} />
+  }
+
+  // Route protection: tenants cannot access owner routes
+  if (isTenant) {
+    return <Navigate to='/tenant-dashboard' replace />
+  }
+
+  // Owners must be authenticated to access owner routes
+  if (!isOwner) {
+    return <Navigate to='/login' replace state={{ from: location.pathname }} />
+  }
 
   const defaultOpen = getCookie('sidebar_state') !== 'false'
   return (

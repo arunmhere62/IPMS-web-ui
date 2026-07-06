@@ -22,7 +22,7 @@ import { setCredentials, logout } from '@/store/slices/authSlice'
 
 
 
-const API_BASE_URL = (import.meta.env as Record<string, string | undefined>).VITE_API_BASE_URL
+const API_BASE_URL = (import.meta.env as Record<string, string | undefined>).VITE_API_BASE_URL || '/api/v1'
 
 
 
@@ -432,6 +432,12 @@ export const baseApi = createApi({
     'S3Object',
 
     'LegalRequiredStatus',
+
+    'ElectricityBills',
+
+    'ElectricityBill',
+
+    'ElectricityBillItems',
 
   ],
 

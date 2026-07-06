@@ -2,8 +2,14 @@ import { HomePage } from '@/screens/HomePage'
 import { PublicHome } from '@/screens/PublicHome'
 import { LoginScreen } from '@/screens/auth/LoginScreen'
 import { SignupScreen } from '@/screens/auth/SignupScreen'
-import { BedDetailsScreen } from '@/screens/beds/BedDetailsScreen'
-import { BedsScreen } from '@/screens/beds/BedsScreen'
+import { RoleSelectionScreen } from '@/screens/auth/RoleSelectionScreen'
+import { TenantLoginScreen } from '@/screens/auth/TenantLoginScreen'
+import { TenantDashboardScreen } from '@/features/tenant/screens/TenantDashboardScreen'
+import { TenantPGDetailsScreen } from '@/features/tenant/screens/TenantPGDetailsScreen'
+import { TenantRoomScreen } from '@/features/tenant/screens/TenantRoomScreen'
+import { TenantPaymentsScreen } from '@/features/tenant/screens/TenantPaymentsScreen'
+import { TenantTicketsScreen } from '@/features/tenant/screens/TenantTicketsScreen'
+import { TenantSettingsScreen } from '@/features/tenant/screens/TenantSettingsScreen'
 import { EmployeeDetailsScreen } from '@/screens/employees/EmployeeDetailsScreen'
 import { EmployeePermissionOverridesScreen } from '@/screens/employees/EmployeePermissionOverridesScreen'
 import { EmployeesScreen } from '@/screens/employees/EmployeesScreen'
@@ -21,7 +27,9 @@ import { PrivacyScreen } from '@/screens/public/PrivacyScreen'
 import { RefundPolicyScreen } from '@/screens/public/RefundPolicyScreen'
 import { SoftwareServicesScreen } from '@/screens/public/SoftwareServicesScreen'
 import { TermsScreen } from '@/screens/public/TermsScreen'
+import { QuickSetupScreen } from '@/screens/QuickSetupScreen'
 import { RoomDetailsScreen } from '@/screens/rooms/RoomDetailsScreen'
+import { RoomElectricityBillsScreen } from '@/screens/rooms/RoomElectricityBillsScreen'
 import { RoomsScreen } from '@/screens/rooms/RoomsScreen'
 import { SettingsScreen } from '@/screens/settings/SettingsScreen'
 import { UserProfileScreen } from '@/screens/settings/UserProfileScreen'
@@ -40,6 +48,7 @@ import { VisitorsScreen } from '@/screens/visitors/VisitorsScreen'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout'
 import { PublicLayout } from '@/components/layout/public-layout'
+import { TenantLayout } from '@/features/tenant/components/TenantLayout'
 
 export function AppRoutes() {
   return (
@@ -47,6 +56,7 @@ export function AppRoutes() {
       {/* Authenticated routes first - includes hybrid policy pages */}
       <Route element={<AuthenticatedLayout />}>
         <Route path='/' element={<HomePage />} />
+        <Route path='/quick-setup' element={<QuickSetupScreen />} />
         <Route path='/pg-locations' element={<PGLocationsScreen />} />
         <Route path='/pg-locations/:id' element={<PGDetailsScreen />} />
         <Route path='/employees' element={<EmployeesScreen />} />
@@ -57,6 +67,9 @@ export function AppRoutes() {
         <Route path='/tenants/new' element={<TenantFormScreen />} />
         <Route path='/tenants/:id' element={<TenantDetailsScreen />} />
         <Route path='/tenants/:id/edit' element={<TenantFormScreen />} />
+        <Route path='/tenants/:id/rent-payments' element={<RentPaymentsScreen />} />
+        <Route path='/tenants/:id/advance-payments' element={<AdvancePaymentsScreen />} />
+        <Route path='/tenants/:id/refund-payments' element={<RefundPaymentsScreen />} />
         <Route path='/visitors' element={<VisitorsScreen />} />
         <Route path='/visitors/new' element={<VisitorFormScreen />} />
         <Route path='/visitors/:id' element={<VisitorDetailsScreen />} />
@@ -66,8 +79,10 @@ export function AppRoutes() {
         <Route path='/tickets' element={<TicketsScreen />} />
         <Route path='/rooms' element={<RoomsScreen />} />
         <Route path='/rooms/:id' element={<RoomDetailsScreen />} />
-        <Route path='/beds' element={<BedsScreen />} />
-        <Route path='/beds/:id' element={<BedDetailsScreen />} />
+        <Route
+          path='/rooms/:id/electricity-bills'
+          element={<RoomElectricityBillsScreen />}
+        />
         <Route path='/payments' element={<PaymentsScreen />} />
         <Route path='/payments/rent' element={<RentPaymentsScreen />} />
         <Route path='/payments/advance' element={<AdvancePaymentsScreen />} />
@@ -103,7 +118,9 @@ export function AppRoutes() {
       {/* Public routes - for logged-out users */}
       <Route element={<PublicLayout />}>
         <Route path='/home' element={<PublicHome />} />
-        <Route path='/login' element={<LoginScreen />} />
+        <Route path='/login' element={<RoleSelectionScreen />} />
+        <Route path='/owner-login' element={<LoginScreen />} />
+        <Route path='/tenant-login' element={<TenantLoginScreen />} />
         <Route path='/signup' element={<SignupScreen />} />
         <Route path='/faq' element={<FaqScreen />} />
         <Route path='/about' element={<AboutUsScreen />} />
@@ -114,7 +131,16 @@ export function AppRoutes() {
         <Route path='/software-services' element={<SoftwareServicesScreen />} />
         <Route path='/subscriptions' element={<SubscriptionsScreen />} />
       </Route>
-      <Route path='*' element={<Navigate to='/home' replace />} />
+      {/* Tenant routes - for tenant portal */}
+      <Route element={<TenantLayout />}>
+        <Route path='/tenant-dashboard' element={<TenantDashboardScreen />} />
+        <Route path='/tenant-dashboard/pg-details' element={<TenantPGDetailsScreen />} />
+        <Route path='/tenant-dashboard/room' element={<TenantRoomScreen />} />
+        <Route path='/tenant-dashboard/payments' element={<TenantPaymentsScreen />} />
+        <Route path='/tenant-dashboard/tickets' element={<TenantTicketsScreen />} />
+        <Route path='/tenant-dashboard/settings' element={<TenantSettingsScreen />} />
+      </Route>
+      <Route path='*' element={<Navigate to='/login' replace />} />
     </Routes>
   )
 }

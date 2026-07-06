@@ -54,3 +54,15 @@ export function clearAuthCookies(): void {
   removeCookie('x_pg_location_id')
   removeCookie('x-pg-location-id')
 }
+
+/**
+ * Clear all tenant-specific cookies
+ */
+export function clearTenantCookies(): void {
+  removeCookie('access_token')
+  removeCookie('refresh_token')
+  removeCookie('x_user_id')
+  removeCookie('x-tenant-id')
+  removeCookie('x-pg-id')
+  removeCookie('x-organization-id')
+}

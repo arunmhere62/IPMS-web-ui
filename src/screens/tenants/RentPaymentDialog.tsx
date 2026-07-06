@@ -32,12 +32,25 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+// Constants
+const MIN_PAYMENT_AMOUNT = 1
+const MAX_PAYMENT_AMOUNT = 10_00_000
+const MAX_DECIMAL_PLACES = 2
+
 const schema = z.object({
-  amount_paid: z.number().min(1, 'Amount paid is required'),
+  amount_paid: z
+    .number()
+    .min(MIN_PAYMENT_AMOUNT, `Amount must be at least ₹${MIN_PAYMENT_AMOUNT}`)
+    .max(MAX_PAYMENT_AMOUNT, `Amount cannot exceed ₹${MAX_PAYMENT_AMOUNT.toLocaleString('en-IN')}`)
+    .refine((val) => val >= 0, 'Amount cannot be negative')
+    .refine((val) => {
+      const decimalStr = val.toString().split('.')[1]
+      return !decimalStr || decimalStr.length <= MAX_DECIMAL_PLACES
+    }, `Amount can have maximum ${MAX_DECIMAL_PLACES} decimal places`),
   payment_date: z.string().min(1, 'Payment date is required'),
   payment_method: z.enum(['GPAY', 'PHONEPE', 'CASH', 'BANK_TRANSFER']),
   cycle_id: z.number().min(1, 'Please select a rent period or skip gaps to get the next suggested period'),
-  remarks: z.string().optional(),
+  remarks: z.string().trim().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -91,8 +104,8 @@ export function RentPaymentDialog({
   tenant,
   onSaved,
 }: RentPaymentDialogProps) {
-  const [createRentPayment, { isLoading: creating }] =
-    useCreateTenantPaymentMutation()
+  const [createRentPayment] = useCreateTenantPaymentMutation()
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [triggerDetectPaymentGaps] = useLazyDetectPaymentGapsQuery()
   const [triggerGetNextPaymentDates] = useLazyGetNextPaymentDatesQuery()
 
@@ -131,6 +144,7 @@ export function RentPaymentDialog({
       cycle_id: 0,
       remarks: '',
     },
+    mode: 'onBlur',
   })
 
   const watchedAmountPaid = form.watch('amount_paid')
@@ -251,6 +265,9 @@ export function RentPaymentDialog({
   }
 
   const savePayment = async (status: string) => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+
     try {
       const values = form.getValues()
       await createRentPayment({
@@ -274,10 +291,14 @@ export function RentPaymentDialog({
     } catch (e: unknown) {
       showErrorAlert(e, 'Payment Error')
       setConfirmOpen(false)
+      // Don't reset form on error so user can fix it
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const onSubmit = (values: FormValues) => {
+    if (isSubmitting) return
     const amountPaid = values.amount_paid
     const actualAmount = actualRentAmount
 
@@ -294,6 +315,13 @@ export function RentPaymentDialog({
     setPendingStatus(autoStatus)
     setConfirmOpen(true)
   }
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      form.handleSubmit(onSubmit)()
+    }
+  }, [form, onSubmit])
 
   useEffect(() => {
     if (open && tenant) {
@@ -374,7 +402,7 @@ export function RentPaymentDialog({
               type='button'
               variant='outline'
               onClick={() => onOpenChange(false)}
-              disabled={creating}
+              disabled={isSubmitting}
               className='w-full sm:w-auto'
             >
               Cancel
@@ -382,10 +410,10 @@ export function RentPaymentDialog({
             <Button
               type='submit'
               form='rent-payment-form'
-              disabled={creating || loadingGaps}
+              disabled={isSubmitting || loadingGaps}
               className='w-full sm:w-auto'
             >
-              {creating ? 'Saving...' : 'Add Payment'}
+              {isSubmitting ? 'Saving...' : 'Add Payment'}
             </Button>
           </div>
         }
@@ -395,6 +423,7 @@ export function RentPaymentDialog({
             id='rent-payment-form'
             onSubmit={form.handleSubmit(onSubmit)}
             className='grid gap-4'
+            onKeyDown={handleKeyDown}
           >
             {formError && (
               <div className='rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive'>
@@ -530,7 +559,11 @@ export function RentPaymentDialog({
               label='Amount Paid'
               placeholder='0.00'
               required
+              disabled={isSubmitting}
             />
+            <p className='text-xs text-muted-foreground'>
+              Amount range: ₹{MIN_PAYMENT_AMOUNT} - ₹{MAX_PAYMENT_AMOUNT.toLocaleString('en-IN')}
+            </p>
 
             {/* Start / End Date (disabled, auto-filled) */}
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
@@ -590,6 +623,7 @@ export function RentPaymentDialog({
                   form.setValue('payment_date', date ? date.toISOString().split('T')[0] : '')
                 }}
                 placeholder='Pick a date'
+                disabled={isSubmitting}
               />
             </div>
 
@@ -600,6 +634,7 @@ export function RentPaymentDialog({
               selectedValue={form.watch('payment_method')}
               onSelect={(v) => form.setValue('payment_method', (v ?? 'CASH') as 'GPAY' | 'PHONEPE' | 'CASH' | 'BANK_TRANSFER')}
               required
+              disabled={isSubmitting}
               className='[&>div:last-child]:flex-nowrap [&>div:last-child>button]:flex-1 [&>div:last-child>button]:text-[10px] sm:[&>div:last-child>button]:text-xs'
             />
 
@@ -609,6 +644,7 @@ export function RentPaymentDialog({
               name='remarks'
               label='Remarks (optional)'
               placeholder='Add any notes about this payment'
+              disabled={isSubmitting}
             />
           </form>
         </Form>
@@ -638,10 +674,10 @@ export function RentPaymentDialog({
             <AlertDialogCancel className='text-xs'>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => savePayment(pendingStatus)}
-              disabled={creating}
+              disabled={isSubmitting}
               className='text-xs'
             >
-              {creating ? 'Saving...' : 'Confirm'}
+              {isSubmitting ? 'Saving...' : 'Confirm'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

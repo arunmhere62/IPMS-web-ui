@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer } from 'react'
+import { useParams } from 'react-router-dom'
 import {
   type AdvancePayment,
   useLazyGetAdvancePaymentsQuery,
@@ -112,6 +113,7 @@ const statusBadgeVariant = (status?: string) => {
 
 export function AdvancePaymentsScreen() {
   const navigate = useNavigate()
+  const { id: tenantId } = useParams<{ id: string }>()
   const selectedPGLocationId = useAppSelector(
     (s: RootState) => s.pgLocations?.selectedPGLocationId
   )
@@ -125,28 +127,38 @@ export function AdvancePaymentsScreen() {
   })
 
   const queryArgs = useMemo(() => {
+    if (tenantId) {
+      // Filter by specific tenant
+      return {
+        page: state.page,
+        limit,
+        tenant_id: Number(tenantId),
+      }
+    }
+    
     if (!selectedPGLocationId) return undefined
 
+    // Filter by PG location (default behavior)
     return {
       page: state.page,
       limit,
     }
-  }, [state.page, limit, selectedPGLocationId])
+  }, [state.page, limit, selectedPGLocationId, tenantId])
 
   const [trigger, { data: paymentsResponse, isLoading, isFetching, error }] =
     useLazyGetAdvancePaymentsQuery()
 
-  // Reset state when location changes
+  // Reset state when location or tenant changes
   useEffect(() => {
     dispatch({ type: 'RESET' })
-  }, [selectedPGLocationId])
+  }, [selectedPGLocationId, tenantId])
 
   // Load initial data or when page changes
   useEffect(() => {
-    if (selectedPGLocationId && queryArgs) {
+    if (queryArgs) {
       void trigger(queryArgs)
     }
-  }, [trigger, selectedPGLocationId, queryArgs])
+  }, [trigger, queryArgs])
 
   const { isFetching: isInfiniteFetching, checkScroll } = useInfiniteScroll({
     hasMore: state.hasMore,

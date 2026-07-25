@@ -27,7 +27,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader } from '@/components/form/page-header'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Permission } from '@/config/rbac.config'
-import { CreateElectricityBillDialog } from './electricity-bill/CreateElectricityBillDialog'
+import { CreateElectricityBillDialog } from './electricity-bill/CreateElectricityBillForm'
 import { RecordElectricityBillPaymentDialog } from './electricity-bill/RecordElectricityBillPaymentDialog'
 
 const formatCurrency = (value: number) => {

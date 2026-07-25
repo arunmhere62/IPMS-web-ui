@@ -125,10 +125,17 @@ export function CreateElectricityBillDialog({
   })
 
   const currentYear = today.getFullYear()
-  const yearOptions = Array.from({ length: 5 }, (_, i) => {
+  const currentMonth = today.getMonth()
+  const yearOptions = Array.from({ length: 3 }, (_, i) => {
     const year = currentYear - 2 + i
+    if (year > currentYear) return null
     return { label: String(year), value: String(year) }
-  })
+  }).filter(Boolean) as { label: string; value: string }[]
+
+  const selectedYear = Number(form.watch('selectedYear'))
+  const monthOptions = selectedYear === currentYear
+    ? MONTHS.filter((m) => Number(m.value) <= currentMonth)
+    : MONTHS
 
   const { periodStart, periodEnd } = useMemo(() => {
     const year = Number(form.watch('selectedYear'))
@@ -137,6 +144,12 @@ export function CreateElectricityBillDialog({
     const end = new Date(year, month + 1, 0)
     return { periodStart: formatDate(start), periodEnd: formatDate(end) }
   }, [form])
+
+  useEffect(() => {
+    if (selectedYear === currentYear && Number(form.watch('selectedMonth')) > currentMonth) {
+      form.setValue('selectedMonth', String(currentMonth))
+    }
+  }, [selectedYear, currentYear, currentMonth, form])
 
   useEffect(() => {
     if (selectedPGLocationId && roomId && periodStart && periodEnd) {
@@ -339,7 +352,7 @@ export function CreateElectricityBillDialog({
             name='selectedMonth'
             label='Billing Month'
             disabled={fetchingTenants}
-            options={MONTHS}
+            options={monthOptions}
           />
           <FormSelectField
             control={form.control}

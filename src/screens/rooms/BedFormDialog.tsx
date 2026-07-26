@@ -128,27 +128,24 @@ export function BedFormDialog({
     setIsSubmitting(true)
 
     try {
-      const bedData: {
-        room_id: number
-        pg_id: number
-        bed_price: number
-        bed_no?: string
-      } = {
-        room_id: roomId,
-        pg_id: pgId,
-        bed_price: parseFloat(values.bed_price),
-        bed_no: values.bed_no.trim(),
-      }
-
-      if (isEditMode && isBedNoLocked) {
-        delete bedData.bed_no
-      }
-
       if (isEditMode && editTarget) {
-        await updateBed({ id: editTarget.s_no, data: bedData }).unwrap()
+        const updateData: { room_id: number; pg_id: number; bed_price: number; bed_no?: string } = {
+          room_id: roomId,
+          pg_id: pgId,
+          bed_price: parseFloat(values.bed_price),
+        }
+        if (!isBedNoLocked) {
+          updateData.bed_no = values.bed_no.trim()
+        }
+        await updateBed({ id: editTarget.s_no, data: updateData }).unwrap()
         showSuccessAlert('Bed updated successfully')
       } else {
-        await createBed(bedData).unwrap()
+        await createBed({
+          room_id: roomId,
+          pg_id: pgId,
+          bed_price: parseFloat(values.bed_price),
+          bed_no: values.bed_no.trim(),
+        }).unwrap()
         showSuccessAlert('Bed created successfully')
       }
 

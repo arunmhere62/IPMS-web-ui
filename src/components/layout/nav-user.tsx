@@ -80,7 +80,6 @@ export function NavUser({ user }: NavUserProps) {
   const ownerLogout = useLogout()
   const tenantLogout = useTenantLogout()
   
-  const ownerAuth = useAppSelector((s) => s.auth)
   const tenantAuth = useAppSelector((s) => s.tenantAuth)
   
   const isTenant = tenantAuth.isAuthenticated

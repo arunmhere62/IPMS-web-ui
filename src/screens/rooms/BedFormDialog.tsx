@@ -80,8 +80,8 @@ export function BedFormDialog({
   existingBedNumbers = [],
   onSaved,
 }: BedFormDialogProps) {
-  const [createBed, { isLoading: creating }] = useCreateBedMutation()
-  const [updateBed, { isLoading: updating }] = useUpdateBedMutation()
+  const [createBed] = useCreateBedMutation()
+  const [updateBed] = useUpdateBedMutation()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isEditMode = !!editTarget
@@ -137,10 +137,11 @@ export function BedFormDialog({
         room_id: roomId,
         pg_id: pgId,
         bed_price: parseFloat(values.bed_price),
+        bed_no: values.bed_no.trim(),
       }
 
-      if (!isEditMode || !isBedNoLocked) {
-        bedData.bed_no = values.bed_no.trim()
+      if (isEditMode && isBedNoLocked) {
+        delete bedData.bed_no
       }
 
       if (isEditMode && editTarget) {

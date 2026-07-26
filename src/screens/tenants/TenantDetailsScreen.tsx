@@ -31,7 +31,6 @@ import {
   Wallet,
   Undo2,
   Clock,
-  CheckCircle,
   RotateCcw,
   LogOut,
 } from 'lucide-react'
@@ -52,7 +51,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { AppDialog } from '@/components/form/app-dialog'
 import { PageHeader } from '@/components/form/page-header'
 import { AdvancePaymentDialog } from './AdvancePaymentDialog'
@@ -289,19 +287,6 @@ export function TenantDetailsScreen() {
     }
   }
 
-  const handleDeleteAdvancePayment = (payment: {
-    s_no: number
-    amount_paid: number | string
-    payment_date: string
-  }) => {
-    setAdvanceToDelete({
-      id: payment.s_no,
-      amount: String(payment.amount_paid),
-      date: toDateOnly(payment.payment_date),
-    })
-    setDeleteAdvanceDialogOpen(true)
-  }
-
   const confirmUpdateCheckout = async () => {
     if (!tenant) return
     try {
@@ -380,32 +365,6 @@ export function TenantDetailsScreen() {
       showErrorAlert(e, 'Clear Checkout Error')
     }
   }
-
-  const derivedRentStatus = (() => {
-    const rentDue = rentDueAmount
-    const pendingDue = pendingDueAmount
-    const partialDue = partialDueAmount
-
-    let label = 'RENT STATUS'
-    let color = 'text-slate-500'
-    let bg = 'bg-slate-50'
-
-    if (rentDue <= 0) {
-      label = 'RENT PAID'
-      color = 'text-emerald-700'
-      bg = 'bg-emerald-50'
-    } else if (partialDue > 0) {
-      label = pendingDue > 0 ? 'RENT PARTIAL + PENDING' : 'RENT PARTIAL'
-      color = 'text-orange-700'
-      bg = 'bg-orange-50'
-    } else {
-      label = String(tenant?.payment_status ?? '') === 'NO_PAYMENT' ? 'RENT NOT PAID' : 'RENT PENDING'
-      color = 'text-red-700'
-      bg = 'bg-red-50'
-    }
-
-    return { label, color, bg, rentDue, pendingDue, partialDue }
-  })()
 
   const transferHistory = useMemo(() => {
     const allocs = asArray<NonNullable<Tenant['tenant_allocations']>[number]>(

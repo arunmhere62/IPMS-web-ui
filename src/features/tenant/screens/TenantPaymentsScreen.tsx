@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useGetTenantProfileQuery } from '../api/tenantPortalApi'
 import { getCookie } from '@/lib/cookies'
-import { Receipt, Wallet, ArrowDownLeft, Zap, Info, Calendar, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Receipt, Wallet, ArrowDownLeft, Info, Calendar } from 'lucide-react'
 
 export function TenantPaymentsScreen() {
   const accessToken = getCookie('access_token')

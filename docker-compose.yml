@@ -1,0 +1,13 @@
+services:
+  ipgm-web-ui:
+    build: .
+    image: ${APP_IMAGE:-ipgm-web-ui}:${APP_TAG:-latest}
+    container_name: ipgm-web-ui
+    restart: unless-stopped
+    expose:
+      - "80"
+
+networks:
+  default:
+    external: true
+    name: ipgm-mobapi-prod-network
